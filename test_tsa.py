@@ -57,13 +57,10 @@ class TestTsa(unittest.TestCase):
             )
 
     def test_PrimaryBlock_init_normal_1(self):
-        testinstance = tsa.PrimaryBlock(
-            'Ylöjärvi_1_etelä', 'D2', 3, 's1122#KITKA3_LUKU >= 0.30'
+        testinstance = tsa.PrimaryBlock('D2', 3, 's1122#KITKA3_LUKU >= 0.30'
             )
         instancedict = testinstance.__dict__
-        resultdict = {
-        'site': 'ylojarvi_1_etela', 
-        'master_alias': 'd2', 
+        resultdict = {'master_alias': 'd2', 
         'alias': 'd2_3', 
         'station': 's1122', 
         'sensor': 'kitka3_luku', 
@@ -74,11 +71,10 @@ class TestTsa(unittest.TestCase):
 
     def test_PrimaryBlock_init_normal_2(self):
         testinstance = tsa.PrimaryBlock(
-            'Ylöjärvi_1_etelä', 'D2', 3, 's1122#KITKA3_LUKU IN (1, 2, 3)'
+            'D2', 3, 's1122#KITKA3_LUKU IN (1, 2, 3)'
             )
         instancedict = testinstance.__dict__
         resultdict = {
-        'site': 'ylojarvi_1_etela', 
         'master_alias': 'd2', 
         'alias': 'd2_3', 
         'station': 's1122', 

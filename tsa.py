@@ -134,16 +134,15 @@ class PrimaryBlock:
     """
     Represents a logical condition of sensor value
     with information of site name and station id.
-    A Block eventually renders as boolean column in temporary db tables.
+    This renders as boolean column in temporary db tables.
     For PostgreSQL compatibility, umlauts convert to a and o,
     and all strings are made lowercase.
 
-    # TODO example
     :Example:
-        >>> PrimaryBlock('AbcÄÖ_Location', 'D2', 3, 's1122#KITKA3_LUKU >= 0.30')
-        {'site': 'abcao_location',
-        'alias': 'd2_3',
+        >>> PrimaryBlock('D2', 3, 's1122#KITKA3_LUKU >= 0.30')
+        {
         'master_alias': 'd2',
+        'alias': 'd2_3',
         'station': 's1122',
         'sensor': 'kitka3_luku',
         'operator': '>=',
@@ -151,10 +150,9 @@ class PrimaryBlock:
         }
 
     # TODO params
-    """
 
-    def __init__(self, site_name, master_alias, order_nr, raw_condition):
-        self.site = to_pg_identifier(site_name)
+    """
+    def __init__(self, master_alias, order_nr, raw_condition):
         self.master_alias = to_pg_identifier(master_alias)
         self.alias = self.master_alias + '_' + str(order_nr)
 
@@ -163,8 +161,6 @@ class PrimaryBlock:
         self.sensor = _lg[1]
         self.operator = _lg[2]
         self.value_str = _lg[3]
-
-
 
 def make_aliases(raw_cond, master_alias):
     """
