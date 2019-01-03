@@ -8,6 +8,31 @@ This module shall be imported by Dash ``app.py``.
 """
 import pandas
 
+class PrimaryBlock:
+    """
+    Represents a logical condition of sensor value
+    with information of site name and station id.
+    A Block eventually renders as boolean column in temporary db tables.
+    For PostgreSQL compatibility, umlauts convert to a and o,
+    and all strings are made lowercase.
+
+    # TODO example
+    :Example:
+        >>> Block('AbcÄÖ Location', 'D2', 3, 's1122#KITKA3_LUKU >= 0.30')
+        {'site_name': 'abcao_location',
+        'alias': 'd2_3',
+        'master_alias': 'd2',
+        'station_id': 's1122',
+        'sensor_name': 'kitka3_luku',
+        'logical_operator': '>=',
+        'value_str': '0.3',
+        }
+
+    # TODO params
+    """
+    def __init__(self, site_name, master_alias, order_nr, raw_condition):
+        # TODO write this
+
 def make_aliases(raw_cond, master_alias):
     """
     Convert raw condition string into SQL clause of alias blocks
@@ -32,7 +57,7 @@ def make_aliases(raw_cond, master_alias):
             'D2_1': {'st': 's1122', 'lgc': 'TIENPINNAN_TILA3 = 8'},
             'D2_2': {'st': 's1122', 'lgc': 'KITKA3_LUKU >= 0.30'},
             'D2_3': {'st': 's1122', 'lgc': 'KITKA3_LUKU < 0.4'}
-            'D2_2': {'st': 's1115', 'lgc': 'TIE_1 < 2'}
+            'D2_4': {'st': 's1115', 'lgc': 'TIE_1 < 2'}
             }
         }
 
