@@ -18,7 +18,7 @@ class PrimaryBlock:
 
     # TODO example
     :Example:
-        >>> Block('AbcÄÖ Location', 'D2', 3, 's1122#KITKA3_LUKU >= 0.30')
+        >>> Block('AbcÄÖ_Location', 'D2', 3, 's1122#KITKA3_LUKU >= 0.30')
         {'site_name': 'abcao_location',
         'alias': 'd2_3',
         'master_alias': 'd2',
@@ -31,7 +31,7 @@ class PrimaryBlock:
     # TODO params
     """
     def __init__(self, site_name, master_alias, order_nr, raw_condition):
-        # TODO write this
+        self.site_name = 
 
 def make_aliases(raw_cond, master_alias):
     """
