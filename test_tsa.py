@@ -15,12 +15,16 @@ class TestTsa(unittest.TestCase):
     def tearDown(self):
         pass
 
+
+    # eliminate_umlauts()
     def test_eliminate_umlauts_normal(self):
         self.assertEqual(
             tsa.eliminate_umlauts('abcäödefÖÄ123'),
             'abcaodefOA123'
             )
 
+
+    # to_pg_identifier()
     def test_to_pg_identifier_normal(self):
         self.assertEqual(
             tsa.to_pg_identifier('Ylöjärvi_etelään_2'),
@@ -47,6 +51,8 @@ class TestTsa(unittest.TestCase):
             tsa.to_pg_identifier,
             'TooLongIdentifierTooLongIdentifierTooLongIdentifierTooLongIdentifier')
 
+
+    # unpack_logic()
     def test_unpack_logic_normal(self):
         self.assertEqual(
             tsa.unpack_logic(
@@ -62,6 +68,8 @@ class TestTsa(unittest.TestCase):
             's1122#KITKA3_LUKU IN 0.30'
             )
 
+
+    # PrimaryBlock
     def test_PrimaryBlock_init_normal_1(self):
         testinstance = tsa.PrimaryBlock('D2', 3, 's1122#KITKA3_LUKU >= 0.30'
             )
@@ -89,6 +97,8 @@ class TestTsa(unittest.TestCase):
         'value_str': '(1, 2, 3)'
         }
         self.assertEqual(instancedict, resultdict)
+
+
 
 if __name__ == '__main__':
     unittest.main()
