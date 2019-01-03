@@ -35,6 +35,9 @@ def to_pg_identifier(x):
         is 40 characters, which should be enough for site names too.
     """
     x = x.strip()
+
+    # Original string without leading/trailing whitespaces
+    # is retained for error prompting purposes
     old_x = x
     x = x.lower()
     x = eliminate_umlauts(x)
@@ -43,6 +46,11 @@ def to_pg_identifier(x):
         errtext = 'String starts with digit:\n'
         errtext += old_x + '\n'
         errtext += '^'
+        raise ValueError(errtext)
+
+    if len(x) > 40:
+        errtext = 'String too long, maximum is 40 characters:\n'
+        errtext += old_x + '\n'
         raise ValueError(errtext)
 
     for i, c in enumerate(x):

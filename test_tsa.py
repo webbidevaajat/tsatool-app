@@ -41,6 +41,12 @@ class TestTsa(unittest.TestCase):
             'Ylöjärvi etelään'
             )
 
+    def test_to_pg_identifier_valerr_toolong(self):
+        self.assertRaises(
+            ValueError,
+            tsa.to_pg_identifier,
+            'TooLongIdentifierTooLongIdentifierTooLongIdentifierTooLongIdentifier')
+
     def test_unpack_logic_normal(self):
         self.assertEqual(
             tsa.unpack_logic(
