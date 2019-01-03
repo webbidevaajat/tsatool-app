@@ -23,6 +23,37 @@ def eliminate_umlauts(x):
 
     return x
 
+def to_pg_identifier(x):
+    """
+    Converts x (string) such that it can be used as table or column 
+    identifier in PostgreSQL.
+    Raises error if x contains fatally invalid parts, e.g.
+    whitespaces or leading digit.
+
+    .. note:: Pg identifier length max is 63 characters.
+        To avoid too long final identifiers, max length of x here
+        is 40 characters, which should be enough for site names too.
+    """
+    x = x.strip()
+    old_x = x
+    x = x.lower()
+    x = eliminate_umlauts(x)
+
+    if x[0].isdigit():
+        errtext = 'String starts with digit:\n'
+        errtext += old_x + '\n'
+        errtext += '^'
+        raise ValueError(errtext)
+
+    for i, c in enumerate(x):
+        if not (c.isalnum() or c == '_'):
+            errtext = 'String contains whitespace or non-alphanumeric character:\n'
+            errtext += old_x + '\n'
+            errtext += '~' * i + '^'
+            raise ValueError(errtext)
+
+    return x
+
 class PrimaryBlock:
     """
     Represents a logical condition of sensor value
@@ -49,7 +80,6 @@ class PrimaryBlock:
         self.site = eliminate_umlauts(site_name).lower()
         self.master_alias = master_alias.lower()
         self.alias = self.master_alias + '_' + str(order_nr)
-        
 
 def make_aliases(raw_cond, master_alias):
     """
