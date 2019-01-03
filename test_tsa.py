@@ -99,6 +99,10 @@ class TestTsa(unittest.TestCase):
         self.assertEqual(instancedict, resultdict)
 
 
+    # SecondaryBlock
+    def test_SecondaryBlock_init_normal_1(self):
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()

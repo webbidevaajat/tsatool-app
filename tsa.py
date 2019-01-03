@@ -170,6 +170,27 @@ class PrimaryBlock:
         self.operator = _lg[2]
         self.value_str = _lg[3]
 
+class SecondaryBlock:
+    """
+    Refers to an existing condition and its site,
+    which are used as a block in a secondary condition.
+    
+    .. note:: The condition in question should already exist
+        in the database. This must be checked at the Condition level.
+
+    :Example:
+        >>> SecondaryBlock('A1', 2, 'Ylöjärvi_etelään_2#D2')
+        {
+        'master_alias': 'a1',
+        'alias': 'a1_2',
+        'site': 'ylojarvi_etelaan_2',
+        'src_alias': 'd2'
+        }
+    """
+
+    # TODO write SecondaryBlock
+    pass
+
 def make_aliases(raw_cond, master_alias):
     """
     Convert raw condition string into SQL clause of alias blocks
