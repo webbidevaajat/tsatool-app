@@ -8,6 +8,21 @@ This module shall be imported by Dash ``app.py``.
 """
 import pandas
 
+def eliminate_umlauts(x):
+    """
+    Converts ä and ö into a and o.
+    """
+    umlauts = {
+        'ä': 'a',
+        'Ä': 'A',
+        'ö': 'o',
+        'Ö': 'O'
+    }
+    for k in umlauts.keys():
+        x = x.replace(k, umlauts[k])
+
+    return x
+
 class PrimaryBlock:
     """
     Represents a logical condition of sensor value
@@ -31,7 +46,7 @@ class PrimaryBlock:
     # TODO params
     """
     def __init__(self, site_name, master_alias, order_nr, raw_condition):
-        self.site_name = 
+        pass
 
 def make_aliases(raw_cond, master_alias):
     """
@@ -92,7 +107,7 @@ class Condition:
     # TODO Condition init parameters and results
     """
     def __init__(self, raw_condition_string):
-        
+        pass
     # TODO write Condition
         
 class CondCollection:
@@ -103,3 +118,4 @@ class CondCollection:
     """
     
     # TODO write CondCollection
+    pass

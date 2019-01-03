@@ -15,7 +15,11 @@ class TestTsa(unittest.TestCase):
 	def tearDown(self):
 		pass
 
-
+	def test_eliminate_umlauts(self):
+		self.assertEqual(
+			tsa.eliminate_umlauts('abcäödefÖÄ123'),
+			'abcaodefOA123'
+			)
 
 if __name__ == '__main__':
 	unittest.main()
