@@ -5,7 +5,7 @@ Unit tests for tsa module.
 """
 
 import unittest
-from tsa import *
+import tsa
 
 class TestTsa(unittest.TestCase):
 
@@ -15,7 +15,7 @@ class TestTsa(unittest.TestCase):
 	def tearDown(self):
 		pass
 
-	
+
 
 if __name__ == '__main__':
 	unittest.main()
