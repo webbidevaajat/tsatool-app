@@ -34,7 +34,7 @@ class PrimaryBlock:
     # TODO example
     :Example:
         >>> Block('AbcÄÖ_Location', 'D2', 3, 's1122#KITKA3_LUKU >= 0.30')
-        {'site_name': 'abcao_location',
+        {'site': 'abcao_location',
         'alias': 'd2_3',
         'master_alias': 'd2',
         'station_id': 's1122',
@@ -46,7 +46,10 @@ class PrimaryBlock:
     # TODO params
     """
     def __init__(self, site_name, master_alias, order_nr, raw_condition):
-        pass
+        self.site = eliminate_umlauts(site_name).lower()
+        self.master_alias = master_alias.lower()
+        self.alias = self.master_alias + '_' + str(order_nr)
+        
 
 def make_aliases(raw_cond, master_alias):
     """
