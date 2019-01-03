@@ -77,9 +77,18 @@ class PrimaryBlock:
     # TODO params
     """
     def __init__(self, site_name, master_alias, order_nr, raw_condition):
-        self.site = eliminate_umlauts(site_name).lower()
-        self.master_alias = master_alias.lower()
+        self.site = to_pg_identifier(site_name)
+        self.master_alias = to_pg_identifier(master_alias)
         self.alias = self.master_alias + '_' + str(order_nr)
+
+        sensor_logic = raw_condition.split('#')
+        if len(sensor_logic) != 2:
+            errtext = 'Too many or no "#"s, should be [station]#[logic]:'
+            errtext += raw_condition
+            raise ValueError(errtext)
+        self.station_id = to_pg_identifier(sensor_logic[0])
+
+        
 
 def make_aliases(raw_cond, master_alias):
     """
