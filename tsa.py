@@ -54,6 +54,82 @@ def to_pg_identifier(x):
 
     return x
 
+def unpack_logic(raw_logic):
+    """
+    Makes logic str of format [station]#[sensor] [operator] [value]
+    into tuple of these attributes
+    and checks validity of the attributes.
+
+    .. note:: Following logical operators are considered:
+        '=', '!=', '>', '<', '>=', '<=', 'in'
+        'between' is currently not supported.
+        If operator is 'in', it is checked whether value after it
+        is a valid SQL tuple.
+        Operator MUST be surrounded by whitespaces!
+
+    :Example:
+        >>> unpack_logic('s1122#KITKA3_LUKU >= 0.30')
+        ('s1122', 'kitka3_luku', '>=', '0.30')
+
+    :param raw_logic: original logic string
+    :type raw_logic: string
+    :returns: station, sensor, operator and value
+    :rtype: tuple
+    """
+
+    logic_list = raw_logic.split('#')
+    if len(logic_list) != 2:
+        errtext = 'Too many or no "#"s, should be [station]#[logic]:'
+        errtext += raw_logic
+        raise ValueError(errtext)
+
+    station = to_pg_identifier(logic_list[0])
+    logic = logic_list[1].lower()
+
+    operators = [' = ', ' != ', ' > ', ' < ', ' >= ', ' <= ', ' in ']
+
+    operator_occurrences = 0
+    for op in operators:
+        if op in logic:
+            operator_occurrences += 1
+            op_included = op
+    if operator_occurrences != 1:
+        errtext = 'Too many or no operators, should be one of following with spaces:\n'
+        errtext += ','.join(operators) + ':\n'
+        errtext += raw_logic
+        raise ValueError(errtext)
+
+    logic_parts = logic.split(op_included)
+    operator = op_included.strip()
+    if len(logic_parts) != 2:
+        errtext = 'Too many or missing parts separated by operator "{:s}":\n'.format(operator)
+        errtext += raw_logic
+        raise ValueError(errtext)
+
+    sensor = to_pg_identifier(logic_parts[0])
+    value = logic_parts[1].strip()
+
+    if operator == 'in':
+        value_valid = all((
+            # Add more criteria if needed
+            value.startswith('('),
+            value.endswith(')')
+            ))
+        if not value_valid:
+            errtext = 'Value after operator "{:s}" is not a valid tuple:\n'.format(operator)
+
+            errtext += raw_logic
+            raise ValueError(errtext)
+    else:
+        try:
+            float(value)
+        except ValueError:
+            errtext = 'Must be numeric value after "{:s}":\n'.format(operator)
+            errtext += raw_logic
+            raise ValueError(errtext)
+
+    return (station, sensor, operator, value)
+
 class PrimaryBlock:
     """
     Represents a logical condition of sensor value
@@ -64,31 +140,31 @@ class PrimaryBlock:
 
     # TODO example
     :Example:
-        >>> Block('AbcÄÖ_Location', 'D2', 3, 's1122#KITKA3_LUKU >= 0.30')
+        >>> PrimaryBlock('AbcÄÖ_Location', 'D2', 3, 's1122#KITKA3_LUKU >= 0.30')
         {'site': 'abcao_location',
         'alias': 'd2_3',
         'master_alias': 'd2',
-        'station_id': 's1122',
-        'sensor_name': 'kitka3_luku',
-        'logical_operator': '>=',
-        'value_str': '0.3',
+        'station': 's1122',
+        'sensor': 'kitka3_luku',
+        'operator': '>=',
+        'value_str': '0.30',
         }
 
     # TODO params
     """
+
     def __init__(self, site_name, master_alias, order_nr, raw_condition):
         self.site = to_pg_identifier(site_name)
         self.master_alias = to_pg_identifier(master_alias)
         self.alias = self.master_alias + '_' + str(order_nr)
 
-        sensor_logic = raw_condition.split('#')
-        if len(sensor_logic) != 2:
-            errtext = 'Too many or no "#"s, should be [station]#[logic]:'
-            errtext += raw_condition
-            raise ValueError(errtext)
-        self.station_id = to_pg_identifier(sensor_logic[0])
+        _lg = unpack_logic(raw_condition)
+        self.station = _lg[0]
+        self.sensor = _lg[1]
+        self.operator = _lg[2]
+        self.value_str = _lg[3]
 
-        
+
 
 def make_aliases(raw_cond, master_alias):
     """

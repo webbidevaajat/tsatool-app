@@ -41,5 +41,52 @@ class TestTsa(unittest.TestCase):
             'Ylöjärvi etelään'
             )
 
+    def test_unpack_logic_normal(self):
+        self.assertEqual(
+            tsa.unpack_logic(
+                's1122#KITKA3_LUKU >= 0.30'
+                ),
+            ('s1122', 'kitka3_luku', '>=', '0.30')
+            )
+
+    def test_unpack_logic_valerr_1(self):
+        self.assertRaises(
+            ValueError,
+            tsa.unpack_logic,
+            's1122#KITKA3_LUKU IN 0.30'
+            )
+
+    def test_PrimaryBlock_init_normal_1(self):
+        testinstance = tsa.PrimaryBlock(
+            'Ylöjärvi_1_etelä', 'D2', 3, 's1122#KITKA3_LUKU >= 0.30'
+            )
+        instancedict = testinstance.__dict__
+        resultdict = {
+        'site': 'ylojarvi_1_etela', 
+        'master_alias': 'd2', 
+        'alias': 'd2_3', 
+        'station': 's1122', 
+        'sensor': 'kitka3_luku', 
+        'operator': '>=', 
+        'value_str': '0.30'
+        }
+        self.assertEqual(instancedict, resultdict)
+
+    def test_PrimaryBlock_init_normal_2(self):
+        testinstance = tsa.PrimaryBlock(
+            'Ylöjärvi_1_etelä', 'D2', 3, 's1122#KITKA3_LUKU IN (1, 2, 3)'
+            )
+        instancedict = testinstance.__dict__
+        resultdict = {
+        'site': 'ylojarvi_1_etela', 
+        'master_alias': 'd2', 
+        'alias': 'd2_3', 
+        'station': 's1122', 
+        'sensor': 'kitka3_luku', 
+        'operator': 'in', 
+        'value_str': '(1, 2, 3)'
+        }
+        self.assertEqual(instancedict, resultdict)
+
 if __name__ == '__main__':
     unittest.main()
