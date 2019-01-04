@@ -3,6 +3,7 @@
 *.pptx
 *.pdf
 *.tmp
+TODO_notes.txt
 
 # Data files
 *.csv
