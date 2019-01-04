@@ -351,7 +351,7 @@ class CondCollection:
         """
         candidate = Condition(site, master_alias, raw_condition, self.time_range)
         if candidate.id_string in self.id_strings:
-            errtext = 'Identifier {:s} is already reserved, cannot add\n'.format(id_string)
+            errtext = 'Identifier {:s} is already reserved, cannot add\n'.format(candidate.id_string)
             errtext += raw_condition
             raise ValueError(errtext)
         else:
