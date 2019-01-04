@@ -142,6 +142,22 @@ class TestTsa(unittest.TestCase):
             's1122#KITKA3_LUKU >= 0.40 AND s1115#TIE_1 > 2'
             )
 
+    def test_CondCollection_from_dictlist_1(self):
+        dl = [
+            dict(site='Ylöjärvi_etelään_1',
+            master_alias='C4',
+            raw_condition='s1122#KITKA3_LUKU >= 0.30 AND s1115#nakyvyys_metria >= 600'),
+            dict(site='Ylöjärvi_etelään_1',
+            master_alias='C1',
+            raw_condition='s1122#KITKA3_LUKU >= 0.40 AND s1115#TIE_1 > 2')
+        ]
+        tsa.CondCollection.from_dictlist(
+            dictlist=dl,
+            time_from='2018-01-01 00:00:00',
+            time_until='2018-02-01 00:00:00',
+            pg_conn=None
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -359,3 +359,15 @@ class CondCollection:
             self.id_strings.add(candidate.id_string)
             for s in candidate.stations:
                 self.add_station(s)
+
+    @classmethod
+    def from_dictlist(cls, dictlist, time_from, time_until, pg_conn=None):
+        """
+        Create instance and add conditions from list of dicts.
+        Dicts must have corresponding keys
+        ``'site', 'master_alias', 'raw_condition'``.
+        """
+        cc = cls(time_from, time_until, pg_conn)
+        for d in dictlist:
+            cc.add_condition(**d)
+        return cc
