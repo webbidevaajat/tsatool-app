@@ -283,7 +283,7 @@ class Condition:
         self.blocks = None
 
         # TODO: unique occurrences of stations in blocks
-        self.stations = None
+        self.stations = set()
         
         # TODO: type is detected from blocks
         self.type = None
@@ -304,10 +304,58 @@ class Condition:
         
 class CondCollection:
     """
-    A set of conditions. Main task to prevent duplicates.
+    A collection of conditions to analyze.
+    All conditions share same analysis time range.
     
     # TODO CondCollection init parameters and results
     """
-    
-    # TODO write CondCollection
-    pass
+
+    def __init__(self, time_from, time_until, pg_conn=None):
+        # TODO: validate time input formats?
+        self.time_from = time_from
+        self.time_until = time_until
+        self.time_range = (self.time_from, self.time_until)
+
+        self.conditions = []
+        self.stations = set()
+        self.id_strings = set()
+
+        self.pg_conn = pg_conn
+
+    def add_station(self, station):
+        """
+        Add ``station`` to ``self.stations`` if not already there.
+        If Postgres connection is available, create temporary view
+        for new station.
+
+        .. note::   station identifier must contain station integer id
+                    when letters are removed.
+        """
+        if station not in self.stations:
+            if self.pg_conn:
+                st_nr = ''.join(i for i in station if i.isdigit())
+                sql = 'CREATE OR REPLACE TEMP VIEW {:s} AS \n'.format(station)
+                sql += 'SELECT * FROM observations \n'
+                sql += 'WHERE station_id = {:s} \n'.format(st_nr)
+                sql += 'AND tstart >= {:s} \n'.format(self.time_from)
+                sql += 'AND tend < {:s};'.format(self.time_until)
+
+                # TODO: sql execution, error / warning handling
+
+            self.stations.add(station)
+
+    def add_condition(self, site, master_alias, raw_condition):
+        """
+        Add new Condition instance, raise error if one exists already
+        with same site-master_alias identifier.
+        """
+        candidate = Condition(site, master_alias, raw_condition, self.time_range)
+        if candidate.id_string in self.id_strings:
+            errtext = 'Identifier {:s} is already reserved, cannot add\n'.format(id_string)
+            errtext += raw_condition
+            raise ValueError(errtext)
+        else:
+            self.conditions.append(candidate)
+            self.id_strings.add(candidate.id_string)
+            for s in candidate.stations:
+                self.add_station(s)
