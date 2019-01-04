@@ -103,6 +103,45 @@ class TestTsa(unittest.TestCase):
     def test_SecondaryBlock_init_normal_1(self):
         pass
 
+    # TODO: Condition?
+
+    # CondCollection
+    def test_CondCollection_add_conditions_1(self):
+        cc = tsa.CondCollection(
+                time_from='2018-01-01 00:00:00',
+                time_until='2018-02-01 00:00:00',
+                pg_conn=None
+            )
+        cc.add_condition(
+            site='Ylöjärvi_etelään_1',
+            master_alias='C4',
+            raw_condition='s1122#KITKA3_LUKU >= 0.30 AND s1115#nakyvyys_metria >= 600'
+            )
+        cc.add_condition(
+            site='Ylöjärvi_etelään_1',
+            master_alias='C1',
+            raw_condition='s1122#KITKA3_LUKU >= 0.40 AND s1115#TIE_1 > 2'
+            )
+
+    def test_CondCollection_add_duplicate_aliases_1(self):
+        cc = tsa.CondCollection(
+                time_from='2018-01-01 00:00:00',
+                time_until='2018-02-01 00:00:00',
+                pg_conn=None
+            )
+        cc.add_condition(
+            site='Ylöjärvi_etelään_1',
+            master_alias='C4',
+            raw_condition='s1122#KITKA3_LUKU >= 0.30 AND s1115#nakyvyys_metria >= 600'
+            )
+        self.assertRaises(
+            ValueError,
+            cc.add_condition,
+            'Ylöjärvi_etelään_1',
+            'C4',
+            's1122#KITKA3_LUKU >= 0.40 AND s1115#TIE_1 > 2'
+            )
+
 
 if __name__ == '__main__':
     unittest.main()
