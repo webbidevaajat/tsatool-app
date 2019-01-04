@@ -1,3 +1,8 @@
+# External documentation / temp sketch files
+*.docx
+*.pptx
+*.pdf
+
 # Data files
 *.csv
 
