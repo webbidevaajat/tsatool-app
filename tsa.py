@@ -247,11 +247,60 @@ class Condition:
     :Example:
     # TODO example
     
-    # TODO Condition init parameters and results
+    :param site: site / location / area identifier
+    :type site: string
+    :param master_alias: master alias identifier
+    :type master_alias: string
+    :param raw_condition: condition definition
+    :type raw_condition: string
+    :param time_range: start (included) and end (excluded) timestamps
+    :type time_range: list or tuple of strings
     """
-    def __init__(self, raw_condition_string):
-        pass
-    # TODO write Condition
+    def __init__(self, site, master_alias, raw_condition, time_range):
+        # Original formattings are kept for printing purposes
+        self.orig_site = site
+        self.orig_master_alias = master_alias
+        self.orig_condition = raw_condition
+
+        # Attrs for further use must be PostgreSQL compatible
+        self.site = to_pg_identifier(site)
+        self.master_alias = to_pg_identifier(master_alias)
+        self.id_string = '{:s}_{:s}'.format(self.site, self.master_alias)
+
+        # TODO: wrap condition str handling to function or property/setter??
+        raw_condition = raw_condition.strip().lower()
+        raw_condition = eliminate_umlauts(raw_condition)
+        self.condition = raw_condition
+
+        # TODO: convert times to UTC if data uses it?
+        self.time_from = time_range[0]
+        self.time_until = time_range[1]
+
+        # TODO: alias_condition creation
+        self.alias_condition = None
+        
+        # TODO: blocks creation
+        self.blocks = None
+
+        # TODO: unique occurrences of stations in blocks
+        self.stations = None
+        
+        # TODO: type is detected from blocks
+        self.type = None
+
+        # TODO: postgres create temp table SQL definition
+        self.create_sql = None
+
+        # TODO: pandas DataFrame of postgres temp table contents
+        self.data = None
+
+        # TODO: result attrs from self.data
+        self.tottime_valid = None
+        self.tottime_notvalid = None
+        self.tottime_nodata = None
+        self.percentage_valid = None
+        self.percentage_notvalid = None
+        self.percentage_nodata = None
         
 class CondCollection:
     """
