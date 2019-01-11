@@ -139,30 +139,55 @@ def unpack_logic(raw_logic):
 
     return (station, sensor, operator, value)
 
-class PrimaryBlock:
+class Block:
     """
-    Represents a logical condition of sensor value
+    Represents a logical subcondition
     with information of site name and station id.
-    This renders as boolean column in temporary db tables.
+    See :py:class:`Condition` that consists of blocks
+    and operators and parentheses.
+    A Block renders as boolean column in temporary db tables.
     For PostgreSQL compatibility, umlauts convert to a and o,
     and all strings are made lowercase.
 
+    For a *primary* block, the `raw_condition` must consist of
+    a station identifier, hashtag, sensor identifier,
+    operator and a value.
+    For a *secondary* block, the `raw_condition` must consist of
+    a site identifier, hashtag and alias identifier. Note that these should
+    refer to an existing Condition instance.
+
     :Example:
-        >>> PrimaryBlock('D2', 3, 's1122#KITKA3_LUKU >= 0.30')
-        {
-        'master_alias': 'd2',
+        # Making a primary block:
+        >>> Block('D2', 'ylojarvi_etelaan_2', 3, 's1122#KITKA3_LUKU >= 0.30')
+        {'master_alias': 'd2',
+        'parent_site': 'ylojarvi_etelaan_2',
         'alias': 'd2_3',
+        'site': 'ylojarvi_etelaan_2',
         'station': 's1122',
+        'source_alias': None,
         'sensor': 'kitka3_luku',
         'operator': '>=',
         'value_str': '0.30',
-        }
+        'secondary': False}
+        # Making a secondary block:
+        >>> Block('D2', 4, 'ylojarvi_pohjoiseen_1#c3')
+        {'master_alias': 'd2',
+        'parent_site': 'ylojarvi_etelaan_2',
+        'alias': 'd2_4',
+        'site': 'ylojarvi_pohjoiseen_1',
+        'station': None,
+        'source_alias': 'c3',
+        'sensor': None,
+        'operator': None,
+        'value_str': None,
+        'secondary': True}
 
     # TODO params
 
     """
-    def __init__(self, master_alias, order_nr, raw_condition):
+    def __init__(self, master_alias, parent_site, order_nr, raw_condition):
         self.master_alias = to_pg_identifier(master_alias)
+        self.parent_site = parent_site
         self.alias = self.master_alias + '_' + str(order_nr)
 
         _lg = unpack_logic(raw_condition)
@@ -170,27 +195,6 @@ class PrimaryBlock:
         self.sensor = _lg[1]
         self.operator = _lg[2]
         self.value_str = _lg[3]
-
-class SecondaryBlock:
-    """
-    Refers to an existing condition and its site,
-    which are used as a block in a secondary condition.
-
-    .. note:: The condition in question should already exist
-        in the database. This must be checked at the Condition level.
-
-    :Example:
-        >>> SecondaryBlock('A1', 2, 'Ylöjärvi_etelään_2#D2')
-        {
-        'master_alias': 'a1',
-        'alias': 'a1_2',
-        'site': 'ylojarvi_etelaan_2',
-        'src_alias': 'd2'
-        }
-    """
-
-    # TODO write SecondaryBlock
-    pass
 
 def make_aliases(value, master_alias):
     """
@@ -264,7 +268,7 @@ def make_aliases(value, master_alias):
 
     # Handle special case of parentheses after "in":
     # they are part of the logic element.
-    # unpack_logic() will detect in the next step
+    # unpack_logic() will detect in the next step TODO change unpack_logic!!!
     # if the tuple after "in" is not correctly enclosed by ")".
     new_sp = []
     for el in sp:
@@ -282,7 +286,7 @@ def make_aliases(value, master_alias):
     # tuples like (role, element).
     # First, mark parentheses and and-or-not operators.
     # The rest should convert to logic blocks;
-    # unpack_logic() raises error if this does not succeed.
+    # unpack_logic() raises error if this does not succeed. TODO change unpack_logic!!!
     idfied = []
     for el in new_sp:
         if el == '(':
@@ -294,7 +298,7 @@ def make_aliases(value, master_alias):
         elif el == 'not':
             idfied.append(('not', el))
         else:
-            idfied.append(('logic', unpack_logic(el)))
+            idfied.append(('logic', unpack_logic(el))) #TODO change unpack_logic!!
 
     # Validate order of the "roles":
     # - May not start with and or or
