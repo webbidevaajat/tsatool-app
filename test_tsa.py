@@ -52,56 +52,82 @@ class TestTsa(unittest.TestCase):
             'TooLongIdentifierTooLongIdentifierTooLongIdentifierTooLongIdentifier')
 
 
-    # unpack_logic()
-    def test_unpack_logic_normal(self):
-        self.assertEqual(
-            tsa.unpack_logic(
-                's1122#KITKA3_LUKU >= 0.30'
-                ),
-            ('s1122', 'kitka3_luku', '>=', '0.30')
-            )
-
-    def test_unpack_logic_valerr_1(self):
-        self.assertRaises(
-            ValueError,
-            tsa.unpack_logic,
-            's1122#KITKA3_LUKU IN 0.30'
-            )
-
-
-    # PrimaryBlock
-    def test_PrimaryBlock_init_normal_1(self):
-        testinstance = tsa.PrimaryBlock('D2', 3, 's1122#KITKA3_LUKU >= 0.30'
-            )
+    # Block
+    def test_Block_init_primary_normal_1(self):
+        testinstance = tsa.Block('d2', 'ylojarvi_etelaan_2', 3, 's1122#kitka3_luku >= 0.30')
         instancedict = testinstance.__dict__
-        resultdict = {'master_alias': 'd2',
+        resultdict = {'raw_logic': 's1122#kitka3_luku >= 0.30',
+        'master_alias': 'd2',
+        'parent_site': 'ylojarvi_etelaan_2',
         'alias': 'd2_3',
+        'secondary': False,
+        'site': 'ylojarvi_etelaan_2',
         'station': 's1122',
+        'source_alias': None,
         'sensor': 'kitka3_luku',
         'operator': '>=',
-        'value_str': '0.30'
-        }
+        'value_str': '0.30'}
         self.assertEqual(instancedict, resultdict)
 
-    def test_PrimaryBlock_init_normal_2(self):
-        testinstance = tsa.PrimaryBlock(
-            'D2', 3, 's1122#KITKA3_LUKU IN (1, 2, 3)'
-            )
+    def test_Block_init_primary_normal_2(self):
+        testinstance = tsa.Block('d2', 'ylojarvi_etelaan_2', 3, 's1122#kitka3_luku in (1, 2, 3)')
         instancedict = testinstance.__dict__
-        resultdict = {
+        resultdict = {'raw_logic': 's1122#kitka3_luku in (1, 2, 3)',
         'master_alias': 'd2',
+        'parent_site': 'ylojarvi_etelaan_2',
         'alias': 'd2_3',
+        'secondary': False,
+        'site': 'ylojarvi_etelaan_2',
         'station': 's1122',
+        'source_alias': None,
         'sensor': 'kitka3_luku',
         'operator': 'in',
-        'value_str': '(1, 2, 3)'
-        }
+        'value_str': '(1, 2, 3)'}
         self.assertEqual(instancedict, resultdict)
 
+    def test_Block_init_secondary_normal_1(self):
+        testinstance = tsa.Block('a1', 'ylojarvi_pohjoiseen_1', 1, 'd1')
+        instancedict = testinstance.__dict__
+        resultdict = {'raw_logic': 'd1',
+        'master_alias': 'a1',
+        'parent_site': 'ylojarvi_pohjoiseen_1',
+        'alias': 'a1_1',
+        'secondary': True,
+        'site': 'ylojarvi_pohjoiseen_1',
+        'station': None,
+        'source_alias': 'd1',
+        'sensor': None,
+        'operator': None,
+        'value_str': None}
+        self.assertEqual(instancedict, resultdict)
 
-    # SecondaryBlock
-    def test_SecondaryBlock_init_normal_1(self):
-        pass
+    def test_Block_init_secondary_normal_2(self):
+        testinstance = tsa.Block('d2', 'ylojarvi_etelaan_2', 4, 'ylojarvi_pohjoiseen_1#c3')
+        instancedict = testinstance.__dict__
+        resultdict = {'raw_logic': 'ylojarvi_pohjoiseen_1#c3',
+        'master_alias': 'd2',
+        'parent_site': 'ylojarvi_etelaan_2',
+        'alias': 'd2_4',
+        'secondary': True,
+        'site': 'ylojarvi_pohjoiseen_1',
+        'station': None,
+        'source_alias': 'c3',
+        'sensor': None,
+        'operator': None,
+        'value_str': None}
+        self.assertEqual(instancedict, resultdict)
+
+    def test_Block_init_valerr_operator_1(self):
+        self.assertRaises(
+            ValueError,
+            tsa.Block,
+            'd2', 'ylojarvi_etelaan_2', 3, 's1122#kitka3_luku in 1, 2, 3')
+
+    def test_Block_init_valerr_nohashtag_1(self):
+        self.assertRaises(
+            ValueError,
+            tsa.Block,
+            'd2', 'ylojarvi_etelaan_2', 3, 'd3 > 2')
 
     # TODO: Condition?
 

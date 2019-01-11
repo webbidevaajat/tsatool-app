@@ -63,82 +63,6 @@ def to_pg_identifier(x):
 
     return x
 
-def unpack_logic(raw_logic):
-    """
-    Makes logic str of format [station]#[sensor] [operator] [value]
-    into tuple of these attributes
-    and checks validity of the attributes.
-
-    .. note:: Following logical operators are considered:
-        '=', '!=', '>', '<', '>=', '<=', 'in'
-        'between' is currently not supported.
-        If operator is 'in', it is checked whether value after it
-        is a valid SQL tuple.
-        Operator MUST be surrounded by whitespaces!
-
-    :Example:
-        >>> unpack_logic('s1122#KITKA3_LUKU >= 0.30')
-        ('s1122', 'kitka3_luku', '>=', '0.30')
-
-    :param raw_logic: original logic string
-    :type raw_logic: string
-    :returns: station, sensor, operator and value
-    :rtype: tuple
-    """
-
-    logic_list = raw_logic.split('#')
-    if len(logic_list) != 2:
-        errtext = 'Too many or no "#"s, should be [station]#[logic]:'
-        errtext += raw_logic
-        raise ValueError(errtext)
-
-    station = to_pg_identifier(logic_list[0])
-    logic = logic_list[1].lower()
-
-    operators = [' = ', ' != ', ' > ', ' < ', ' >= ', ' <= ', ' in ']
-
-    operator_occurrences = 0
-    for op in operators:
-        if op in logic:
-            operator_occurrences += 1
-            op_included = op
-    if operator_occurrences != 1:
-        errtext = 'Too many or no operators, should be one of following with spaces:\n'
-        errtext += ','.join(operators) + ':\n'
-        errtext += raw_logic
-        raise ValueError(errtext)
-
-    logic_parts = logic.split(op_included)
-    operator = op_included.strip()
-    if len(logic_parts) != 2:
-        errtext = 'Too many or missing parts separated by operator "{:s}":\n'.format(operator)
-        errtext += raw_logic
-        raise ValueError(errtext)
-
-    sensor = to_pg_identifier(logic_parts[0])
-    value = logic_parts[1].strip()
-
-    if operator == 'in':
-        value_valid = all((
-            # Add more criteria if needed
-            value.startswith('('),
-            value.endswith(')')
-            ))
-        if not value_valid:
-            errtext = 'Value after operator "{:s}" is not a valid tuple:\n'.format(operator)
-
-            errtext += raw_logic
-            raise ValueError(errtext)
-    else:
-        try:
-            float(value)
-        except ValueError:
-            errtext = 'Must be numeric value after "{:s}":\n'.format(operator)
-            errtext += raw_logic
-            raise ValueError(errtext)
-
-    return (station, sensor, operator, value)
-
 class Block:
     """
     Represents a logical subcondition
@@ -158,43 +82,135 @@ class Block:
 
     :Example:
         # Making a primary block:
-        >>> Block('D2', 'ylojarvi_etelaan_2', 3, 's1122#KITKA3_LUKU >= 0.30')
-        {'master_alias': 'd2',
+        >>> Block('d2', 'ylojarvi_etelaan_2', 3, 's1122#kitka3_luku >= 0.30')
+        {'raw_logic': 's1122#kitka3_luku >= 0.30',
+        'master_alias': 'd2',
         'parent_site': 'ylojarvi_etelaan_2',
         'alias': 'd2_3',
+        'secondary': False,
         'site': 'ylojarvi_etelaan_2',
         'station': 's1122',
         'source_alias': None,
         'sensor': 'kitka3_luku',
         'operator': '>=',
-        'value_str': '0.30',
-        'secondary': False}
+        'value_str': '0.30'}
         # Making a secondary block:
-        >>> Block('D2', 4, 'ylojarvi_pohjoiseen_1#c3')
-        {'master_alias': 'd2',
+        >>> Block('d2', 4, 'ylojarvi_pohjoiseen_1#c3')
+        {'ylojarvi_pohjoiseen_1#c3',
+        'master_alias': 'd2',
         'parent_site': 'ylojarvi_etelaan_2',
         'alias': 'd2_4',
+        'secondary': True,
         'site': 'ylojarvi_pohjoiseen_1',
         'station': None,
         'source_alias': 'c3',
         'sensor': None,
         'operator': None,
-        'value_str': None,
-        'secondary': True}
+        'value_str': None}
 
-    # TODO params
-
+    :param master_alias: master alias identifier of the parent condition
+    :type master_alias: string
+    :param parent_site: site identifier of the parent condition
+    :type parent_site: string
+    :param order_nr: index of the block within the parent condition
+    :type order_nr: integer
+    :param raw_logic: logic to parse, bound to single sensor or existing Condition
+    :type raw_logic: string
     """
-    def __init__(self, master_alias, parent_site, order_nr, raw_condition):
+    def __init__(self, master_alias, parent_site, order_nr, raw_logic):
+        self.raw_logic = raw_logic
         self.master_alias = to_pg_identifier(master_alias)
-        self.parent_site = parent_site
+        self.parent_site = to_pg_identifier(parent_site)
         self.alias = self.master_alias + '_' + str(order_nr)
+        self.secondary = None
+        self.site = None
+        self.station = None
+        self.source_alias = None
+        self.sensor = None
+        self.operator = None
+        self.value_str = None
 
-        _lg = unpack_logic(raw_condition)
-        self.station = _lg[0]
-        self.sensor = _lg[1]
-        self.operator = _lg[2]
-        self.value_str = _lg[3]
+        # Set values depending on raw logic given
+        self.unpack_logic()
+
+    def unpack_logic(self):
+        """
+        Detects and sets block type and attributes from raw logic string
+        and checks validity of the attributes.
+
+        .. note:: Following binary operators are considered:
+            '=', '!=', '>', '<', '>=', '<=', 'in'
+            'between' is currently not supported.
+            If operator is 'in', it is checked whether value after it
+            is a valid SQL tuple.
+            Operator MUST be surrounded by whitespaces!
+
+        :param raw_logic: original logic string
+        :type raw_logic: string
+        """
+        binops = [' = ', ' != ', ' > ', ' < ', ' >= ', ' <= ', ' in ']
+
+        # ERROR if too many hashtags or operators
+        n_hashtags = self.raw_logic.count('#')
+        if n_hashtags > 1:
+            errtext = 'Too many "#"s, only one or zero allowed:\n'
+            errtext += self.raw_logic
+            raise ValueError(errtext)
+        n_binops = 0
+        binop_in_str = None
+        for binop in binops:
+            if binop in self.raw_logic:
+                n_binops += self.raw_logic.count(binop)
+                binop_in_str = binop
+        if n_binops > 1:
+            errtext = 'Too many binary operators, only one or zero allowed:\n'
+            errtext += self.raw_logic
+
+        # Case 1: contains no hashtag and no binary operator
+        # -> secondary block, site is picked from parent_site.
+        # Must NOT contain binary operator.
+        if n_hashtags == 0 and n_binops == 0:
+            self.secondary = True
+            self.site = self.parent_site
+            self.source_alias = to_pg_identifier(self.raw_logic)
+
+        # Case 2: contains hashtag but no binary operator
+        # -> secondary block
+        elif n_hashtags == 1 and n_binops == 0:
+            self.secondary = True
+            parts = self.raw_logic.split('#')
+            self.site = to_pg_identifier(parts[0])
+            self.source_alias = to_pg_identifier(parts[1])
+
+        # Case 3: contains hashtag and binary operator
+        # -> primary block
+        elif n_hashtags == 1 and n_binops == 1:
+            self.secondary = False
+            self.site = self.parent_site
+            parts = self.raw_logic.split('#')
+            parts = [parts[0]] + parts[1].split(binop_in_str)
+            self.station = to_pg_identifier(parts[0])
+            self.sensor = to_pg_identifier(parts[1])
+            self.operator = binop_in_str.lower().strip()
+            self.value_str = parts[2].lower().strip()
+
+            # Special case with operator "in":
+            # must be followed by tuple enclosed with parentheses.
+            if self.operator == 'in':
+                val_sw = self.value_str.startswith('(')
+                val_ew = self.value_str.endswith(')')
+                if val_sw is False and val_ew is False:
+                    errtext = 'Binary operator "in" must be followed by\n'
+                    errtext += 'a tuple enclosed with parentheses "()":\n'
+                    errtext += self.raw_logic
+                    raise ValueError(errtext)
+
+        # Case 4: ERROR if binary operator but no hashtag
+        else:
+            errtext = 'No "#" given, should be of format\n'
+            errtext += '[station]#[sensor] [binary operator] [value]:\n'
+            errtext += self.raw_logic
+            raise ValueError(errtext)
 
 def make_aliases(value, master_alias):
     """
