@@ -5,6 +5,9 @@
 *.tmp
 TODO_notes.txt
 
+# Python files meant for temporary testing
+TEMP_*.py
+
 # Data files
 *.csv
 
