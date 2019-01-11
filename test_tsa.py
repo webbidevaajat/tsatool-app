@@ -33,15 +33,15 @@ class TestTsa(unittest.TestCase):
 
     def test_to_pg_identifier_valerr_leading_digit(self):
         self.assertRaises(
-            ValueError, 
-            tsa.to_pg_identifier, 
+            ValueError,
+            tsa.to_pg_identifier,
             '2_Ylöjärvi_etelään'
             )
 
     def test_to_pg_identifier_valerr_whitespace(self):
         self.assertRaises(
-            ValueError, 
-            tsa.to_pg_identifier, 
+            ValueError,
+            tsa.to_pg_identifier,
             'Ylöjärvi etelään'
             )
 
@@ -74,11 +74,11 @@ class TestTsa(unittest.TestCase):
         testinstance = tsa.PrimaryBlock('D2', 3, 's1122#KITKA3_LUKU >= 0.30'
             )
         instancedict = testinstance.__dict__
-        resultdict = {'master_alias': 'd2', 
-        'alias': 'd2_3', 
-        'station': 's1122', 
-        'sensor': 'kitka3_luku', 
-        'operator': '>=', 
+        resultdict = {'master_alias': 'd2',
+        'alias': 'd2_3',
+        'station': 's1122',
+        'sensor': 'kitka3_luku',
+        'operator': '>=',
         'value_str': '0.30'
         }
         self.assertEqual(instancedict, resultdict)
@@ -89,11 +89,11 @@ class TestTsa(unittest.TestCase):
             )
         instancedict = testinstance.__dict__
         resultdict = {
-        'master_alias': 'd2', 
-        'alias': 'd2_3', 
-        'station': 's1122', 
-        'sensor': 'kitka3_luku', 
-        'operator': 'in', 
+        'master_alias': 'd2',
+        'alias': 'd2_3',
+        'station': 's1122',
+        'sensor': 'kitka3_luku',
+        'operator': 'in',
         'value_str': '(1, 2, 3)'
         }
         self.assertEqual(instancedict, resultdict)

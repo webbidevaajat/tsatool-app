@@ -6,6 +6,7 @@ using condition strings and aliases.
 
 This module shall be imported by Dash ``app.py``.
 """
+import re
 import pandas
 
 def eliminate_umlauts(x):
@@ -25,7 +26,7 @@ def eliminate_umlauts(x):
 
 def to_pg_identifier(x):
     """
-    Converts x (string) such that it can be used as table or column 
+    Converts x (string) such that it can be used as table or column
     identifier in PostgreSQL.
     Raises error if x contains fatally invalid parts, e.g.
     whitespaces or leading digit.
@@ -174,7 +175,7 @@ class SecondaryBlock:
     """
     Refers to an existing condition and its site,
     which are used as a block in a secondary condition.
-    
+
     .. note:: The condition in question should already exist
         in the database. This must be checked at the Condition level.
 
@@ -191,62 +192,121 @@ class SecondaryBlock:
     # TODO write SecondaryBlock
     pass
 
-def make_aliases(raw_cond, master_alias):
+def make_aliases(value, master_alias):
     """
-    Convert raw condition string into SQL clause of alias blocks
+    Convert string value into SQL clause of alias blocks
     and detect condition type (primary or secondary).
 
     Primary condition consists of station#sensor logicals only.
     Secondary condition contains existing primary conditions.
 
     Master alias must be a valid SQL table name,
-    preferably of format letter-number, e.g. "A1".
+    preferably of format letter-number, e.g. "a1".
     Subaliases will be suffixed like _1, _2, ...
-    
+
     :Example:
-        >>> make_aliases(raw_cond='(s1122#TIENPINNAN_TILA3 = 8 \
-            OR (s1122#KITKA3_LUKU >= 0.30 AND s1122#KITKA3_LUKU < 0.4)) \
-            AND s1115#TIE_1 < 2', 
-            master_alias='D2')
+        >>> make_aliases('(s1122#tienpinnan_tila3 = 8 \
+            or (s1122#kitka3_luku >= 0.30 and s1122#kitka3_luku < 0.4)) \
+            and s1115#tie_1 < 2',
+            master_alias='d2')
         {
         'type': 'primary',
         'alias_condition': '(D2_1 OR (D2_2 AND D2_3)) AND D2_4',
         'aliases': {
-            'D2_1': {'st': 's1122', 'lgc': 'TIENPINNAN_TILA3 = 8'},
-            'D2_2': {'st': 's1122', 'lgc': 'KITKA3_LUKU >= 0.30'},
-            'D2_3': {'st': 's1122', 'lgc': 'KITKA3_LUKU < 0.4'}
-            'D2_4': {'st': 's1115', 'lgc': 'TIE_1 < 2'}
+            'd2_1': {'st': 's1122', 'lgc': 'tienpinnan_tila3 = 8'},
+            'd2_2': {'st': 's1122', 'lgc': 'kitka3_luku >= 0.30'},
+            'd2_3': {'st': 's1122', 'lgc': 'kitka3_luku < 0.4'}
+            'd2_4': {'st': 's1115', 'lgc': 'tie_1 < 2'}
             }
         }
 
-        >>> make_aliases(raw_cond='D2 AND C33', master_alias='DC')
+        >>> make_aliases('ylojarvi_etelaan_2#d2 \
+        and ylojarvi_etelaan_2#c33', master_alias='dc')
         {
         'type': 'secondary',
-        'alias_condition': 'D2 AND C33'
+        'alias_condition': 'd2 and c33'
         'aliases': {
-            'D2': {'st': None, 'lgc': 'D2'}
-            'C33': {'st': None, 'lgc': 'C33'}
+            'd2': {'st': ylojarvi_etelaan_2, 'lgc': 'd2'}
+            'c33': {'st': ylojarvi_etelaan_2, 'lgc': 'c33'}
             }
         }
-    
-    :param raw_cond: raw condition string
-    :type raw_cond: string
+
+    :param value: raw condition string
+    :type value: string
     :param master_alias: master alias string
     :type master_alias: string
     :return: dict of condition type, alias clause and alias pairs
     :rtype: dict
     :raises: # TODO error type?
     """
-    return None
-    # TODO write make_aliases()
+
+    # Generally, opening and closing bracket counts must match
+    n_open = value.count('(')
+    n_close = value.count(')')
+    if n_open != n_close:
+        errtext = 'Unequal number of opening and closing parentheses:\n'
+        errtext += '{:d} opening and {:d} closing'.format(n_open, n_close)
+        raise ValueError(errtext)
+
+    # Eliminate multiple whitespaces
+    # and leading and trailing whitespaces
+    value = ' '.join(value.split()).strip()
+
+    # Split by
+    # - parentheses
+    # - and, or, not: must be surrounded by spaces
+    # - not: starting the string and followed by space.
+    # Then strip results from trailing and leading whitespaces
+    # and remove empty elements.
+    sp = re.split('([()]|(?<=\s)and(?=\s)|(?<=\s)or(?=\s)|(?<=\s)not(?=\s)|^not(?=\s))', value)
+    sp = [el.strip() for el in sp]
+    sp = [el for el in sp if el]
+
+    # Handle special case of parentheses after "in":
+    # they are part of the logic element.
+    # unpack_logic() will detect in the next step
+    # if the tuple after "in" is not correctly enclosed by ")".
+    new_sp = []
+    for el in sp:
+        if not new_sp:
+            new_sp.append(el)
+            continue
+        if len(new_sp[-1]) > 3 and new_sp[-1][-3:] == ' in':
+            new_sp[-1] = new_sp[-1] + ' ' + el
+        elif ' in ' in new_sp[-1] and new_sp[-1][-1] != ')':
+            new_sp[-1] = new_sp[-1] + el
+        else:
+            new_sp.append(el)
+
+    # Identify the "role" of each element by making them into
+    # tuples like (role, element).
+    # First, mark parentheses and and-or-not operators.
+    # The rest should convert to logic blocks;
+    # unpack_logic() raises error if this does not succeed.
+    idfied = []
+    for el in new_sp:
+        if el == '(':
+            idfied.append(('open_par', el))
+        elif el == ')':
+            idfied.append(('close_par', el))
+        elif el in ['and', 'or']:
+            idfied.append(('andor', el))
+        elif el == 'not':
+            idfied.append(('not', el))
+        else:
+            idfied.append(('logic', unpack_logic(el)))
+
+    # Validate order of the "roles":
+    # - May not start with and or or
+    #
 
 class Condition:
     """
     Single condition, its aliases, query handling and results.
-    
+
     :Example:
     # TODO example
-    
+
     :param site: site / location / area identifier
     :type site: string
     :param master_alias: master alias identifier
@@ -278,13 +338,13 @@ class Condition:
 
         # TODO: alias_condition creation
         self.alias_condition = None
-        
+
         # TODO: blocks creation
         self.blocks = None
 
         # TODO: unique occurrences of stations in blocks
         self.stations = set()
-        
+
         # TODO: type is detected from blocks
         self.type = None
 
@@ -301,12 +361,12 @@ class Condition:
         self.percentage_valid = None
         self.percentage_notvalid = None
         self.percentage_nodata = None
-        
+
 class CondCollection:
     """
     A collection of conditions to analyze.
     All conditions share same analysis time range.
-    
+
     # TODO CondCollection init parameters and results
     """
 
