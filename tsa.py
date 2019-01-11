@@ -212,113 +212,6 @@ class Block:
             errtext += self.raw_logic
             raise ValueError(errtext)
 
-def make_aliases(value, master_alias):
-    """
-    Convert string value into SQL clause of alias blocks
-    and detect condition type (primary or secondary).
-
-    Primary condition consists of station#sensor logicals only.
-    Secondary condition contains existing primary conditions.
-
-    Master alias must be a valid SQL table name,
-    preferably of format letter-number, e.g. "a1".
-    Subaliases will be suffixed like _1, _2, ...
-
-    :Example:
-        >>> make_aliases('(s1122#tienpinnan_tila3 = 8 \
-            or (s1122#kitka3_luku >= 0.30 and s1122#kitka3_luku < 0.4)) \
-            and s1115#tie_1 < 2',
-            master_alias='d2')
-        {
-        'type': 'primary',
-        'alias_condition': '(D2_1 OR (D2_2 AND D2_3)) AND D2_4',
-        'aliases': {
-            'd2_1': {'st': 's1122', 'lgc': 'tienpinnan_tila3 = 8'},
-            'd2_2': {'st': 's1122', 'lgc': 'kitka3_luku >= 0.30'},
-            'd2_3': {'st': 's1122', 'lgc': 'kitka3_luku < 0.4'}
-            'd2_4': {'st': 's1115', 'lgc': 'tie_1 < 2'}
-            }
-        }
-
-        >>> make_aliases('ylojarvi_etelaan_2#d2 \
-        and ylojarvi_etelaan_2#c33', master_alias='dc')
-        {
-        'type': 'secondary',
-        'alias_condition': 'd2 and c33'
-        'aliases': {
-            'd2': {'st': ylojarvi_etelaan_2, 'lgc': 'd2'}
-            'c33': {'st': ylojarvi_etelaan_2, 'lgc': 'c33'}
-            }
-        }
-
-    :param value: raw condition string
-    :type value: string
-    :param master_alias: master alias string
-    :type master_alias: string
-    :return: dict of condition type, alias clause and alias pairs
-    :rtype: dict
-    :raises: # TODO error type?
-    """
-
-    # Generally, opening and closing bracket counts must match
-    n_open = value.count('(')
-    n_close = value.count(')')
-    if n_open != n_close:
-        errtext = 'Unequal number of opening and closing parentheses:\n'
-        errtext += '{:d} opening and {:d} closing'.format(n_open, n_close)
-        raise ValueError(errtext)
-
-    # Eliminate multiple whitespaces
-    # and leading and trailing whitespaces
-    value = ' '.join(value.split()).strip()
-
-    # Split by
-    # - parentheses
-    # - and, or, not: must be surrounded by spaces
-    # - not: starting the string and followed by space.
-    # Then strip results from trailing and leading whitespaces
-    # and remove empty elements.
-    sp = re.split('([()]|(?<=\s)and(?=\s)|(?<=\s)or(?=\s)|(?<=\s)not(?=\s)|^not(?=\s))', value)
-    sp = [el.strip() for el in sp]
-    sp = [el for el in sp if el]
-
-    # Handle special case of parentheses after "in":
-    # they are part of the logic element.
-    # unpack_logic() will detect in the next step TODO change unpack_logic!!!
-    # if the tuple after "in" is not correctly enclosed by ")".
-    new_sp = []
-    for el in sp:
-        if not new_sp:
-            new_sp.append(el)
-            continue
-        if len(new_sp[-1]) > 3 and new_sp[-1][-3:] == ' in':
-            new_sp[-1] = new_sp[-1] + ' ' + el
-        elif ' in ' in new_sp[-1] and new_sp[-1][-1] != ')':
-            new_sp[-1] = new_sp[-1] + el
-        else:
-            new_sp.append(el)
-
-    # Identify the "role" of each element by making them into
-    # tuples like (role, element).
-    # First, mark parentheses and and-or-not operators.
-    # The rest should convert to logic blocks;
-    # unpack_logic() raises error if this does not succeed. TODO change unpack_logic!!!
-    idfied = []
-    for el in new_sp:
-        if el == '(':
-            idfied.append(('open_par', el))
-        elif el == ')':
-            idfied.append(('close_par', el))
-        elif el in ['and', 'or']:
-            idfied.append(('andor', el))
-        elif el == 'not':
-            idfied.append(('not', el))
-        else:
-            idfied.append(('logic', unpack_logic(el))) #TODO change unpack_logic!!
-
-    # Validate order of the "roles":
-    # - May not start with and or or
-    #
 
 class Condition:
     """
@@ -352,15 +245,14 @@ class Condition:
         raw_condition = eliminate_umlauts(raw_condition)
         self.condition = raw_condition
 
-        # TODO: convert times to UTC if data uses it?
+        # TODO: use datetime objects?
         self.time_from = time_range[0]
         self.time_until = time_range[1]
 
+        self.blocks = self.make_blocks()
+
         # TODO: alias_condition creation
         self.alias_condition = None
-
-        # TODO: blocks creation
-        self.blocks = None
 
         # TODO: unique occurrences of stations in blocks
         self.stations = set()
@@ -381,6 +273,145 @@ class Condition:
         self.percentage_valid = None
         self.percentage_notvalid = None
         self.percentage_nodata = None
+
+    def make_blocks(self):
+        # TODO: alias condition str is made too
+        """
+        Extract a list of Block instances (that is, subconditions)
+        into `self.blocks` based on `self.condition`
+        and detect condition type (secondary if any of the blocks has
+        `secondary == True`, primary otherwise).
+        """
+        value = self.condition
+
+        # Generally, opening and closing bracket counts must match
+        n_open = value.count('(')
+        n_close = value.count(')')
+        if n_open != n_close:
+            errtext = 'Unequal number of opening and closing parentheses:\n'
+            errtext += '{:d} opening and {:d} closing'.format(n_open, n_close)
+            raise ValueError(errtext)
+
+        # Eliminate multiple whitespaces
+        # and leading and trailing whitespaces
+        value = ' '.join(value.split()).strip()
+
+        # Split by
+        # - parentheses
+        # - and, or, not: must be surrounded by spaces
+        # - not: starting the string and followed by space.
+        # Then strip results from trailing and leading whitespaces
+        # and remove empty elements.
+        sp = re.split('([()]|(?<=\s)and(?=\s)|(?<=\s)or(?=\s)|(?<=\s)not(?=\s)|^not(?=\s))', value)
+        sp = [el.strip() for el in sp]
+        sp = [el for el in sp if el]
+
+        # Handle special case of parentheses after "in":
+        # they are part of the logic element.
+        # Block() will detect in the next step
+        # if the tuple after "in" is not correctly enclosed by ")".
+        new_sp = []
+        for el in sp:
+            if not new_sp:
+                new_sp.append(el)
+                continue
+            if len(new_sp[-1]) > 3 and new_sp[-1][-3:] == ' in':
+                new_sp[-1] = new_sp[-1] + ' ' + el
+            elif ' in ' in new_sp[-1] and new_sp[-1][-1] != ')':
+                new_sp[-1] = new_sp[-1] + el
+            else:
+                new_sp.append(el)
+
+        # Identify the "role" of each element by making them into
+        # tuples like (role, element).
+        # First, mark parentheses and and-or-not operators.
+        # The rest should convert to logic blocks;
+        # Block() raises error if this does not succeed.
+        idfied = []
+        i = 0
+        for el in new_sp:
+            if el == '(':
+                idfied.append(('open_par', el))
+            elif el == ')':
+                idfied.append(('close_par', el))
+            elif el in ['and', 'or']:
+                idfied.append(('andor', el))
+            elif el == 'not':
+                idfied.append(('not', el))
+            else:
+                idfied.append(('block',
+                    Block(master_alias=self.master_alias,
+                        parent_site=self.site,
+                        order_nr=i,
+                        raw_logic=el)))
+                i += 1
+
+        def validate_order(tuples):
+            """
+            Validate order of the elements of a :py:class:`Block`.
+
+            :param tuples: list of tuples, each of which has
+                `open_par`, `close_par`, `andor`, `not` or `block`
+                in the first index and the element in the second.
+            :type tuples: list or tuple
+
+            Following elements may be in the first index:
+                TODO
+
+            Following elements may be in the last index:
+                TODO
+            For elements other than the last one, see the table below
+            to see what element can follow each element.
+            Take the first element from left and the next element from top.
+
+            +---------+-----+-----+---------+-------+---------+
+            |         | `(` | `)` | `andor` | `not` | `block` |
+            +=========+=====+=====+=========+=======+=========+
+            | `(`     | OK  | X   | X       | OK    | OK      |
+            +---------+-----+-----+---------+-------+---------+
+            | `)`     | X   | OK  | OK      | X     | X       |
+            +---------+-----+-----+---------+-------+---------+
+            | `andor` | OK  | X   | X       | OK    | OK      |
+            +---------+-----+-----+---------+-------+---------+
+            | `not`   | OK  | X   | X       | X     | OK      |
+            +---------+-----+-----+---------+-------+---------+
+            | `block` | X   | OK  | OK      | X     | X       |
+            +---------+-----+-----+---------+-------+---------+
+            """
+        # TODO: build function, including list mappings etc
+
+        # TODO: validate element order by using the function
+        # Validate correct order of the elements:
+        # First element must not be "and" or "or" or ")"
+        last_i = len(idfied) - 1
+        for i, el in enumerate(idfied):
+            # First element must not be "and" or "or" or ")"
+            if i == 0:
+                if el[0] in ['andor', 'close_par']:
+                    errtext = 'First element must not be "and", "or" or ")":\n'
+                    errtext += value
+                    raise ValueError(errtext)
+                else:
+                    continue
+
+            # Last element must be a block or ")"
+            elif i == last_i:
+                if el[0] not in ['close_par', 'block']:
+                    errtext = 'Last element must not be "and", "or", "not" or "(":\n'
+                    errtext += value
+                    raise ValueError(errtext)
+                else:
+                    continue
+            # Elements in between:
+            else:
+                # "not" must not be followed by "and" or "or"
+                if el[0] == 'not' and idfied[i+1][0] == 'andor':
+                    errtext = '"not" must not be followed by "and" or "or":\n'
+                    errtext += value
+                    raise ValueError(errtext)
+                # "and" or "or" must not be followed by another "and" or "or"
+                elif el[0] == 'andor' and idfied[i+1][0] == 'andor'
+
 
 class CondCollection:
     """
