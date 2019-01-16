@@ -352,65 +352,66 @@ class Condition:
 
             :param tuples: list of tuples, each of which has
                 `open_par`, `close_par`, `andor`, `not` or `block`
-                in the first index and the element in the second.
+                in the first index and the string element itself in the second.
             :type tuples: list or tuple
+            :return: no return if element order is valid, otherwise
+                raise an error upon first invalid element
 
-            Following elements may be in the first index:
-                TODO
+            Following element types may be in the first index:
+                `open_par`, `not`, `block`
 
             Following elements may be in the last index:
-                TODO
+                `close_par`, `block`
+
             For elements other than the last one, see the table below
             to see what element can follow each element.
             Take the first element from left and the next element from top.
 
-            +---------+-----+-----+---------+-------+---------+
-            |         | `(` | `)` | `andor` | `not` | `block` |
-            +=========+=====+=====+=========+=======+=========+
-            | `(`     | OK  | X   | X       | OK    | OK      |
-            +---------+-----+-----+---------+-------+---------+
-            | `)`     | X   | OK  | OK      | X     | X       |
-            +---------+-----+-----+---------+-------+---------+
-            | `andor` | OK  | X   | X       | OK    | OK      |
-            +---------+-----+-----+---------+-------+---------+
-            | `not`   | OK  | X   | X       | X     | OK      |
-            +---------+-----+-----+---------+-------+---------+
-            | `block` | X   | OK  | OK      | X     | X       |
-            +---------+-----+-----+---------+-------+---------+
+            +-------------+------------+-------------+---------+-------+---------+
+            |             | `open_par` | `close_par` | `andor` | `not` | `block` |
+            +=============+============+=============+=========+=======+=========+
+            | `open_par`  | OK         | X           | X       | OK    | OK      |
+            +-------------+------------+-------------+---------+-------+---------+
+            | `close_par` | X          | OK          | OK      | X     | X       |
+            +-------------+------------+-------------+---------+-------+---------+
+            | `andor`     | OK         | X           | X       | OK    | OK      |
+            +-------------+------------+-------------+---------+-------+---------+
+            | `not`       | OK         | X           | X       | X     | OK      |
+            +-------------+------------+-------------+---------+-------+---------+
+            | `block`     | X          | OK          | OK      | X     | X       |
+            +-------------+------------+-------------+---------+-------+---------+
             """
-        # TODO: build function, including list mappings etc
+            allowed_first = ('open_par', 'not', 'block')
+            allowed_pairs = (
+            ('open_par', 'open_par'), ('open_par', 'not'), ('open_par', 'block'),
+            ('close_par', 'close_par'), ('close_par', 'andor'),
+            ('andor', 'open_par'), ('andor', 'not'), ('andor', 'block'),
+            ('not', 'open_par'), ('not', 'block'),
+            ('block', 'close_par'), ('block', 'andor')
+            )
+            allowed_last = ('close_par', 'block')
+            last_i = len(tuples) - 1
 
-        # TODO: validate element order by using the function
-        # Validate correct order of the elements:
-        # First element must not be "and" or "or" or ")"
-        last_i = len(idfied) - 1
-        for i, el in enumerate(idfied):
-            # First element must not be "and" or "or" or ")"
-            if i == 0:
-                if el[0] in ['andor', 'close_par']:
-                    errtext = 'First element must not be "and", "or" or ")":\n'
-                    errtext += value
-                    raise ValueError(errtext)
-                else:
-                    continue
+            for i, el in enumerate(tuples):
+                if i == 0:
+                    if el[0] not in allowed_first:
+                        errtext = '{"{:s}" not allowed as first element:\n'.format(el[1])
+                        raise ValueError(errtext)
+                elif i == last_i:
+                    if el[0] not in allowed_last:
+                        errtext = '"{:s}" not allowed as last element:\n'.format(el[1])
+                        raise ValueError(errtext)
+                if i < last_i:
+                    if (el[0], tuples[i+1][0]) not in allowed_pairs:
+                        errtext = '"{:s}" not allowed right before "{:s}":\n'.format(el[1], tuples[i+1][1])
+                        raise ValueError(errtext)
 
-            # Last element must be a block or ")"
-            elif i == last_i:
-                if el[0] not in ['close_par', 'block']:
-                    errtext = 'Last element must not be "and", "or", "not" or "(":\n'
-                    errtext += value
-                    raise ValueError(errtext)
-                else:
-                    continue
-            # Elements in between:
-            else:
-                # "not" must not be followed by "and" or "or"
-                if el[0] == 'not' and idfied[i+1][0] == 'andor':
-                    errtext = '"not" must not be followed by "and" or "or":\n'
-                    errtext += value
-                    raise ValueError(errtext)
-                # "and" or "or" must not be followed by another "and" or "or"
-                elif el[0] == 'andor' and idfied[i+1][0] == 'andor'
+        # Check the correct order of the tuples.
+        # This should raise and error and thus exit the script
+        # if there is an illegal combination of elements next to each other.
+        validate_order(idfied)
+
+        # TODO TEST + return blocks, handle alias condition string?
 
 
 class CondCollection:
