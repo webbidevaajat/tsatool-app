@@ -212,6 +212,27 @@ class Block:
             errtext += self.raw_logic
             raise ValueError(errtext)
 
+    def __str__(self):
+        if self.secondary:
+            s = 'Secondary '
+        else:
+            s = 'Primary '
+        s += 'Block {:s} at {:s}: {:s}'.format(
+            self.alias, self.parent_site, self.raw_logic)
+        return s
+
+    def __repr__(self):
+        # TODO: need to make representation more unambiguous
+        # compared to __str__? Current one might be a bad workaround.
+        return str(self)
+
+    def __eq__(self, other):
+        """
+        The `==` method; two blocks are equal if their attributes
+        are equal, **including the order number in ** `self.alias`.
+        """
+        return self.__dict__ == other.__dict__
+
 
 class Condition:
     """
@@ -249,16 +270,14 @@ class Condition:
         self.time_from = time_range[0]
         self.time_until = time_range[1]
 
-        self.blocks = self.make_blocks()
-
-        # TODO: alias_condition creation
+        # make_blocks() sets .blocks, .alias_condition and .type
+        self.blocks = None
         self.alias_condition = None
+        self.type = None
+        self.make_blocks()
 
         # TODO: unique occurrences of stations in blocks
         self.stations = set()
-
-        # TODO: type is detected from blocks
-        self.type = None
 
         # TODO: postgres create temp table SQL definition
         self.create_sql = None
@@ -339,12 +358,22 @@ class Condition:
             elif el == 'not':
                 idfied.append(('not', el))
             else:
-                idfied.append(('block',
-                    Block(master_alias=self.master_alias,
-                        parent_site=self.site,
-                        order_nr=i,
-                        raw_logic=el)))
-                i += 1
+                bl = Block(master_alias=self.master_alias,
+                    parent_site=self.site,
+                    order_nr=i,
+                    raw_logic=el)
+                # If a block with same contents already exists,
+                # do not add a new one with another order number i,
+                # but add the existing block with its order number.
+                # The .index() method raises an error in case the tuple with
+                # Block element is NOT contained in the list.
+                try:
+                    existing_idx = idfied.index(('block', bl))
+                    existing_tuple = idfied[existing_idx]
+                    idfied.append(existing_tuple)
+                except:
+                    idfied.append(('block', bl))
+                    i += 1
 
         def validate_order(tuples):
             """
@@ -407,11 +436,13 @@ class Condition:
                         raise ValueError(errtext)
 
         # Check the correct order of the tuples.
-        # This should raise and error and thus exit the script
+        # This should raise and error and thus exit the method
         # if there is an illegal combination of elements next to each other.
         validate_order(idfied)
 
-        # TODO TEST + return blocks, handle alias condition string?
+        # If validation was successful, attributes can be set
+        self.blocks = [el[1] for el in idfied if el[0] == 'block']
+
 
 
 class CondCollection:
