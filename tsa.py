@@ -80,7 +80,8 @@ class Block:
     a site identifier, hashtag and alias identifier. Note that these should
     refer to an existing Condition instance.
 
-    :Example:
+    :example::
+
         # Making a primary block:
         >>> Block('d2', 'ylojarvi_etelaan_2', 3, 's1122#kitka3_luku >= 0.30')
         {'raw_logic': 's1122#kitka3_luku >= 0.30',
@@ -139,9 +140,9 @@ class Block:
         and checks validity of the attributes.
 
         .. note:: Following binary operators are considered:
-            '=', '!=', '>', '<', '>=', '<=', 'in'
-            'between' is currently not supported.
-            If operator is 'in', it is checked whether value after it
+            `'=', '!=', '>', '<', '>=', '<=', 'in'`.
+            `between` is currently not supported.
+            If operator is `in`, it is checked whether the value after it
             is a valid SQL tuple.
             Operator MUST be surrounded by whitespaces!
 
@@ -238,31 +239,32 @@ class Condition:
     """
     Single condition, its aliases, query handling and results.
 
-    :Example:
+    :example::
+
         # Making a primary condition:
-        >>> Condition('Ylöjärvi_etelään_1', \
-        ... 'E4', \
-        ... '(s1122#TIENPINNAN_TILA3 = 8 OR (s1122#KITKA3_LUKU >= 0.30 \
-        ... AND s1122#KITKA3_LUKU < 0.4)) AND s1115#TIE_1 < 2', \
+        >>> Condition('Ylöjärvi_etelään_1',
+        ... 'E4',
+        ... '(s1122#TIENPINNAN_TILA3 = 8 OR (s1122#KITKA3_LUKU >= 0.30
+        ... AND s1122#KITKA3_LUKU < 0.4)) AND s1115#TIE_1 < 2',
         ... ('2018-01-01 00:00', '2018-04-30 23:59'))
         Primary Condition ylojarvi_etelaan_1_e4:
         (s1122#tienpinnan_tila3 = 8 or (s1122#kitka3_luku >= 0.30 and
         s1122#kitka3_luku < 0.4)) and s1115#tie_1 < 2
         ALIAS: (e4_0 or (e4_1 and e4_2)) and e4_3
-
+        >>>
         # Making a secondary condition:
-        >>> Condition('Ylöjärvi_pohjoiseen_2', \
-        ... 'B1', \
-        ... 'D2 AND D3', \
+        >>> Condition('Ylöjärvi_pohjoiseen_2',
+        ... 'B1',
+        ... 'D2 AND D3',
         ... ('2018-01-01 00:00', '2018-04-30 23:59'))
         Secondary Condition ylojarvi_pohjoiseen_2_b1:
         d2 and d3
         ALIAS: b1_0 and b1_1
-
+        >>>
         # Making a secondary condition containing primary blocks:
-        >>> Condition('Ylöjärvi_etelään_2', \
-        ... 'C3', \
-        ... 'Ylöjärvi_pohjoiseen_2#B1 AND s1011#TIE_1 > 0', \
+        >>> Condition('Ylöjärvi_etelään_2',
+        ... 'C3',
+        ... 'Ylöjärvi_pohjoiseen_2#B1 AND s1011#TIE_1 > 0',
         ... ('2018-01-01 0:00', '2018-04-30 23:59'))
         Secondary Condition ylojarvi_etelaan_2_c3:
         ylojarvi_pohjoiseen_2#b1 and s1011#tie_1 > 0
