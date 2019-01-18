@@ -239,7 +239,34 @@ class Condition:
     Single condition, its aliases, query handling and results.
 
     :Example:
-    # TODO example
+        # Making a primary condition:
+        >>> Condition('Ylöjärvi_etelään_1', \
+        ... 'E4', \
+        ... '(s1122#TIENPINNAN_TILA3 = 8 OR (s1122#KITKA3_LUKU >= 0.30 \
+        ... AND s1122#KITKA3_LUKU < 0.4)) AND s1115#TIE_1 < 2', \
+        ... ('2018-01-01 00:00', '2018-04-30 23:59'))
+        Primary Condition ylojarvi_etelaan_1_e4:
+        (s1122#tienpinnan_tila3 = 8 or (s1122#kitka3_luku >= 0.30 and
+        s1122#kitka3_luku < 0.4)) and s1115#tie_1 < 2
+        ALIAS: (e4_0 or (e4_1 and e4_2)) and e4_3
+
+        # Making a secondary condition:
+        >>> Condition('Ylöjärvi_pohjoiseen_2', \
+        ... 'B1', \
+        ... 'D2 AND D3', \
+        ... ('2018-01-01 00:00', '2018-04-30 23:59'))
+        Secondary Condition ylojarvi_pohjoiseen_2_b1:
+        d2 and d3
+        ALIAS: b1_0 and b1_1
+
+        # Making a secondary condition containing primary blocks:
+        >>> Condition('Ylöjärvi_etelään_2', \
+        ... 'C3', \
+        ... 'Ylöjärvi_pohjoiseen_2#B1 AND s1011#TIE_1 > 0', \
+        ... ('2018-01-01 0:00', '2018-04-30 23:59'))
+        Secondary Condition ylojarvi_etelaan_2_c3:
+        ylojarvi_pohjoiseen_2#b1 and s1011#tie_1 > 0
+        ALIAS: c3_0 and c3_1
 
     :param site: site / location / area identifier
     :type site: string
@@ -270,17 +297,18 @@ class Condition:
         self.time_from = time_range[0]
         self.time_until = time_range[1]
 
-        # make_blocks() sets .blocks, .alias_condition and .type
+        # make_blocks() sets .blocks, .alias_condition and .secondary
         self.blocks = None
         self.alias_condition = None
-        self.type = None
+        self.secondary = None
         self.make_blocks()
 
         # TODO: unique occurrences of stations in blocks
         self.stations = set()
+        self.list_stations()
 
         # TODO: postgres create temp table SQL definition
-        self.create_sql = None
+        self.temptable_creation_sql = None
 
         # TODO: pandas DataFrame of postgres temp table contents
         self.data = None
@@ -294,12 +322,12 @@ class Condition:
         self.percentage_nodata = None
 
     def make_blocks(self):
-        # TODO: alias condition str is made too
         """
         Extract a list of Block instances (that is, subconditions)
-        into `self.blocks` based on `self.condition`
-        and detect condition type (secondary if any of the blocks has
-        `secondary == True`, primary otherwise).
+        into `self.blocks` based on `self.condition`,
+        define `self.alias_condition` based on the aliases of the Block instances
+        and detect condition type (`secondary == True` if any of the blocks has
+        `secondary == True`, `False` otherwise).
         """
         value = self.condition
 
@@ -441,9 +469,47 @@ class Condition:
         validate_order(idfied)
 
         # If validation was successful, attributes can be set
+
+        # Pick up all blocks in the order they appear
         self.blocks = [el[1] for el in idfied if el[0] == 'block']
 
+        # Form alias condition by replacing original block parts by
+        # the alias of the corresponding block
+        al_value = value
+        for bl in self.blocks:
+            al_value = al_value.replace(bl.raw_logic, bl.alias)
+        self.alias_condition = al_value
 
+        # If any of the blocks is secondary,
+        # then the whole condition is considered secondary.
+        self.secondary = False
+        for bl in self.blocks:
+            if bl.secondary:
+                self.secondary = True
+                break
+
+    def list_stations(self):
+        """
+        Add unique stations of primary `self.blocks`
+        to `self.stations` set
+        """
+        for bl in self.blocks:
+            if not bl.secondary:
+                self.stations.add(bl.station)
+
+    def __str__(self):
+        if self.secondary:
+            s = 'Secondary '
+        else:
+            s = 'Primary '
+        s += 'Condition {:s}:\n'.format(self.id_string)
+        s += '{:s}\n'.format(self.condition)
+        s += 'ALIAS: {:s}'.format(self.alias_condition)
+        return s
+
+    def __repr__(self):
+        # TODO unambiguous representation?
+        return str(self)
 
 class CondCollection:
     """
