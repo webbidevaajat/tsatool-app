@@ -18,6 +18,8 @@ Make sure you have the following stuff installed. Commands needed for the Ubuntu
 - PostgreSQL 9.6 at least; could be 10.X or 11.X as well, but using this so far. Server: `sudo apt install postgresql postgresql-contrib` will install 10.6.
 - [TimescaleDB](https://docs.timescale.com/v1.2/getting-started/installation), select the one for your system and the PostgreSQL version you've installed. Server: follow the instructions on [TimescaleDB site](https://docs.timescale.com/v1.2/getting-started/installation/ubuntu/installation-apt-ubuntu)
 
+It is recommended to tune your Postgres to get the most out of your machine. Find appropriate values e.g. by using [PGTune](https://pgtune.leopard.in.ua/#/) and update them to your `postgresql.conf` file. For the Ubuntu server installation, run `sudo timescaledb-tune`.
+
 Installing these / checking whether the required installations exist may be built into a script in future, but for now these are to be done manually as the software will not be distributed widely.
 
 ---
