@@ -31,18 +31,17 @@ class TestTsa(unittest.TestCase):
             'ylojarvi_etelaan_2'
             )
 
+    def test_to_pg_identifier_underscores(self):
+        self.assertEqual(
+            tsa.to_pg_identifier('Ylöjärvi etelään 2'),
+            'ylojarvi_etelaan_2'
+            )
+
     def test_to_pg_identifier_valerr_leading_digit(self):
         self.assertRaises(
             ValueError,
             tsa.to_pg_identifier,
             '2_Ylöjärvi_etelään'
-            )
-
-    def test_to_pg_identifier_valerr_whitespace(self):
-        self.assertRaises(
-            ValueError,
-            tsa.to_pg_identifier,
-            'Ylöjärvi etelään'
             )
 
     def test_to_pg_identifier_valerr_toolong(self):

@@ -26,13 +26,19 @@ def eliminate_umlauts(x):
 
 def to_pg_identifier(x):
     """
-    Converts x (string) such that it can be used as table or column
+    Converts x (string) such that it can be used as a table or column
     identifier in PostgreSQL.
-    Raises error if x contains fatally invalid parts, e.g.
-    whitespaces or leading digit.
 
-    .. note:: Pg identifier length max is 63 characters.
-        To avoid too long final identifiers, max length of x here
+    If there are whitespaces in the middle,
+    they are converted into underscores.
+
+    Raises error if x contains fatally invalid parts, e.g.
+    leading digit or a non-alphanumeric character.
+
+    .. note:: Pg identifier length maximum is 63 characters.
+        To avoid too long final identifiers
+        (that might be concatenated from multiple original ones),
+        max length of x here
         is 40 characters, which should be enough for site names too.
     """
     x = x.strip()
@@ -42,6 +48,7 @@ def to_pg_identifier(x):
     old_x = x
     x = x.lower()
     x = eliminate_umlauts(x)
+    x = x.replace(' ', '_')
 
     if x[0].isdigit():
         errtext = 'String starts with digit:\n'
@@ -56,7 +63,7 @@ def to_pg_identifier(x):
 
     for i, c in enumerate(x):
         if not (c.isalnum() or c == '_'):
-            errtext = 'String contains whitespace or non-alphanumeric character:\n'
+            errtext = 'String contains an invalid character:\n'
             errtext += old_x + '\n'
             errtext += '~' * i + '^'
             raise ValueError(errtext)
