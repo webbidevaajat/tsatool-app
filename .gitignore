@@ -1,3 +1,6 @@
+# Configuration file, meant to be user-defined
+tsaconfig.json
+
 # External documentation / temp sketch files
 *.docx
 *.pptx
