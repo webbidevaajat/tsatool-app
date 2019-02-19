@@ -1,5 +1,5 @@
 # Configuration file, meant to be user-defined
-tsaconfig.json
+db_config.json
 
 # External documentation / temp sketch files
 *.docx
