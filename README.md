@@ -23,6 +23,26 @@ It is recommended to tune your Postgres to get the most out of your machine. Fin
 Installing these / checking whether the required installations exist may be built into a script in future, but for now these are to be done manually as the software will not be distributed widely.
 
 ---
+# Database initialization
+
+You should have the above mentioned things installed by now (Postgres & TimescaleDB). Make sure you are able to connect to your local `postgres` database using the default `postgres` user. Also make sure that your settings in `postgresql.conf` and `pg_hba.conf` files allow connecting from your remote machine in case you are not operating on the server directly.
+
+Create manually a new user that has superuser rights. Further tsa-specific database admin operations will be done by this user. Using the postgres console or, e.g., pgAdmin, run following commands (here we create user `tsaadmin`:
+
+```sql
+CREATE USER tsadash WITH PASSWORD '(password here)';
+CREATE DATABASE tsa WITH OWNER tsadash;
+```
+
+Note that you can (and perhaps should) give a password that is different from the *server user* `tsadash`'s password. On the Linux server, if you are logged in as `tsadash`, you should be able to connect to the database without providing the password:
+
+```
+$ psql -d tsa
+```
+
+However, if you use e.g. pgAdmin on your local machine and want to connect to the `tsa` database as `tsadash`, then you'll need the password you set in the above SQL command.
+
+---
 # Authors
 
 - **Arttu Kosonen** - [keripukki](https://github.com/keripukki)
