@@ -13,6 +13,7 @@ TEMP_*.py
 
 # Data files
 *.csv
+lotju*
 
 # DS_Store
 .DS_Store
