@@ -111,11 +111,18 @@ def main():
             exit_script()
 
         pswd = getpass(prompt='Admin user password:')
-        conn = pg.connect(dbname=cf['DATABASE'],
-            user=cf['ADMIN_USER'],
-            password=pswd,
-            host=cf['HOST'],
-            port=cf['PORT'])
+        try:
+            conn = pg.connect(dbname=cf['DATABASE'],
+                user=cf['ADMIN_USER'],
+                password=pswd,
+                host=cf['HOST'],
+                port=cf['PORT'],
+                connect_timeout=5)
+        except pg.OperationalError as e:
+            print('Could not connect to database:')
+            print(e)
+            print('Are you connected to the right network?')
+            exit_script()
         try:
             with conn.cursor() as cur:
 
