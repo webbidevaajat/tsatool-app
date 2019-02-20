@@ -73,9 +73,12 @@ def main():
 
     # For files:
     #   TODO data read and format
-    #   TODO data insert
-
-    # TODO result summary
+    #   TODO pg temp table from the dataset
+    #   TODO pg order temp table
+    #   TODO pg define tuntil timestamps with 30 minutes ceiling
+    #   TODO pg insert temp table rows into obs with conflict management
+    #   TODO report number of rows inserted
+    #   TODO report conflicting rows that were omitted
 
     cur.close()
     pg_conn.close()
