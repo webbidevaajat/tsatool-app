@@ -526,10 +526,17 @@ class CondCollection:
     All conditions share same analysis time range.
 
     # TODO CondCollection init parameters and results
-    """
 
+    :param time_from: start time (inclusive) of the analysis period
+    :type time_from: Python ``datetime()`` object
+    :param time_until: end time (exclusive) of the analysis period
+    :type time_until: Python ``datetime()`` object
+    :param pg_conn: database connection
+    :type pg_conn: ``psycopg2.connect()`` object
+    """
     def __init__(self, time_from, time_until, pg_conn=None):
         # TODO: validate time input formats?
+        # TODO: allow date-only time formats and add default times?
         self.time_from = time_from
         self.time_until = time_until
         self.time_range = (self.time_from, self.time_until)
