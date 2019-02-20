@@ -8,8 +8,8 @@ db_config.json
 *.tmp
 TODO_notes.txt
 
-# Python files meant for temporary testing
-TEMP_*.py
+# Files meant for temporary testing
+TEMP*
 
 # Data files
 *.csv
