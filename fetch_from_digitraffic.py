@@ -12,7 +12,7 @@ to connect to the database. Database admin credentials
 are needed for the insertion operations.
 """
 
-import psycopg2 as pg
+import psycopg2
 import requests
 import json
 import sys

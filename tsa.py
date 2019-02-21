@@ -16,12 +16,14 @@ import pandas
 import psycopg2
 from getpass import getpass
 
-def tsadb_connect(username=None, ask=False):
+def tsadb_connect(username=None, password=None, ask=False):
     """
     Using ``db_config.json`` file in the root directory,
     connect to the TSA database.
     :param username: database username as string; defaults to
                      'ADMIN_USER' of the config file
+    :param password: database user password, only for debugging!
+                     Defaults to None -> will be asked
     :param ask:      if ``True``, use interactive input for username;
                      defaults to ``False``
     :return:         connection instance, or None on error
@@ -34,11 +36,12 @@ def tsadb_connect(username=None, ask=False):
             username = input('Database username: ')
         else:
             username = cf['ADMIN_USER']
-    pswd = getpass('Password for user "{:s}": '.format(username))
+    if password is None:
+        password = getpass('Password for user "{:s}": '.format(username))
     try:
         pg_conn = psycopg2.connect(dbname=cf['DATABASE'],
                                    user=username,
-                                   password=pswd,
+                                   password=password,
                                    host=cf['HOST'],
                                    port=cf['PORT'],
                                    connect_timeout=5)
