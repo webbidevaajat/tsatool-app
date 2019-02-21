@@ -19,6 +19,8 @@ import sys
 from getpass import getpass
 from psycopg2.extras import execute_values
 
+from tsa import tsadb_connect
+
 def get_stations():
     """
     Fetches station data from Digitraffic API
@@ -95,20 +97,8 @@ def main():
     print('STATIONS and SENSORS')
     print('from Digitraffic into TSA database')
     print('\n******************************\n')
-    with open('db_config.json', 'r') as cf_file:
-        cf = json.load(cf_file)
-    pswd = getpass('Password for user "{:s}":'.format(cf['ADMIN_USER']))
-    try:
-        pg_conn = pg.connect(dbname=cf['DATABASE'],
-                             user=cf['ADMIN_USER'],
-                             password=pswd,
-                             host=cf['HOST'],
-                             port=cf['PORT'],
-                             connect_timeout=5)
-    except pg.OperationalError as e:
-        print('Could not connect to database:')
-        print(e)
-        print('Are you connected to the right network?')
+    pg_conn = tsadb_connect(ask=True)
+    if not pg_conn:
         sys.exit()
 
     print('Connected to database.')

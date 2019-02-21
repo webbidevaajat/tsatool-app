@@ -5,9 +5,50 @@ This module contains tools for operating with road weather station database
 using condition strings and aliases.
 
 This module shall be imported by Dash ``app.py``.
+
+Note that ``db_config.json`` file must exist in the root directory
+to connect to the TSA database.
 """
+import os
 import re
+import json
 import pandas
+import psycopg2
+from getpass import getpass
+
+def tsadb_connect(username=None, ask=False):
+    """
+    Using ``db_config.json`` file in the root directory,
+    connect to the TSA database.
+    :param username: database username as string; defaults to
+                     'ADMIN_USER' of the config file
+    :param ask:      if ``True``, use interactive input for username;
+                     defaults to ``False``
+    :return:         connection instance, or None on error
+    """
+    cf_filename = os.path.join(os.getcwd(), 'db_config.json')
+    with open(cf_filename, 'r') as cf_file:
+        cf = json.load(cf_file)
+    if username is None:
+        if ask:
+            username = input('Database username: ')
+        else:
+            username = cf['ADMIN_USER']
+    pswd = getpass('Password for user "{:s}": '.format(username))
+    try:
+        pg_conn = psycopg2.connect(dbname=cf['DATABASE'],
+                                   user=username,
+                                   password=pswd,
+                                   host=cf['HOST'],
+                                   port=cf['PORT'],
+                                   connect_timeout=5)
+        return pg_conn
+    except psycopg2.OperationalError as e:
+        print('Could not connect to database:')
+        print(e)
+        print('Are you connected to the right network?')
+        print('Using correct and existing username and password?')
+        return None
 
 def eliminate_umlauts(x):
     """
