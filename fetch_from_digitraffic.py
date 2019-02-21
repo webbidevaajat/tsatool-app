@@ -73,11 +73,11 @@ def get_sensors():
     db_rows = []
     for f in feats:
         id = f['id']
-        name = f['name']
-        shortname = f['shortName']
-        unit = f['unit']
+        name = f['name'].strip()
+        shortname = f['shortName'].strip()
+        unit = f['unit'].strip()
         accuracy = f['accuracy']
-        nameold = f['nameOld']
+        nameold = f['nameOld'].strip()
         valuedescriptions = json.dumps(f['sensorValueDescriptions'],
                                        ensure_ascii=False)
         description = f['descriptions']['fi']
