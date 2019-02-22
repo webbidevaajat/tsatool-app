@@ -207,23 +207,23 @@ def main():
 
                 # Create role group for ordinary users,
                 # allowing SELECT and temporary CREATE
-                exec_statements(cur=cur,
-                statements=[
-                "DROP ROLE IF EXISTS ordinary_user;",
-                "CREATE ROLE ordinary_user;",
-                "GRANT TEMPORARY ON DATABASE {:s} TO ordinary_user;".format(cf['DATABASE'])
-                ])
+                # exec_statements(cur=cur,
+                # statements=[
+                # "DROP ROLE IF EXISTS ordinary_user;",
+                # "CREATE ROLE ordinary_user;",
+                # "GRANT TEMPORARY ON DATABASE {:s} TO ordinary_user;".format(cf['DATABASE'])
+                # ])
 
                 # Create an ordinary user for each in configuration
-                for usrname in cf['ORDINARY_USERS']:
-                    pswd = getpass(prompt='Set password for user {:s}:'.format(usrname))
-                    exec_statements(cur=cur,
-                    statements=[
-                    "DROP ROLE IF EXISTS {:s};".format(usrname),
-                    "CREATE USER {:s};".format(usrname),
-                    "GRANT ordinary_user TO {:s};".format(usrname),
-                    "ALTER USER {:s} PASSWORD '{:s}';".format(usrname, pswd)
-                    ])
+                # for usrname in cf['ORDINARY_USERS']:
+                #     pswd = getpass(prompt='Set password for user {:s}:'.format(usrname))
+                #     exec_statements(cur=cur,
+                #     statements=[
+                #     "DROP ROLE IF EXISTS {:s};".format(usrname),
+                #     "CREATE USER {:s};".format(usrname),
+                #     "GRANT ordinary_user TO {:s};".format(usrname),
+                #     "ALTER USER {:s} PASSWORD '{:s}';".format(usrname, pswd)
+                #     ])
 
                 print('All setup statements executed.')
 
@@ -231,26 +231,26 @@ def main():
             print('All setup statements committed.')
 
             # Test ordinary user operation
-            if cf['ORDINARY_USERS']:
-                print('Testing ordinary user operation...')
-                conn_ord = pg.connect(dbname=cf['DATABASE'],
-                    user=cf['ORDINARY_USERS'][0],
-                    password=getpass(prompt='Password for user {:s}:'.format(cf['ORDINARY_USERS'][0])),
-                    host=cf['HOST'],
-                    port=cf['PORT'])
-                try:
-                    with conn_ord.cursor() as cur:
-                        cur.execute(
-                        """CREATE TEMPORARY TABLE tt AS (
-                        SELECT * FROM obs LIMIT 10
-                        );""")
-                        cur.execute("SELECT * FROM tt;")
-                    print('Ordinary user operations successfully tested.')
-                except Exception as e:
-                    print('Could not accomplish ordinary user operation:')
-                    print(e)
-                finally:
-                    conn_ord.close()
+            # if cf['ORDINARY_USERS']:
+            #     print('Testing ordinary user operation...')
+            #     conn_ord = pg.connect(dbname=cf['DATABASE'],
+            #         user=cf['ORDINARY_USERS'][0],
+            #         password=getpass(prompt='Password for user {:s}:'.format(cf['ORDINARY_USERS'][0])),
+            #         host=cf['HOST'],
+            #         port=cf['PORT'])
+            #     try:
+            #         with conn_ord.cursor() as cur:
+            #             cur.execute(
+            #             """CREATE TEMPORARY TABLE tt AS (
+            #             SELECT * FROM obs LIMIT 10
+            #             );""")
+            #             cur.execute("SELECT * FROM tt;")
+            #         print('Ordinary user operations successfully tested.')
+            #     except Exception as e:
+            #         print('Could not accomplish ordinary user operation:')
+            #         print(e)
+            #     finally:
+            #         conn_ord.close()
 
             print('END OF SCRIPT')
 
