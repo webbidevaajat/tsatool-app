@@ -34,11 +34,8 @@ module = sys.modules['__main__'].__file__
 log = logging.getLogger(module)
 file_format = logging.Formatter('%(asctime)s ; %(levelname)s ; %(message)s')
 stdout_format = logging.Formatter('%(asctime)s   %(message)s')
-<<<<<<< HEAD
 log.setLevel(logging.INFO)
-=======
-log.setlevel(logging.INFO)
->>>>>>> 6ac1729762404f6ea5fcbbca2c3b4f444b17520d
+log.setLevel(logging.INFO)
 sh = logging.StreamHandler()
 sh.setFormatter(stdout_format)
 log.addHandler(sh)
