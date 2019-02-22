@@ -15,6 +15,9 @@ TEMP*
 *.csv
 lotju*
 
+# Log directory
+logs*
+
 # DS_Store
 .DS_Store
 
