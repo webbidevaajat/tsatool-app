@@ -48,9 +48,6 @@ def select_lotju_files():
     )
     root.destroy()
     if filenames:
-        # print('Importing following files:')
-        # for fn in filenames:
-        #     print('- {:s}'.format(fn))
         return filenames
     else:
         print('No files selected.')
@@ -198,9 +195,9 @@ def insert_to_obs(pg_conn, cur, fileobj):
     pg_conn.commit()
     print('Temp table for uploading created')
 
-    # FIXME problem with quotes and copy method!
-
-    cur.copy_expert("COPY tmp_upload FROM STDIN WITH CSV HEADER;", fileobj)
+    cur.copy_expert("COPY tmp_upload FROM STDIN "
+                    "WITH CSV HEADER DELIMITER '\t';",
+                    fileobj)
     pg_conn.commit()
     print('Data copied to temp table')
     statement = """
@@ -219,7 +216,7 @@ def insert_to_obs(pg_conn, cur, fileobj):
     cur.execute(statement)
     statement = """
     WITH truncated_rows AS (
-    	UPDATE TABLE tmp_obs
+    	UPDATE tmp_obs
     		SET tuntil = tfrom + INTERVAL '30' minute
     		WHERE tuntil > tfrom + INTERVAL '30' minute
     		RETURNING 1
@@ -232,10 +229,26 @@ def insert_to_obs(pg_conn, cur, fileobj):
     print('End time fields calculated:')
     print(f'{n_updated} rows truncated to 30 minutes')
 
-    cur.execute('DROP TABLE IF EXISTS tmp_upload;')
-    cur.execute('DROP TABLE IF EXISTS tmp_obs;')
+    cur.execute('SELECT COUNT(*) FROM tmp_obs;')
+    n_toinsert = cur.fetchone()[0]
+    statement = """
+    WITH rows_inserted AS (
+        INSERT INTO obs (tfrom, tuntil, statid, seid, seval)
+        SELECT * FROM tmp_obs
+        WHERE tuntil IS NOT NULL
+        ON CONFLICT DO NOTHING
+        RETURNING 1
+        )
+    SELECT COUNT(*) FROM rows_inserted;
+    """
+    cur.execute(statement)
+    n_inserted = cur.fetchone()[0]
     pg_conn.commit()
-    # TODO insert actual data
+    print(f'{n_toinsert} of {n_inserted} rows inserted into table obs.')
+
+    cur.execute('DROP TABLE IF EXISTS tmp_obs;')
+    cur.execute('DROP TABLE IF EXISTS tmp_conflicts;')
+    pg_conn.commit()
 
 def main():
     print('\nInsert LOTJU DATA')
@@ -244,7 +257,7 @@ def main():
     pg_conn = None
     cur = None
     try:
-        pg_conn = tsadb_connect(username='tsadash', password='opinionKentucky')
+        pg_conn = tsadb_connect(username='tsadash')
         if not pg_conn:
             raise Exception('Db connection failed.')
 
@@ -277,12 +290,6 @@ def main():
                                         verbose=True)
             with open(outfilename, 'r') as outfile:
                 insert_to_obs(pg_conn, cur, outfile)
-        #   TODO pg temp table from the dataset
-        #   TODO pg order temp table
-        #   TODO pg define tuntil timestamps with 30 minutes ceiling
-        #   TODO pg insert temp table rows into obs with conflict management
-        #   TODO report number of rows inserted
-        #   TODO report conflicting rows that were omitted
     except Exception as e:
         print(e)
     finally:
