@@ -12,11 +12,12 @@ TODO_notes.txt
 TEMP*
 
 # Data files
+data/
 *.csv
 lotju*
 
 # Logs
-logs*
+logs/
 *.log
 
 # DS_Store
