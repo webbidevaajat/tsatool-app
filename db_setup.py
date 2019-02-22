@@ -17,7 +17,8 @@ import os
 import sys
 import json
 import psycopg2 as pg
-from getpass import getpass
+
+from tsa import tsadb_connect
 
 def exit_script():
     print('Quitting database configuration script.')
@@ -84,7 +85,8 @@ def exec_statements(cur, statements):
             cur.execute(s)
         print('Statements executed.\n')
     else:
-        raise Exception
+        print('Statements ignored.\n')
+        pass
 
 def main():
     print('TSA DATABASE SETUP')
@@ -93,36 +95,9 @@ def main():
     print()
     conn = None
     try:
-        cf = get_configuration()
-        if cf is None:
-            print('db_config.json does not exist.')
-            print('Create one with correct formatting.')
-            exit_script()
-
-        print('Current database configuration file parameters:')
-        print('{:15}: {:s}'.format('HOST', cf['HOST']))
-        print('{:15}: {:d}'.format('PORT', cf['PORT']))
-        print('{:15}: {:s}'.format('DATABASE', cf['DATABASE']))
-        print('{:15}: {:s}'.format('ADMIN_USER', cf['ADMIN_USER']))
-        print('{:15}: {:s}'.format('ORDINARY_USERS',
-        ', '.join(cf['ORDINARY_USERS'])))
-
-        if prompt_input(txt='Proceed with this configuration?', yn=True) == 'n':
-            exit_script()
-
-        pswd = getpass(prompt='Admin user password:')
-        try:
-            conn = pg.connect(dbname=cf['DATABASE'],
-                user=cf['ADMIN_USER'],
-                password=pswd,
-                host=cf['HOST'],
-                port=cf['PORT'],
-                connect_timeout=5)
-        except pg.OperationalError as e:
-            print('Could not connect to database:')
-            print(e)
-            print('Are you connected to the right network?')
-            exit_script()
+        conn = tsadb_connect(username='tsadash')
+        if not conn:
+            raise Exception('Db connection failed.')
         try:
             with conn.cursor() as cur:
 
@@ -180,6 +155,34 @@ def main():
                   )
                 );"""
                 ])
+
+                # *************************************** #
+                # AD HOC LOTJU RAW DATA TABLES
+                # These contain Lotju dump data "as is",
+                # just to save it for actual use.
+                # Data is to be copied and indexes to be created
+                # afterwards.
+                exec_statements(cur=cur,
+                                statements=[
+                """
+                CREATE TABLE IF NOT EXISTS tiesaa_mittatieto (
+                id bigint PRIMARY KEY,
+                aika timestamp,
+                asema_id integer
+                );
+                """,
+                # NOTE: following is defined WITHOUT tiedosto_id
+                """
+                CREATE TABLE IF NOT EXISTS anturi_arvo (
+                id bigint PRIMARY KEY,
+                anturi_id integer,
+                arvo real,
+                mittatieto_id bigint
+                );
+                """
+                                ]
+                                )
+                # *************************************** #
 
                 # Create triggers that keep the "modified"
                 # columns up to date in case existing
