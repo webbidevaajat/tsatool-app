@@ -18,8 +18,9 @@ import os
 import sys
 import pytz
 import tkinter
+import argparse
+import logging
 from tkinter import filedialog
-from io import StringIO
 from datetime import datetime
 from progress.bar import ShadyBar
 
@@ -28,6 +29,17 @@ from tsa import tsadb_connect
 # TODO: This script might be significantly more efficient
 #       if implemented using Pandas data frames
 #       instead of pure lists and sets.
+
+module = sys.modules['__main__'].__file__
+log = logging.getLogger(module)
+file_format = logging.Formatter('%(asctime)s ; %(levelname)s ; %(message)s')
+stdout_format = logging.Formatter('%(asctime)s   %(message)s')
+log.setLevel(logging.INFO)
+sh = logging.StreamHandler()
+sh.setFormatter(stdout_format)
+log.addHandler(sh)
+
+# TODO: reasonable control of logging levels
 
 def select_lotju_files():
     """
@@ -250,10 +262,13 @@ def insert_to_obs(pg_conn, cur, fileobj):
     cur.execute('DROP TABLE IF EXISTS tmp_conflicts;')
     pg_conn.commit()
 
-def main():
+def insertion_routine(interactive, rmcsv, overwrite, datadir):
     print('\nInsert LOTJU DATA')
     print('into TSA database')
     print('\n*****************\n')
+
+
+
     pg_conn = None
     cur = None
     try:
@@ -298,6 +313,48 @@ def main():
         if pg_conn:
             pg_conn.close()
         print('END OF SCRIPT')
+
+def parse_cmdline(argv):
+    parser = argparse.ArgumentParser(
+        description='Insert LOTJU txt file contents to TSA database.'
+    )
+    parser.add_argument('-i', '--interactive',
+                        action='store_true',
+                        default=False,
+                        help='use confirmations before proceeding in the script'
+                        )
+    parser.add_argument('-r', '--rmcsv',
+                        action='store_true',
+                        default=False,
+                        help='remove intermediate LOTJU csv files the script creates'
+                        )
+    parser.add_argument('-o', '--overwrite',
+                        action='store_true',
+                        default=False,
+                        help='overwrite existing intermediate LOTJU csv files')
+    parser.add_argument('-d', '--datadir',
+                        default='data',
+                        type=str,
+                        help='rel or abs directory containing LOTJU files'
+                        )
+    parser.add_argument('-l', '--logdest',
+                        default=None,
+                        type=str,
+                        help='destination file path for logging')
+    args = parser.parse_args(argv[1:])
+    return args
+
+def main():
+    try:
+        args = parse_cmdline(sys.argv)
+        if args['logdest']:
+            fh = logging.FileHandler(args['logdest'])
+            fh.setFormatter(file_format)
+
+    except KeyboardInterrupt:
+        log.error('Program interrupted')
+    finally:
+        logging.shutdown()
 
 if __name__ == '__main__':
     main()
