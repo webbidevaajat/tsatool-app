@@ -166,11 +166,20 @@ def main():
                                 statements=[
                 """
                 CREATE TABLE IF NOT EXISTS tiesaa_mittatieto (
-                id bigint PRIMARY KEY,
-                aika timestamp,
-                asema_id integer
+                id bigint NOT NULL,
+                aika timestamp NOT NULL,
+                asema_id integer NOT NULL,
+                PRIMARY KEY (aika, asema_id)
                 );
                 """,
+                """
+                SELECT create_hypertable(
+                    'tiesaa_mittatieto',
+                    'aika',
+                    'asema_id',
+                    800
+                )
+                """
                 # NOTE: following is defined WITHOUT tiedosto_id
                 """
                 CREATE TABLE IF NOT EXISTS anturi_arvo (
