@@ -87,7 +87,7 @@ def main():
     # How many rows are inserted at a time:
     chunk_limit = 100000
     try:
-        conn = tsadb_connect(username='tsadash', password='opinionKentucky')
+        conn = tsadb_connect()
         months = [f'{s:02d}' for s in range(1, 3)]
         base_url = 'https://tiesaahistoria-jakelu.s3.amazonaws.com/2018/'
         tiesaa_urls = [f'{base_url}tiesaa_mittatieto-2018_{m}.csv' for m in months]
@@ -106,7 +106,7 @@ def main():
             i = 0
             i_tot = 0
             try:
-                with urllib.request.urlopen(u, timeout=900) as urlconn:
+                with urllib.request.urlopen(u, timeout=60) as urlconn:
                     output = StringIO()
                     while True:
                         l = urlconn.readline().decode('utf-8')
@@ -141,7 +141,7 @@ def main():
             i = 0
             i_tot = 0
             try:
-                with urllib.request.urlopen(u, timeout=5) as urlconn:
+                with urllib.request.urlopen(u, timeout=60) as urlconn:
                     output = StringIO()
                     while True:
                         l = urlconn.readline().decode('utf-8')
