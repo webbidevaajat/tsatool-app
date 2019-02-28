@@ -137,24 +137,29 @@ def main():
                 );"""
                 ])
 
-                # Observations ("obs") table
+                # Station observations ("statobs") table
                 exec_statements(cur=cur,
                 statements=[
-                """CREATE TABLE IF NOT EXISTS obs (
-                  id bigserial PRIMARY KEY,
+                """CREATE TABLE IF NOT EXISTS statobs (
+                  id bigint NOT NULL,
                   tfrom timestamp NOT NULL,
-                  tuntil timestamp NOT NULL CHECK (tuntil > tfrom),
                   statid integer NOT NULL REFERENCES stations (id),
-                  seid integer NOT NULL REFERENCES sensors (id),
-                  seval real,
                   modified timestamp DEFAULT NOW(),
-                  EXCLUDE USING gist (
-                    tsrange(tfrom, tuntil) WITH &&,
-                    statid WITH =,
-                    seid WITH =
-                  )
+                  PRIMARY KEY (tfrom, statid)
                 );"""
                 ])
+
+                # Sensor observations ("seobs") table
+                exec_statements(cur=cur,
+                statements=[
+                """CREATE TABLE IF NOT EXISTS seobs (
+                  id bigint PRIMARY KEY,
+                  obsid bigint NOT NULL,
+                  seid integer NOT NULL REFERENCES sensors (id),
+                  seval real NOT NULL
+                );"""
+                ]
+                )
 
                 # *************************************** #
                 # AD HOC LOTJU RAW DATA TABLES
@@ -175,10 +180,8 @@ def main():
                 """
                 SELECT create_hypertable(
                     'tiesaa_mittatieto',
-                    'aika',
-                    'asema_id',
-                    800
-                )
+                    'aika'
+                );
                 """
                 # NOTE: following is defined WITHOUT tiedosto_id
                 """
