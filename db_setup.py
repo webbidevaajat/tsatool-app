@@ -141,22 +141,34 @@ def main():
                 exec_statements(cur=cur,
                 statements=[
                 """CREATE TABLE IF NOT EXISTS statobs (
-                  id bigint NOT NULL,
+                  id bigserial NOT NULL,
                   tfrom timestamp NOT NULL,
                   statid integer NOT NULL REFERENCES stations (id),
                   modified timestamp DEFAULT NOW(),
                   PRIMARY KEY (tfrom, statid)
-                );"""
+                );""",
+                """
+                SELECT create_hypertable(
+                    'statobs',
+                    'tfrom');
+                """
                 ])
 
                 # Sensor observations ("seobs") table
+                # NOTE: "obsid" is not forced to reference
+                # statobs (id) (though it would make sense)
+                # since this would lead to constraint checks
+                # across a huge amount of data.
+                # Instead, we rely on inner joins between
+                # statobs and seobs when performing analyses.
                 exec_statements(cur=cur,
                 statements=[
                 """CREATE TABLE IF NOT EXISTS seobs (
-                  id bigint PRIMARY KEY,
+                  id bigserial PRIMARY KEY,
                   obsid bigint NOT NULL,
                   seid integer NOT NULL REFERENCES sensors (id),
-                  seval real NOT NULL
+                  seval real NOT NULL,
+                  modified timestamp DEFAULT NOW()
                 );"""
                 ]
                 )
@@ -194,6 +206,24 @@ def main():
                 """
                                 ]
                                 )
+                # Tables for old id - new id correspondence
+                exec_statements(cur=cur,
+                                statements=[
+                """
+                CREATE TABLE IF NOT EXISTS tiesaa_asema (
+                id integer PRIMARY KEY,
+                lyhytnimi text,
+                vanha_id integer
+                );
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS laskennallinen_anturi (
+                id integer PRIMARY KEY,
+                lyhytnimi text,
+                vanha_id integer
+                );
+                """
+                                ])
                 # *************************************** #
 
                 # Create triggers that keep the "modified"
@@ -215,8 +245,11 @@ def main():
                 """CREATE TRIGGER upd_sensors_modified
                   BEFORE UPDATE ON sensors
                   FOR EACH ROW EXECUTE PROCEDURE update_modified_column();""",
-                """CREATE TRIGGER upd_obs_modified
-                  BEFORE UPDATE ON obs
+                """CREATE TRIGGER upd_statobs_modified
+                  BEFORE UPDATE ON statobs
+                  FOR EACH ROW EXECUTE PROCEDURE update_modified_column();""",
+                """CREATE TRIGGER upd_seobs_modified
+                  BEFORE UPDATE ON seobs
                   FOR EACH ROW EXECUTE PROCEDURE update_modified_column();"""
                 ])
 
