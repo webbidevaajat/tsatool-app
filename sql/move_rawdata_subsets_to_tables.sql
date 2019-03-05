@@ -31,6 +31,9 @@ ON tiesaa_mittatieto2.asema_id = sts_subset.lotjuid;
 -- for inner join in the next step
 CREATE INDEX IF NOT EXISTS
 	statobs_id_idx ON statobs(id);
+-- Similarly, create index on station id
+CREATE INDEX IF NOT EXISTS
+  statobs_statid_idx ON statobs(statid);
 --
 -- Insert sensor observations having
 -- corresponding station observations.
