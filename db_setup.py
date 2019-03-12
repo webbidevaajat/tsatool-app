@@ -166,10 +166,17 @@ def main():
                 """CREATE TABLE IF NOT EXISTS seobs (
                   id bigserial PRIMARY KEY,
                   obsid bigint NOT NULL,
-                  seid integer NOT NULL REFERENCES sensors (id),
+                  seid integer NOT NULL,
                   seval real NOT NULL,
                   modified timestamp DEFAULT NOW()
-                );"""
+                );""",
+                """
+                SELECT create_hypertable(
+                    'seobs',
+                    'id',
+                    chunk_time_interval => 10000000
+                );
+                """
                 ]
                 )
 
@@ -194,7 +201,7 @@ def main():
                     'tiesaa_mittatieto',
                     'aika'
                 );
-                """
+                """,
                 # NOTE: following is defined WITHOUT tiedosto_id
                 """
                 CREATE TABLE IF NOT EXISTS anturi_arvo (

@@ -76,7 +76,7 @@ anids AS (
 ),
 -- This should add up to the number of rows inserted
 rows_inserted AS (
-	INSERT INTO seobs (id, obsid, seid, seval)
+	INSERT INTO seobs2 (id, obsid, seid, seval)
 		SELECT anids.id AS id,
 			anids.obsid AS obsid,
 			anids.seid AS seid,
@@ -105,9 +105,9 @@ def main():
             except Exception as e:
                 log.exception(f'Could not insert with statid {statid}')
                 continue
-        cur.execute('CREATE INDEX seobs_obsid_idx ON seobs(obsid);')
+        cur.execute('CREATE INDEX seobs_obsid_idx ON seobs2(obsid);')
         conn.commit()
-        log.info('Index seobs(obsid) created')
+        log.info('Index seobs2(obsid) created')
     except Exception as e:
         log.exception('script interrupted')
     finally:
