@@ -619,10 +619,10 @@ class CondCollection:
         """
         if station not in self.stations:
             if self.pg_conn:
-                st_nr = ''.join(i for i in station if i.isdigit())
+                st_nr = int(''.join(i for i in station if i.isdigit()))
                 sql = 'CREATE OR REPLACE TEMP VIEW {:s} AS \n'.format(station)
                 sql += 'SELECT * FROM observations \n'
-                sql += 'WHERE station_id = {:s} \n'.format(st_nr)
+                sql += 'WHERE station_id = {:d} \n'.format(st_nr)
                 sql += 'AND tstart >= {:s} \n'.format(
                     self.time_from.strftime('%Y-%m-%d %H:%M:%S'))
                 sql += 'AND tend < {:s};'.format(
