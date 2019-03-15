@@ -176,6 +176,14 @@ def main():
                     'id',
                     chunk_time_interval => 10000000
                 );
+                """,
+                """
+                CREATE INDEX seobs_obsid_idx
+                ON seobs(obsid);
+                """,
+                """
+                CREATE INDEX seobs_seid_seval_idx
+                ON seobs(seid, seval);
                 """
                 ]
                 )
@@ -210,6 +218,17 @@ def main():
                 arvo real,
                 mittatieto_id bigint
                 );
+                """
+                """
+                SELECT create_hypertable(
+                    'anturi_arvo',
+                    'id',
+                    chunk_time_interval => 10000000
+                );
+                """,
+                """
+                CREATE INDEX anturi_arvo_mittatieto_idx
+                ON anturi_arvo(mittatieto_id);
                 """
                                 ]
                                 )
