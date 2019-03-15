@@ -15,6 +15,7 @@ TEMP*
 data/
 *.csv
 lotju*
+*.xlsx
 
 # Logs
 logs/
