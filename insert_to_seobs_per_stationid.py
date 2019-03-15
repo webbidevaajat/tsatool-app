@@ -57,7 +57,7 @@ WITH seids AS (
 obsid_subset AS (
 	SELECT id
 	FROM statobs
-	WHERE statid = %s
+	WHERE statid = {:d}
 ),
 -- Form subset of sensor observations for insertion:
 anids AS (
@@ -73,20 +73,15 @@ anids AS (
     -- have a corresponding new sensor id (that is why INNER join)
 	INNER JOIN seids
 	ON seids.lotjuid = anturi_arvo.anturi_id
-),
--- This should add up to the number of rows inserted
-rows_inserted AS (
-	INSERT INTO seobs2 (id, obsid, seid, seval)
-		SELECT anids.id AS id,
-			anids.obsid AS obsid,
-			anids.seid AS seid,
-			anids.seval AS seval
-		FROM anids
-	ON CONFLICT DO NOTHING
-	RETURNING 1
-	)
--- Return N of rows inserted for reporting
-SELECT COUNT(*) FROM rows_inserted;
+)
+
+INSERT INTO seobs (id, obsid, seid, seval)
+	SELECT anids.id AS id,
+		anids.obsid AS obsid,
+		anids.seid AS seid,
+		anids.seval AS seval
+	FROM anids
+	ON CONFLICT DO NOTHING;
 """
 
 def main():
@@ -98,16 +93,15 @@ def main():
         for statid in STATIDS:
             try:
                 log.info(f'Inserting with statid {statid}')
-                cur.execute(INS_SQL, (statid,))
-                nrows = cur.fetchone()[0]
+                sql_cmd = INS_SQL.format(statid)
+                cur.execute(sql_cmd)
                 conn.commit()
-                log.info(f'{nrows} rows inserted with statid {statid}')
+                log.info(f'inserted with statid {statid}')
             except Exception as e:
+                conn.rollback()
                 log.exception(f'Could not insert with statid {statid}')
                 continue
-        cur.execute('CREATE INDEX seobs_obsid_idx ON seobs2(obsid);')
         conn.commit()
-        log.info('Index seobs2(obsid) created')
     except Exception as e:
         log.exception('script interrupted')
     finally:
