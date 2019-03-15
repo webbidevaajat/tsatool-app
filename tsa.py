@@ -15,6 +15,7 @@ import json
 import pandas
 import psycopg2
 from getpass import getpass
+from datetime import datetime
 
 def tsadb_connect(username=None, password=None, ask=False):
     """
@@ -346,7 +347,7 @@ class Condition:
         raw_condition = eliminate_umlauts(raw_condition)
         self.condition = raw_condition
 
-        # TODO: use datetime objects?
+        # Times must be datetime objects
         self.time_from = time_range[0]
         self.time_until = time_range[1]
 
@@ -567,7 +568,10 @@ class Condition:
 class CondCollection:
     """
     A collection of conditions to analyze.
-    All conditions share same analysis time range.
+    All conditions share the same analysis time range.
+    Times are assumed to be given as dates only,
+    and their HH:MM:SS are overridden to default values,
+    see ``set_default_times(self)``.
 
     # TODO CondCollection init parameters and results
 
@@ -579,10 +583,13 @@ class CondCollection:
     :type pg_conn: ``psycopg2.connect()`` object
     """
     def __init__(self, time_from, time_until, pg_conn=None):
-        # TODO: validate time input formats?
-        # TODO: allow date-only time formats and add default times?
+        # Times must be datetime objects and in correct order
+        assert isinstance(time_from, datetime)
+        assert isinstance(time_until, datetime)
+        assert time_from < time_until
         self.time_from = time_from
         self.time_until = time_until
+        self.set_default_times()
         self.time_range = (self.time_from, self.time_until)
 
         self.conditions = []
@@ -590,6 +597,16 @@ class CondCollection:
         self.id_strings = set()
 
         self.pg_conn = pg_conn
+
+    def set_default_times(self):
+        """
+        Sets analysis start time to 00:00:00
+        and end time to 23:59:59 on selected dates, respectively.
+        """
+        self.time_from = self.time_from.replace(
+            hour=0, minute=0, second=0)
+        self.time_until = self.time_until.replace(
+            hour=23, minute=59, second=59)
 
     def add_station(self, station):
         """
@@ -606,8 +623,10 @@ class CondCollection:
                 sql = 'CREATE OR REPLACE TEMP VIEW {:s} AS \n'.format(station)
                 sql += 'SELECT * FROM observations \n'
                 sql += 'WHERE station_id = {:s} \n'.format(st_nr)
-                sql += 'AND tstart >= {:s} \n'.format(self.time_from)
-                sql += 'AND tend < {:s};'.format(self.time_until)
+                sql += 'AND tstart >= {:s} \n'.format(
+                    self.time_from.strftime('%Y-%m-%d %H:%M:%S'))
+                sql += 'AND tend < {:s};'.format(
+                    self.time_until.strftime('%Y-%m-%d %H:%M:%S'))
 
                 # TODO: sql execution, error / warning handling
 
@@ -635,6 +654,7 @@ class CondCollection:
         Create instance and add conditions from list of dicts.
         Dicts must have corresponding keys
         ``'site', 'master_alias', 'raw_condition'``.
+        Times must be ``datetime`` objects.
         """
         cc = cls(time_from, time_until, pg_conn)
         for d in dictlist:
