@@ -553,12 +553,12 @@ class Condition:
 
     def __str__(self):
         if self.secondary:
-            s = 'Secondary '
+            s = '  Secondary '
         else:
-            s = 'Primary '
+            s = '  Primary '
         s += 'Condition {:s}:\n'.format(self.id_string)
-        s += '{:s}\n'.format(self.condition)
-        s += 'ALIAS: {:s}'.format(self.alias_condition)
+        s += '    {:s}\n'.format(self.condition)
+        s += '    ALIAS: {:s}'.format(self.alias_condition)
         return s
 
     def __repr__(self):
@@ -647,6 +647,15 @@ class CondCollection:
             self.id_strings.add(candidate.id_string)
             for s in candidate.stations:
                 self.add_station(s)
+
+    def __str__(self):
+        # TODO: create a meaningful print representation
+        out = 'A CondCollection with\n'
+        out += f'  {len(self.stations)} stations and\n'
+        out += f'  {len(self.conditions)} conditions\n'
+        for c in self.conditions:
+            out += f'{str(c)}\n'
+        return out
 
     @classmethod
     def from_dictlist(cls, dictlist, time_from, time_until, pg_conn=None):
