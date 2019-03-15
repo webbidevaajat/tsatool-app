@@ -660,3 +660,49 @@ class CondCollection:
         for d in dictlist:
             cc.add_condition(**d)
         return cc
+
+    @classmethod
+    def from_xlsx_sheet(cls, ws, pg_conn=None):
+        """
+        Create a condition collection for analysis
+        based on an ``openpyxl`` ``worksheet`` object ``ws``.
+        Database connection instance ``pg_conn`` should be prepared
+        in advance and passed to this method.
+
+        .. note:: Start and end dates must be in cells A2 and B2, respectively,
+                  and conditions must be listed starting from row 4,
+                  such that ``site`` is in column A,
+                  ``master_alias`` in column B
+                  and ``raw_condition`` in column C.
+                  There must not be empty rows in between.
+                  Any columns outside A:C are ignored,
+                  so additional data can be placed outside them.
+        """
+        # Handle start and end dates;
+        # method is interrupted if either one is not valid
+        dateformat = '%d.%m.%Y'
+        time_from = datetime.strptime(ws['A2'].value, dateformat)
+        time_until = datetime.strptime(ws['B2'].value, dateformat)
+
+        # Collect condition rows into a list of dictionaries,
+        # make sure the cells have no None values
+        dl = []
+        for row in ws.iter_rows(min_row=4, max_col=3):
+            cells = [c for c in row]
+            for c in cells:
+                if not c.value:
+                    raise ValueError(f'Cell {c.coordinate} is empty!')
+            dl.append(dict(
+                site = cells[0].value
+                master_alias = cells[1].value
+                raw_condition = cells[2].value
+            ))
+
+        # Now the dictlist method can be used to
+        # construct the CondCollection
+        cc = cls.from_dictlist(
+            dictlist=dl,
+            time_from=time_from
+            time_until=time_until,
+            pg_conn=pg_conn
+        )
