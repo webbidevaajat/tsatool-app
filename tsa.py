@@ -693,8 +693,8 @@ class CondCollection:
                 if not c.value:
                     raise ValueError(f'Cell {c.coordinate} is empty!')
             dl.append(dict(
-                site = cells[0].value
-                master_alias = cells[1].value
+                site = cells[0].value,
+                master_alias = cells[1].value,
                 raw_condition = cells[2].value
             ))
 
@@ -702,7 +702,9 @@ class CondCollection:
         # construct the CondCollection
         cc = cls.from_dictlist(
             dictlist=dl,
-            time_from=time_from
+            time_from=time_from,
             time_until=time_until,
             pg_conn=pg_conn
         )
+
+        return cc
