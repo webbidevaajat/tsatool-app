@@ -623,8 +623,9 @@ class CondCollection:
         self.pg_conn = pg_conn
 
         self.setup_statobs_view()
-
         self.statids_available = self.get_stations_in_view()
+
+        self.setup_obs_view()
 
     def set_default_times(self):
         """
@@ -638,7 +639,7 @@ class CondCollection:
 
     def setup_statobs_view(self, verbose=False):
         """
-        In the database, create or replace a temporary view
+        In the database, create or replace a temporary view ``statobs_time``
         containing the station observations within the ``time_range``.
         """
         if self.pg_conn:
@@ -672,6 +673,27 @@ class CondCollection:
                 return statids
         else:
             return None
+
+    def setup_obs_view(self):
+        """
+        After creating the ``statobs_time`` view,
+        create a joint temporary view ``obs_main``
+        that works as the main source for Block queries.
+        """
+        if not self.pg_conn:
+            pass
+        with self.pg_conn.cursor() as cur:
+            sql = ("CREATE OR REPLACE TEMP VIEW obs_main AS "
+                   "SELECT tfrom, statid, seid, seval "
+                   "FROM statobs_time "
+                   "INNER JOIN seobs "
+                   "ON statobs_time.id = seobs.obsid;")
+            try:
+                cur.execute(sql)
+                self.pg_conn.commit()
+            except:
+                self.pg_conn.rollback()
+                print(traceback.print_exc())
 
     def add_station(self, station):
         """
