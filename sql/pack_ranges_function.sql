@@ -14,7 +14,7 @@
 --    and corresponding condition truth values
 --
 -- Example usage:
--- 
+--
 -- CREATE OR REPLACE TEMP VIEW obs_main AS
 -- SELECT tfrom, statid, seid, seval
 -- FROM statobs
@@ -38,7 +38,7 @@ pack_ranges(p_obs_relation text,
 			p_operator text,
 			p_seval text)
 RETURNS TABLE (valid_r tsrange,
-			   istrue int) AS
+			   istrue boolean) AS
 $func$
 BEGIN
 RETURN QUERY
@@ -99,7 +99,13 @@ total_range_tb AS
 	 AS total_range
 	FROM fl_tb)
 SELECT total_range AS valid_r,
-istrue
+	(CASE WHEN istrue = 1 THEN
+		true
+	WHEN istrue = 0 THEN
+		false
+	ELSE
+		NULL
+	END) AS istrue
 FROM total_range_tb
 WHERE isfirst', p_operator, p_seval, p_obs_relation)
 USING p_statid, p_seid, p_maxminutes;
