@@ -14,6 +14,7 @@ import re
 import json
 import pandas
 import psycopg2
+import traceback
 from getpass import getpass
 from datetime import datetime
 
@@ -218,6 +219,7 @@ class Block:
         if n_binops > 1:
             errtext = 'Too many binary operators, only one or zero allowed:\n'
             errtext += self.raw_logic
+            raise ValueError(errtext)
 
         # Case 1: contains no hashtag and no binary operator
         # -> secondary block, site is picked from parent_site.
@@ -328,8 +330,8 @@ class Condition:
     :type master_alias: string
     :param raw_condition: condition definition
     :type raw_condition: string
-    :param time_range: start (included) and end (excluded) timestamps
-    :type time_range: list or tuple of strings
+    :param time_range: start (included) and end (included) timestamps
+    :type time_range: list or tuple of datetime objects
     """
     def __init__(self, site, master_alias, raw_condition, time_range):
         # Original formattings are kept for printing purposes
@@ -551,6 +553,16 @@ class Condition:
             if not bl.secondary:
                 self.stations.add(bl.station)
 
+    def setup_db_table(self, pg_conn=None, verbose=False):
+        """
+        Create temporary table corresponding to the condition.
+        Effective only if a database connection is present.
+        """
+        if not pg_conn:
+            return
+        # TODO: do this
+        pass
+
     def __str__(self):
         if self.secondary:
             s = '  Secondary '
@@ -597,6 +609,10 @@ class CondCollection:
         self.id_strings = set()
 
         self.pg_conn = pg_conn
+
+        self.setup_statobs_view()
+
+        self.statids_available = self.get_stations_in_view()
 
     def set_default_times(self):
         """
@@ -679,9 +695,13 @@ class CondCollection:
 
     def __str__(self):
         # TODO: create a meaningful print representation
-        out = 'A CondCollection with\n'
-        out += f'  {len(self.stations)} stations and\n'
-        out += f'  {len(self.conditions)} conditions\n'
+        out = 'A CondCollection.\n'
+        out += '  Time range:\n'
+        out += f"    from {self.time_from.strftime('%Y-%m-%d %H:%M:%S')}\n"
+        out += f"    to   {self.time_until.strftime('%Y-%m-%d %H:%M:%S')}\n"
+        out += f'  {len(self.stations)} stations:\n'
+        out += f'    {", ".join(list(self.stations))}\n'
+        out += f'  {len(self.conditions)} conditions:\n'
         for c in self.conditions:
             out += f'{str(c)}\n'
         return out
@@ -717,19 +737,26 @@ class CondCollection:
                   so additional data can be placed outside them.
         """
         # Handle start and end dates;
-        # method is interrupted if either one is not valid
+        # method is interrupted if either one
+        # is text BUT is not a valid date
         dateformat = '%d.%m.%Y'
-        time_from = datetime.strptime(ws['A2'].value, dateformat)
-        time_until = datetime.strptime(ws['B2'].value, dateformat)
+        time_from = ws['A2'].value
+        if not isinstance(time_from, datetime):
+            time_from = datetime.strptime(ws['A2'].value, dateformat)
+        time_until = ws['B2'].value
+        if not isinstance(time_until, datetime):
+            time_until = datetime.strptime(ws['B2'].value, dateformat)
 
         # Collect condition rows into a list of dictionaries,
         # make sure the cells have no None values
         dl = []
         for row in ws.iter_rows(min_row=4, max_col=3):
             cells = [c for c in row]
-            for c in cells:
-                if not c.value:
-                    raise ValueError(f'Cell {c.coordinate} is empty!')
+            # Exit upon an empty row
+            if not any(cells):
+                break
+            # TODO: raise an error upon empty cell
+            #       or empty row followed by non-empty rows
             dl.append(dict(
                 site = cells[0].value,
                 master_alias = cells[1].value,
