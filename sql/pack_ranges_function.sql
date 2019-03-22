@@ -1,3 +1,26 @@
+-- This function is to be used for each Block instance in tsa.
+-- A relation / temp view / whatever `p_obs_relation`
+-- must exist, and it must contain the sensor observations
+-- with `tfrom` timestamps and `statid` station ids.
+-- The function does basicly the following:
+-- 1) select relevant sensor value records and order them by time
+-- 2) find their validity ranges, and whenever the range
+--    is longer than `p_maxminutes`, truncate it to last
+--    for `p_maxminutes`
+-- 3) compare adjacent rows;
+--    merge them as long as they form a continuous time range
+--    AND the condition value remains the same
+-- 4) return a table with "compressed" time ranges
+--    and corresponding condition truth values
+--
+-- Example usage:
+-- SELECT * FROM pack_ranges(p_obs_relation := 'obs_main',
+--			p_maxminutes := 30,
+--			p_statid := 1104,
+--			p_seid := 181,
+--			p_operator := '>=',
+--			p_seval := '0.5');
+
 DROP FUNCTION IF EXISTS pack_ranges;
 CREATE OR REPLACE FUNCTION
 pack_ranges(p_obs_relation text,
