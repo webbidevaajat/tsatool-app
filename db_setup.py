@@ -13,6 +13,11 @@ as well as made sure that you are able to connect to the database
 from the machine on which you are going to run this script.
 """
 
+# TODO: read statements from SQL files?
+#       Now handling the statements is clumsy
+#       and they must be hard-coded in this script
+#       in a pretty unreadable way.
+
 import os
 import sys
 import json
