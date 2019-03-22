@@ -181,6 +181,7 @@ class Block:
         self.station = None
         self.source_alias = None
         self.sensor = None
+        self.sensor_id = None
         self.operator = None
         self.value_str = None
 
@@ -266,6 +267,17 @@ class Block:
             errtext += '[station]#[sensor] [binary operator] [value]:\n'
             errtext += self.raw_logic
             raise ValueError(errtext)
+
+    def set_sensor_id(self, nameids):
+        """
+        Set sensor id based on name-id dict,
+        presumably gotten from database.
+        """
+        try:
+            self.sensor_id = nameids[self.sensor]
+        except KeyError:
+            errtext = f"Sensor '{self.sensor}' not found in database."
+            raise KeyError(errtext)
 
     def __str__(self):
         if self.secondary:
@@ -693,6 +705,22 @@ class CondCollection:
             for s in candidate.stations:
                 self.add_station(s)
 
+    def set_sensor_ids(self):
+        """
+        Get sensor name - id correspondence from the database,
+        and set sensor ids for all Blocks in all Conditions.
+        """
+        if not self.pg_conn:
+            pass
+            # TODO: action upon no pg connection?
+        with self.pg_conn.cursor() as cur:
+            cur.execute("SELECT id, lower(name) AS name FROM sensors;")
+            tb = cur.fetchall()
+            nameids = {k:v for v, k in tb}
+        for cnd in self.conditions:
+            for bl in cnd.blocks:
+                bl.set_sensor_id(nameids)
+
     def __str__(self):
         # TODO: create a meaningful print representation
         out = 'A CondCollection.\n'
@@ -717,6 +745,7 @@ class CondCollection:
         cc = cls(time_from, time_until, pg_conn)
         for d in dictlist:
             cc.add_condition(**d)
+        cc.set_sensor_ids()
         return cc
 
     @classmethod
