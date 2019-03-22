@@ -608,28 +608,57 @@ class CondCollection:
         self.time_until = self.time_until.replace(
             hour=23, minute=59, second=59)
 
+    def setup_statobs_view(self, verbose=False):
+        """
+        In the database, create or replace a temporary view
+        containing the station observations within the ``time_range``.
+        """
+        if self.pg_conn:
+            with self.pg_conn.cursor() as cur:
+                sql = ("CREATE OR REPLACE TEMP VIEW statobs_time AS "
+                       "SELECT id, tfrom, statid "
+                       "FROM statobs "
+                       "WHERE tfrom BETWEEN %s AND %s;")
+                if verbose:
+                    print(cur.mogrify(sql, (self.time_from, self.time_until)))
+                try:
+                    cur.execute(sql, (self.time_from, self.time_until))
+                    self.pg_conn.commit()
+                except:
+                    self.pg_conn.rollback()
+                    print(traceback.print_exc())
+        else:
+            if verbose:
+                print('No db connection, cannot create view')
+
+    def get_stations_in_view(self):
+        """
+        Get stations available in ``statobs_time`` view.
+        """
+        if self.pg_conn:
+            with self.pg_conn.cursor() as cur:
+                sql = "SELECT DISTINCT statid FROM statobs_time ORDER BY statid;"
+                cur.execute(sql, (self.time_from, self.time_until))
+                statids = cur.fetchall()
+                statids = [el[0] for el in statids]
+                return statids
+        else:
+            return None
+
     def add_station(self, station):
         """
         Add ``station`` to ``self.stations`` if not already there.
-        If Postgres connection is available, create temporary view
-        for new station.
+        If db connection is available, check if the main view
+        contains that station id.
 
         .. note::   station identifier must contain station integer id
                     when letters are removed.
         """
         if station not in self.stations:
+            stid = int(''.join(i for i in station if i.isdigit()))
             if self.pg_conn:
-                st_nr = int(''.join(i for i in station if i.isdigit()))
-                sql = 'CREATE OR REPLACE TEMP VIEW {:s} AS \n'.format(station)
-                sql += 'SELECT * FROM observations \n'
-                sql += 'WHERE station_id = {:d} \n'.format(st_nr)
-                sql += 'AND tstart >= {:s} \n'.format(
-                    self.time_from.strftime('%Y-%m-%d %H:%M:%S'))
-                sql += 'AND tend < {:s};'.format(
-                    self.time_until.strftime('%Y-%m-%d %H:%M:%S'))
-
-                # TODO: sql execution, error / warning handling
-
+                if stid not in self.statids_available:
+                    print(f'WARNING: no observations for station {stid} in database!')
             self.stations.add(station)
 
     def add_condition(self, site, master_alias, raw_condition):
