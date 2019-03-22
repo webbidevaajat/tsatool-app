@@ -492,11 +492,12 @@ class Condition:
                 # but add the existing block with its order number.
                 # The .index() method raises an error in case the tuple with
                 # Block element is NOT contained in the list.
-                try:
-                    existing_idx = idfied.index(('block', bl))
-                    existing_tuple = idfied[existing_idx]
-                    idfied.append(existing_tuple)
-                except:
+                existing_blocks = [t for t in idfied if t[0] == 'block']
+                for eb in existing_blocks:
+                    if eb[1].raw_logic == bl.raw_logic:
+                        idfied.append(eb)
+                        break
+                else:
                     idfied.append(('block', bl))
                     i += 1
 
@@ -567,8 +568,12 @@ class Condition:
 
         # If validation was successful, attributes can be set
 
-        # Pick up all blocks in the order they appear
-        self.blocks = [el[1] for el in idfied if el[0] == 'block']
+        # Pick up all unique blocks in the order they appear
+        blocks = []
+        for el in idfied:
+            if el[0] == 'block' and el[1] not in blocks:
+                blocks.append(el[1])
+        self.blocks = sorted(blocks, key=lambda x: x.alias)
 
         # Form alias condition by replacing original block parts by
         # the alias of the corresponding block
