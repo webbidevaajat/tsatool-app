@@ -14,6 +14,14 @@
 --    and corresponding condition truth values
 --
 -- Example usage:
+-- 
+-- CREATE OR REPLACE TEMP VIEW obs_main AS
+-- SELECT tfrom, statid, seid, seval
+-- FROM statobs
+-- INNER JOIN seobs
+-- ON statobs.id = seobs.obsid
+-- WHERE tfrom BETWEEN '2018-01-01T00:00:00'::timestamp AND '2018-03-31T23:59:59'::timestamp;
+--
 -- SELECT * FROM pack_ranges(p_obs_relation := 'obs_main',
 --			p_maxminutes := 30,
 --			p_statid := 1104,
