@@ -179,6 +179,7 @@ class Block:
         self.secondary = None
         self.site = None
         self.station = None
+        self.station_id = None
         self.source_alias = None
         self.sensor = None
         self.sensor_id = None
@@ -246,6 +247,7 @@ class Block:
             parts = self.raw_logic.split('#')
             parts = [parts[0]] + parts[1].split(binop_in_str)
             self.station = to_pg_identifier(parts[0])
+            self.station_id = int(''.join(i for i in self.station if i.isdigit()))
             self.sensor = to_pg_identifier(parts[1])
             self.operator = binop_in_str.lower().strip()
             self.value_str = parts[2].lower().strip()
@@ -278,6 +280,33 @@ class Block:
         except KeyError:
             errtext = f"Sensor '{self.sensor}' not found in database."
             raise KeyError(errtext)
+
+    def get_sql_def(self):
+        """
+        Create SQL ``pack_ranges`` function call
+        string to be used as part of the corresponding
+        Condition table creation.
+        """
+        if not self.sensor_id:
+            errtext = 'No sensor_id set for\n'
+            errtext += str(self)
+            raise Exception(errtext)
+
+        if self.secondary:
+            errtext = 'Analyzing secondary blocks is not yet supported:\n'
+            errtext += str(self)
+            raise Exception(errtext)
+
+        sql = (f"SELECT valid_r, istrue AS {self.alias} "
+               "FROM pack_ranges("
+               "p_obs_relation := 'obs_main', "
+               "p_maxminutes := 30, "
+               f"p_statid := {self.station_id}, "
+               f"p_seid := {self.sensor_id}, "
+               f"p_operator := '{self.operator}', "
+               f"p_seval := '{self.value_str}')")
+
+        return sql
 
     def __str__(self):
         if self.secondary:
