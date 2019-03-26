@@ -422,7 +422,7 @@ class Condition:
         # TODO: pandas DataFrame of postgres temp table contents
         self.data = None
 
-        # TODO: result attrs from self.data
+        self.tottime = self.time_until - self.time_from
         self.tottime_valid = None
         self.tottime_notvalid = None
         self.tottime_nodata = None
@@ -655,7 +655,8 @@ class Condition:
         sql += ' \n'
         sql += ("SELECT \n"
                 "lower(valid_r) AS vfrom, \n"
-                "upper(valid_r) AS vuntil, \n")
+                "upper(valid_r) AS vuntil, \n"
+                "upper(valid_r)-lower(valid_r) AS vdiff, \n")
         sql += ", \n".join([bl.alias for bl in self.blocks]) + ", \n"
         sql += f"({self.alias_condition}) AS master \n"
         sql += f"FROM {last_cte});"
@@ -677,7 +678,28 @@ class Condition:
                 pg_conn.rollback()
                 raise psycopg2.DatabaseError(e)
 
+    def set_summary_attrs(self):
+        """
+        Calculate summary attribute values using the ``.data`` DataFrame.
+        """
+        if self.data is None:
+            return
+        df = self.data
+
+        self.tottime_valid = df[df['master']==True]['vdiff'].sum() or timedelta(0)
+        self.tottime_notvalid = df[df['master']==False]['vdiff'].sum() or timedelta(0)
+        self.tottime_nodata = self.tottime - self.tottime_valid - self.tottime_notvalid
+        tts = self.tottime.total_seconds()
+        self.percentage_valid = self.tottime_valid.total_seconds() / tts
+        self.percentage_notvalid = self.tottime_notvalid.total_seconds() / tts
+        self.percentage_nodata = self.tottime_nodata.total_seconds() / tts
+
     def fetch_results_from_db(self, pg_conn=None):
+        """
+        Fetch result data from corresponding db view
+        to pandas DataFrame, and set summary attribute values
+        based on the DataFrame.
+        """
         if not pg_conn:
             return
         if not self.has_view:
@@ -687,6 +709,7 @@ class Condition:
             return
         sql = f"SELECT * FROM {self.id_string};"
         self.data = pandas.read_sql(sql, con=pg_conn)
+        self.set_summary_attrs()
 
     def __str__(self):
         if self.secondary:
