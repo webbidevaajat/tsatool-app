@@ -175,6 +175,7 @@ class Block:
         self.raw_logic = raw_logic
         self.master_alias = to_pg_identifier(master_alias)
         self.parent_site = to_pg_identifier(parent_site)
+        self.order_nr = order_nr
         self.alias = self.master_alias + '_' + str(order_nr)
         self.secondary = None
         self.site = None
@@ -404,8 +405,7 @@ class Condition:
         self.stations = set()
         self.list_stations()
 
-        # TODO: postgres create temp table SQL definition
-        self.temptable_creation_sql = None
+        self.has_view = False
 
         # TODO: pandas DataFrame of postgres temp table contents
         self.data = None
@@ -599,15 +599,82 @@ class Condition:
             if not bl.secondary:
                 self.stations.add(bl.station)
 
-    def setup_db_table(self, pg_conn=None, verbose=False):
+    def create_db_view(self, pg_conn=None, verbose=False):
         """
         Create temporary table corresponding to the condition.
         Effective only if a database connection is present.
         """
+        # TODO: define secondary condition behaviour
+
+        drop_sql = f"DROP VIEW IF EXISTS {self.id_string};\n"
+        sql = f"CREATE OR REPLACE TEMP VIEW {self.id_string} AS ( \nWITH "
+
+        bl_defs = [f"{bl.alias} AS ({bl.get_sql_def()})" for bl in self.blocks]
+        sql += ', \n'.join(bl_defs)
+
+        if len(self.blocks) < 2:
+            last_cte = self.blocks[0].alias
+        else:
+            sql += ', \n'
+
+            # Agglomerate time range join CTEs
+            ctes = []
+            i = 2
+            while i <= len(self.blocks):
+                subsel = self.blocks[-i:]
+                nr_seq = '_'.join([str(bl.order_nr) for bl in subsel])
+                idfier = f"{self.master_alias}_{nr_seq}"
+                if not ctes:
+                    last_cte = subsel[-1].alias
+                else:
+                    last_cte = ctes[-1][0]
+                cte_def = f"{idfier} AS (SELECT \n"
+                cte_def += f"{subsel[0].alias}.valid_r * {last_cte}.valid_r AS valid_r, \n"
+                cte_def += ', \n'.join([bl.alias for bl in subsel]) + ' \n'
+                cte_def += f"FROM {subsel[0].alias} \n"
+                cte_def += f"JOIN {last_cte} \n"
+                cte_def += f"ON {subsel[0].alias}.valid_r && {last_cte}.valid_r)"
+                ctes.append((idfier, cte_def))
+                i += 1
+
+            last_cte = ctes[-1][0]
+            sql += ', \n'.join([cte[1] for cte in ctes])
+
+        sql += ' \n'
+        sql += ("SELECT \n"
+                "lower(valid_r) AS vfrom, \n"
+                "upper(valid_r) AS vuntil, \n")
+        sql += ", \n".join([bl.alias for bl in self.blocks]) + ", \n"
+        sql += f"({self.alias_condition}) AS master \n"
+        sql += f"FROM {last_cte});"
+
+        if verbose:
+            print(drop_sql)
+            print(sql)
+
         if not pg_conn:
             return
-        # TODO: do this
-        pass
+
+        with pg_conn.cursor() as cur:
+            try:
+                cur.execute(drop_sql)
+                cur.execute(sql)
+                pg_conn.commit()
+                self.has_view = True
+            except psycopg2.DatabaseError as e:
+                pg_conn.rollback()
+                raise psycopg2.DatabaseError(e)
+
+    def fetch_results_from_db(self, pg_conn=None):
+        if not pg_conn:
+            return
+        if not self.has_view:
+            print('Could not fetch results for')
+            print(f'{str(self)}:\n')
+            print('since it does not have a corresponding database view.')
+            return
+        sql = f"SELECT * FROM {self.id_string};"
+        self.data = pandas.read_sql(sql, con=pg_conn)
 
     def __str__(self):
         if self.secondary:
@@ -715,7 +782,7 @@ class CondCollection:
         that works as the main source for Block queries.
         """
         if not self.pg_conn:
-            pass
+            return
         with self.pg_conn.cursor() as cur:
             sql = ("CREATE OR REPLACE TEMP VIEW obs_main AS "
                    "SELECT tfrom, statid, seid, seval "
@@ -767,7 +834,7 @@ class CondCollection:
         and set sensor ids for all Blocks in all Conditions.
         """
         if not self.pg_conn:
-            pass
+            return
             # TODO: action upon no pg connection?
         with self.pg_conn.cursor() as cur:
             cur.execute("SELECT id, lower(name) AS name FROM sensors;")
@@ -776,6 +843,47 @@ class CondCollection:
         for cnd in self.conditions:
             for bl in cnd.blocks:
                 bl.set_sensor_id(nameids)
+
+    def create_condition_views(self, verbose=False):
+        """
+        For each Condition, try to create the corresponding
+        database view.
+        """
+        # TODO: secondary Condition handling,
+        #       make primary ones first and
+        #       then try secondary ones until they
+        #       find existing identifiers from the database
+        #       to create their views.
+        for cnd in self.conditions:
+            if cnd.secondary:
+                print(f'{str(cnd)}\n')
+                print('Secondary conditions not yet supported.')
+                continue
+            try:
+                cnd.create_db_view(pg_conn=self.pg_conn, verbose=verbose)
+            except Exception as e:
+                print(f'{str(cnd)}:\n')
+                print('Could not create a view.')
+                print(traceback.print_exc())
+
+    def fetch_all_results(self):
+        """
+        Fetch results
+        for all Conditions that have a corresponding view in the database.
+        """
+        for cnd in self.conditions:
+            try:
+                cnd.fetch_results_from_db(pg_conn=self.pg_conn)
+            except Exception as e:
+                print(f'{str(cnd)}:\n')
+                print('Could not fetch results from database.')
+                print(traceback.print_exc())
+
+    def __getitem__(self, key):
+        """
+        Returns the Condition instance on the corresponding index.
+        """
+        return self.conditions[key]
 
     def __str__(self):
         # TODO: create a meaningful print representation
