@@ -17,6 +17,7 @@ import psycopg2
 import traceback
 from getpass import getpass
 from datetime import datetime
+from datetime import timedelta
 
 def tsadb_connect(username=None, password=None, ask=False):
     """
@@ -115,6 +116,17 @@ def to_pg_identifier(x):
             raise ValueError(errtext)
 
     return x
+
+def strfdelta(tdelta, fmt):
+    """
+    Format timedelta object according to ``fmt`` string.
+    ``fmt`` should contain formatting string with placeholders
+    ``{days}``, ``{hours}``, ``{minutes}`` and ``{seconds}``.
+    """
+    d = {'days': tdelta.days}
+    d['hours'], rem = divmod(tdelta.seconds, 3600)
+    d['minutes'], d['seconds'] = divmod(rem, 60)
+    return fmt.format(**d)
 
 class Block:
     """
