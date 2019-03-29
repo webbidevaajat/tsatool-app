@@ -208,7 +208,7 @@ class Block:
         and checks validity of the attributes.
 
         .. note:: Following binary operators are considered:
-            `'=', '!=', '>', '<', '>=', '<=', 'in'`.
+            `'=', '<>', '>', '<', '>=', '<=', 'in'`.
             `between` is currently not supported.
             If operator is `in`, it is checked whether the value after it
             is a valid SQL tuple.
@@ -217,7 +217,7 @@ class Block:
         :param raw_logic: original logic string
         :type raw_logic: string
         """
-        binops = [' = ', ' != ', ' > ', ' < ', ' >= ', ' <= ', ' in ']
+        binops = [' = ', ' <> ', ' > ', ' < ', ' >= ', ' <= ', ' in ']
 
         # ERROR if too many hashtags or operators
         n_hashtags = self.raw_logic.count('#')
