@@ -7,6 +7,7 @@ from flask import Flask, flash, request, redirect, render_template
 from flask_bootstrap import Bootstrap
 from forms import UploadForm
 from werkzeug.utils import secure_filename
+from openpyxl import load_workbook
 
 def allowed_file(filename):
 	return filename.endswith('.xlsx')
@@ -27,7 +28,9 @@ def upload_file():
     form = UploadForm()
     if form.validate_on_submit():
         filename = secure_filename(form.file.data.filename)
-        flash(f'File {filename} successfully uploaded', 'success')
+        wb = load_workbook(form.file.data)
+        wsnames = ', '.join(wb.sheetnames)
+        flash(f'File {filename} successfully uploaded with sheets {wsnames}', 'success')
         return redirect('/')
     # if 'inputFile' not in request.files:
     #     flash('No file part', 'warning')
