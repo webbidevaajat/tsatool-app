@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+ARGUMENT: month number from which on
+the station observations are included:
+leave out observations that are already in the database.
+
 Form subsets of sensor observations
 based on a manually defined station id set,
 replace old sensor ids with new ones
@@ -58,6 +62,7 @@ obsid_subset AS (
 	SELECT id
 	FROM statobs
 	WHERE statid = {:d}
+    AND tfrom >= '2018-{:02d}-01 00:00:00'
 ),
 -- Form subset of sensor observations for insertion:
 anids AS (
@@ -85,15 +90,17 @@ INSERT INTO seobs (id, obsid, seid, seval)
 """
 
 def main():
+    month_nr = int(sys.argv[1])
     log.info('Starting sensor observation insertions')
     conn = None
     try:
         conn = tsadb_connect(username='tsadash', password=PWD)
         cur = conn.cursor()
+        log.info(f'Using statobs from month {month_nr} on')
         for statid in STATIDS:
             try:
                 log.info(f'Inserting with statid {statid}')
-                sql_cmd = INS_SQL.format(statid)
+                sql_cmd = INS_SQL.format(statid, month_nr)
                 cur.execute(sql_cmd)
                 conn.commit()
                 log.info(f'inserted with statid {statid}')
