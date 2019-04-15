@@ -15,9 +15,16 @@ import json
 import pandas
 import psycopg2
 import traceback
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from matplotlib import rcParams
 from getpass import getpass
 from datetime import datetime
 from datetime import timedelta
+
+# Set matplotlib parameters globally
+rcParams['font.family'] = 'sans-serif'
+rcParams['font.sans-serif'] = ['Arial', 'Tahoma']
 
 def tsadb_connect(username=None, password=None, ask=False):
     """
@@ -710,6 +717,107 @@ class Condition:
         sql = f"SELECT * FROM {self.id_string};"
         self.data = pandas.read_sql(sql, con=pg_conn)
         self.set_summary_attrs()
+
+    def get_timelineplot(self):
+        """
+        Returns a Matplotlib figure object:
+        a `broken_barh` plot of the validity of the condition
+        and its blocks on a timeline.
+        """
+        if self.data is None:
+            raise Exception('No data to visualize.')
+
+        def getfacecolor(val):
+            """
+            Return a color name
+            by boolean column value.
+            """
+            if val == True:
+                return '#f03b20'
+            elif val == False:
+                return '#2b83ba'
+            return '#bababa'
+
+        # Set height and transparency for block rows, between 0-1;
+        # master row will be set to height 0.8 and alpha 1 below.
+        hgtval = 0.5
+        alphaval = 0.5
+        # Offset of the logic label above the bar
+        lbl_offset = 0.1
+
+        # Make matplotlib-ready range list from the time columns
+        xr = zip([mdates.date2num(el) for el in self.data['vfrom']],
+                 [mdates.date2num(el) for el in self.data['vuntil']])
+        xr = [(a, b-a) for (a, b) in xr]
+
+        # Make subplots for blocks;
+        # for every block, there should be
+        # a corresponding boolean column in the result DataFrame!
+        fig, ax = plt.subplots()
+        yticks = []
+        ylabels = []
+        i = 1
+        for bl in self.blocks:
+            logic_lbl = bl.raw_logic
+            ax.broken_barh(xranges=xr, yrange=(i, hgtval),
+                           facecolors=list(map(getfacecolor,
+                                               self.data[bl.alias])),
+                           alpha=alphaval)
+            ax.annotate(s=logic_lbl,
+                        xy=(xr[0][0], i + hgtval + lbl_offset))
+            yticks.append(i + (hgtval / 2))
+            ylabels.append(bl.alias)
+            i += 1
+
+        # Add master row to the plot
+        hgtval = 0.8
+        ax.broken_barh(xranges=xr, yrange=(i, hgtval),
+                       facecolors=list(map(getfacecolor,
+                                           self.data['master'])))
+        ax.annotate(s=self.alias_condition,
+                    xy=(xr[0][0], i + hgtval + lbl_offset))
+        yticks.append(i + (hgtval / 2))
+        ylabels.append('master')
+        i += 1
+
+        # Set a whole lot of axis parameters...
+        ax.set_axisbelow(True)
+
+        ax.xaxis_date()
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%y'))
+        ax.xaxis.set_major_locator(mdates.MonthLocator())
+        ax.xaxis.set_ticks_position('none')
+        ax.xaxis.grid(color='#e5e5e5')
+        #plt.xticks(rotation=45)
+
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(ylabels)
+        ax.yaxis.set_ticks_position('none')
+
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+
+        return ax
+
+    def __getitem__(self, key):
+        """
+        Returns the Block instance on the corresponding index.
+        `key` can be integer or `.alias` string.
+        """
+        try:
+            idx = int(key)
+        except ValueError:
+            idx = None
+            for i, bl in enumerate(self.blocks):
+                if bl.alias == key:
+                    idx = i
+                    break
+            if idx is None:
+                raise KeyError(f"No Block with alias '{key}'")
+        return self.blocks[idx]
+
 
     def __str__(self):
         if self.secondary:
