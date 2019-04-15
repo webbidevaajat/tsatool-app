@@ -94,12 +94,15 @@ def main():
     log.info('Starting sensor observation insertions')
     conn = None
     try:
+        i = 0
+        i_tot = len(STATIDS)
         conn = tsadb_connect(username='tsadash', password=PWD)
         cur = conn.cursor()
         log.info(f'Using statobs from month {month_nr} on')
         for statid in STATIDS:
             try:
-                log.info(f'Inserting with statid {statid}')
+                i += 1
+                log.info(f'Inserting with statid {statid}, {i}/{i_tot}')
                 sql_cmd = INS_SQL.format(statid, month_nr)
                 cur.execute(sql_cmd)
                 conn.commit()
