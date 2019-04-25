@@ -717,6 +717,15 @@ class Condition:
         self.percentage_notvalid = self.tottime_notvalid.total_seconds() / tts
         self.percentage_nodata = self.tottime_nodata.total_seconds() / tts
 
+    def calculate_durations_df(self):
+        """
+        Set a DataFrame of how long each condition is valid / not valid / null
+        at a time.
+        """
+        # TODO: implement this later
+        pass
+
+
     def fetch_results_from_db(self, pg_conn=None):
         """
         Fetch result data from corresponding db view
