@@ -394,7 +394,10 @@ class Condition:
     :param time_range: start (included) and end (included) timestamps
     :type time_range: list or tuple of datetime objects
     """
-    def __init__(self, site, master_alias, raw_condition, time_range):
+    def __init__(self, site, master_alias, raw_condition, time_range, excel_row=None):
+        # Excel row for prompting, if made from Excel sheet
+        self.excel_row = excel_row
+
         # Original formattings are kept for printing purposes
         self.orig_site = site
         self.orig_master_alias = master_alias
@@ -437,6 +440,18 @@ class Condition:
         self.percentage_notvalid = None
         self.percentage_nodata = None
 
+    def error_context(self):
+        """
+        Return information on condition and its Excel row if available,
+        to be used with error messages.
+        """
+        s = f'ERROR with condition {self.id_string}'
+        if self.excel_row:
+            s += f'\n(row {self.excel_row} in Excel sheet):\n'
+        else:
+            s += ':\n'
+        return s
+
     def make_blocks(self):
         """
         Extract a list of Block instances (that is, subconditions)
@@ -451,7 +466,8 @@ class Condition:
         n_open = value.count('(')
         n_close = value.count(')')
         if n_open != n_close:
-            errtext = 'Unequal number of opening and closing parentheses:\n'
+            errtext = self.error_context()
+            errtext += 'Unequal number of opening and closing parentheses:\n'
             errtext += '{:d} opening and {:d} closing'.format(n_open, n_close)
             raise ValueError(errtext)
 
@@ -955,12 +971,12 @@ class CondCollection:
                     print(f'WARNING: no observations for station {stid} in database!')
             self.stations.add(station)
 
-    def add_condition(self, site, master_alias, raw_condition):
+    def add_condition(self, site, master_alias, raw_condition, excel_row=None):
         """
         Add new Condition instance, raise error if one exists already
         with same site-master_alias identifier.
         """
-        candidate = Condition(site, master_alias, raw_condition, self.time_range)
+        candidate = Condition(site, master_alias, raw_condition, self.time_range, excel_row)
         if candidate.id_string in self.id_strings:
             errtext = 'Identifier {:s} is already reserved, cannot add\n'.format(candidate.id_string)
             errtext += raw_condition
@@ -1094,9 +1110,10 @@ class CondCollection:
             # TODO: raise an error upon empty cell
             #       or empty row followed by non-empty rows
             dl.append(dict(
-                site = cells[0].value,
-                master_alias = cells[1].value,
-                raw_condition = cells[2].value
+                site=cells[0].value,
+                master_alias=cells[1].value,
+                raw_condition=cells[2].value,
+                excel_row=cells[0].row
             ))
 
         # Now the dictlist method can be used to
