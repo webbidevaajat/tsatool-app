@@ -420,13 +420,11 @@ class Condition:
         self.secondary = None
         self.make_blocks()
 
-        # TODO: unique occurrences of stations in blocks
         self.stations = set()
         self.list_stations()
 
         self.has_view = False
 
-        # TODO: pandas DataFrame of postgres temp table contents
         self.data = None
 
         self.tottime = self.time_until - self.time_from
