@@ -425,7 +425,9 @@ class Condition:
 
         self.has_view = False
 
-        self.data = None
+        # pandas DataFrames for results
+        self.main_df = None
+        self.durations_df = None
 
         self.tottime = self.time_until - self.time_from
         self.tottime_valid = None
@@ -685,11 +687,11 @@ class Condition:
 
     def set_summary_attrs(self):
         """
-        Calculate summary attribute values using the ``.data`` DataFrame.
+        Calculate summary attribute values using the ``.main_df`` DataFrame.
         """
-        if self.data is None:
+        if self.main_df is None:
             return
-        df = self.data
+        df = self.main_df
 
         self.tottime_valid = df[df['master']==True]['vdiff'].sum() or timedelta(0)
         self.tottime_notvalid = df[df['master']==False]['vdiff'].sum() or timedelta(0)
@@ -713,7 +715,7 @@ class Condition:
             print('since it does not have a corresponding database view.')
             return
         sql = f"SELECT * FROM {self.id_string};"
-        self.data = pandas.read_sql(sql, con=pg_conn)
+        self.main_df = pandas.read_sql(sql, con=pg_conn)
         self.set_summary_attrs()
 
     def get_timelineplot(self):
@@ -722,7 +724,7 @@ class Condition:
         a `broken_barh` plot of the validity of the condition
         and its blocks on a timeline.
         """
-        if self.data is None:
+        if self.main_df is None:
             raise Exception('No data to visualize.')
 
         def getfacecolor(val):
@@ -744,8 +746,8 @@ class Condition:
         lbl_offset = 0.1
 
         # Make matplotlib-ready range list from the time columns
-        xr = zip([mdates.date2num(el) for el in self.data['vfrom']],
-                 [mdates.date2num(el) for el in self.data['vuntil']])
+        xr = zip([mdates.date2num(el) for el in self.main_df['vfrom']],
+                 [mdates.date2num(el) for el in self.main_df['vuntil']])
         xr = [(a, b-a) for (a, b) in xr]
 
         # Make subplots for blocks;
@@ -759,7 +761,7 @@ class Condition:
             logic_lbl = bl.raw_logic
             ax.broken_barh(xranges=xr, yrange=(i, hgtval),
                            facecolors=list(map(getfacecolor,
-                                               self.data[bl.alias])),
+                                               self.main_df[bl.alias])),
                            alpha=alphaval)
             ax.annotate(s=logic_lbl,
                         xy=(xr[0][0], i + hgtval + lbl_offset))
@@ -771,7 +773,7 @@ class Condition:
         hgtval = 0.8
         ax.broken_barh(xranges=xr, yrange=(i, hgtval),
                        facecolors=list(map(getfacecolor,
-                                           self.data['master'])))
+                                           self.main_df['master'])))
         ax.annotate(s=self.alias_condition,
                     xy=(xr[0][0], i + hgtval + lbl_offset))
         yticks.append(i + (hgtval / 2))
