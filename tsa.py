@@ -15,6 +15,7 @@ import json
 import pandas
 import psycopg2
 import traceback
+import pptx
 import openpyxl as xl
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -1149,6 +1150,77 @@ class CondCollection:
             r += 1
 
         return wb
+
+    def to_pptx(self, pptx_object):
+        """
+        Return a ``pptx`` presentation object,
+        making a slide of each condition.
+
+        ``pptx`` must be a filepath or file-like object
+        representing a PowerPoint file that includes the master
+        layout for the TSA report and nothing else. The default
+        placeholder indices must conform with the constants here!
+        """
+        phi = dict(
+        HEADER_IDX = 17,     # Slide header placeholder
+        TITLE_IDX = 0,       # Condition title placeholder
+        BODY_IDX = 13,       # Condition string placeholder
+        TIMERANGE_IDX = 15,  # Placeholder for condition start/end time text
+        VALIDTABLE_IDX = 18, # Validity time/percentage table placeholder
+        ERRORS_IDX = 19,     # Placeholder for errors and warnings
+        MAINPLOT_IDX = 11,   # Main timeline plot placeholder
+        FOOTER_IDX = 16,     # Slide footer placeholder
+        )
+
+        pres = pptx.Presentation(pptx_object)
+        layout = pres.slide_layouts[0]
+
+        # Ensure placeholder indices exist as they should
+        indices_in_pres = [ph.placeholder_format.idx for ph in layout.placeholders]
+        for k, v in phi.items():
+            if v not in indices_in_pres:
+                raise Exception(f'{k} {v} not in default layout placeholders')
+
+        # Add slides and fill in contents for each condition.
+        for c in self.conditions:
+            s = pres.slides.add_slide(layout)
+
+            # Slide header
+            txt = 'TSA report '
+            if self.title is not None:
+                txt += self.title
+            txt += ' ' + self.created_timestamp.strftime('%d.%m.%Y')
+            s.placeholders[phi['HEADER_IDX']].text = txt
+
+            # Condition title
+            s.placeholders[phi['TITLE_IDX']].text = c.id_string
+
+            # Condition string / body
+            s.placeholders[phi['BODY_IDX']].text = c.condition
+
+            # Condition data time range
+            if not (c.data_from is None or c.data_until is None):
+                txt = 'Datan tarkasteluväli {}-{}'.format(
+                    c.data_from.strftime('%d.%m.%Y %H:%M'),
+                    c.data_until.strftime('%d.%m.%Y %H:%M')
+                )
+            else:
+                txt = 'Ei dataa saatavilla'
+            s.placeholders[phi['TIMERANGE_IDX']].text = txt
+
+            # Master condition validity table
+            # TODO
+
+            # Condition errors and warnings
+            txt = '; '.join(c.errmsgs)
+            s.placeholders[phi['ERRORS_IDX']].text = txt
+
+            # Condition main timeline plot
+            # TODO
+
+            # Slide footer
+            txt = 'TSATool v0.1, copyright WSP Finland'
+            s.placeholders[phi['FOOTER_IDX']].text = txt
 
     def __getitem__(self, key):
         """
