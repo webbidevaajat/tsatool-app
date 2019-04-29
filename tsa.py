@@ -210,6 +210,16 @@ class Block:
         # Set values depending on raw logic given
         self.unpack_logic()
 
+    def error_context(self, before='', after=''):
+        """
+        Return context information on block,
+        to be used with error messages.
+        """
+        s = before
+        s += f'\nBlock {self.alias}:\n'
+        s += after
+        return s
+
     def unpack_logic(self):
         """
         Detects and sets block type and attributes from raw logic string
@@ -231,7 +241,7 @@ class Block:
         n_hashtags = self.raw_logic.count('#')
         if n_hashtags > 1:
             errtext = 'Too many "#"s, only one or zero allowed:\n'
-            errtext += self.raw_logic
+            errtext = self.error_context(after=errtext)
             raise ValueError(errtext)
         n_binops = 0
         binop_in_str = None
@@ -241,7 +251,7 @@ class Block:
                 binop_in_str = binop
         if n_binops > 1:
             errtext = 'Too many binary operators, only one or zero allowed:\n'
-            errtext += self.raw_logic
+            errtext = self.error_context(after=errtext)
             raise ValueError(errtext)
 
         # Case 1: contains no hashtag and no binary operator
@@ -250,15 +260,21 @@ class Block:
         if n_hashtags == 0 and n_binops == 0:
             self.secondary = True
             self.site = self.parent_site
-            self.source_alias = to_pg_identifier(self.raw_logic)
+            try:
+                self.source_alias = to_pg_identifier(self.raw_logic)
+            except ValueError as e:
+                raise ValueError(self.error_context(after=e))
 
         # Case 2: contains hashtag but no binary operator
         # -> secondary block
         elif n_hashtags == 1 and n_binops == 0:
             self.secondary = True
             parts = self.raw_logic.split('#')
-            self.site = to_pg_identifier(parts[0])
-            self.source_alias = to_pg_identifier(parts[1])
+            try:
+                self.site = to_pg_identifier(parts[0])
+                self.source_alias = to_pg_identifier(parts[1])
+            except ValueError as e:
+                raise ValueError(self.error_context(after=e))
 
         # Case 3: contains hashtag and binary operator
         # -> primary block
@@ -267,11 +283,14 @@ class Block:
             self.site = self.parent_site
             parts = self.raw_logic.split('#')
             parts = [parts[0]] + parts[1].split(binop_in_str)
-            self.station = to_pg_identifier(parts[0])
-            self.station_id = int(''.join(i for i in self.station if i.isdigit()))
-            self.sensor = to_pg_identifier(parts[1])
-            self.operator = binop_in_str.lower().strip()
-            self.value_str = parts[2].lower().strip()
+            try:
+                self.station = to_pg_identifier(parts[0])
+                self.station_id = int(''.join(i for i in self.station if i.isdigit()))
+                self.sensor = to_pg_identifier(parts[1])
+                self.operator = binop_in_str.lower().strip()
+                self.value_str = parts[2].lower().strip()
+            except ValueError as e:
+                raise ValueError(self.error_context(after=e))
 
             # Special case with operator "in":
             # must be followed by tuple enclosed with parentheses.
@@ -282,14 +301,14 @@ class Block:
                     errtext = 'Binary operator "in" must be followed by\n'
                     errtext += 'a tuple enclosed with parentheses "()":\n'
                     errtext += self.raw_logic
-                    raise ValueError(errtext)
+                    raise ValueError(self.error_context(after=errtext))
 
         # Case 4: ERROR if binary operator but no hashtag
         else:
             errtext = 'No "#" given, should be of format\n'
             errtext += '[station]#[sensor] [binary operator] [value]:\n'
             errtext += self.raw_logic
-            raise ValueError(errtext)
+            raise ValueError(self.error_context(after=errtext))
 
     def set_sensor_id(self, nameids):
         """
@@ -300,7 +319,7 @@ class Block:
             self.sensor_id = nameids[self.sensor]
         except KeyError:
             errtext = f"Sensor '{self.sensor}' not found in database."
-            raise KeyError(errtext)
+            raise KeyError(self.error_context(after=errtext))
 
     def get_sql_def(self):
         """
@@ -311,12 +330,12 @@ class Block:
         if not self.sensor_id:
             errtext = 'No sensor_id set for\n'
             errtext += str(self)
-            raise Exception(errtext)
+            raise Exception(self.error_context(after=errtext))
 
         if self.secondary:
             errtext = 'Analyzing secondary blocks is not yet supported:\n'
             errtext += str(self)
-            raise Exception(errtext)
+            raise Exception(self.error_context(after=errtext))
 
         sql = (f"SELECT valid_r, istrue AS {self.alias} "
                "FROM pack_ranges("
