@@ -888,7 +888,7 @@ class CondCollection:
     :param pg_conn: database connection
     :type pg_conn: ``psycopg2.connect()`` object
     """
-    def __init__(self, time_from, time_until, pg_conn=None):
+    def __init__(self, time_from, time_until, pg_conn=None, title=None):
         # Times must be datetime objects and in correct order
         assert isinstance(time_from, datetime)
         assert isinstance(time_until, datetime)
@@ -897,6 +897,12 @@ class CondCollection:
         self.time_until = time_until
         self.set_default_times()
         self.time_range = (self.time_from, self.time_until)
+
+        self.title = title
+
+        # Timestamp is based on instance creation time,
+        # not on when the analysis has been run
+        self.created_timestamp = datetime.now()
 
         self.conditions = []
         self.stations = set()
@@ -1080,14 +1086,14 @@ class CondCollection:
         return out
 
     @classmethod
-    def from_dictlist(cls, dictlist, time_from, time_until, pg_conn=None):
+    def from_dictlist(cls, dictlist, time_from, time_until, pg_conn=None, title=None):
         """
         Create instance and add conditions from list of dicts.
         Dicts must have corresponding keys
         ``'site', 'master_alias', 'raw_condition'``.
         Times must be ``datetime`` objects.
         """
-        cc = cls(time_from, time_until, pg_conn)
+        cc = cls(time_from, time_until, pg_conn, title)
         for d in dictlist:
             cc.add_condition(**d)
         cc.set_sensor_ids()
@@ -1144,7 +1150,8 @@ class CondCollection:
             dictlist=dl,
             time_from=time_from,
             time_until=time_until,
-            pg_conn=pg_conn
+            pg_conn=pg_conn,
+            title=ws.title
         )
 
         return cc
