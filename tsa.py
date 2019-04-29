@@ -15,6 +15,7 @@ import json
 import pandas
 import psycopg2
 import traceback
+import openpyxl as xl
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib import rcParams
@@ -417,6 +418,10 @@ class Condition:
         self.time_from = time_range[0]
         self.time_until = time_range[1]
 
+        # As above but representing actual min and max time of result data
+        self.data_from = None
+        self.data_until = None
+
         # make_blocks() sets .blocks, .alias_condition and .secondary
         self.blocks = None
         self.alias_condition = None
@@ -432,6 +437,8 @@ class Condition:
         self.main_df = None
         self.durations_df = None
 
+        # Total time will be set to represent
+        # actual min and max timestamps of the data
         self.tottime = self.time_until - self.time_from
         self.tottime_valid = None
         self.tottime_notvalid = None
@@ -741,6 +748,12 @@ class Condition:
             return
         sql = f"SELECT * FROM {self.id_string};"
         self.main_df = pandas.read_sql(sql, con=pg_conn)
+
+        self.data_from = self.main_df['vfrom'].min()
+        self.data_until = self.main_df['vuntil'].max()
+        if not (self.data_from is None or self.data_until is None):
+            self.tottime = self.data_until - self.data_from
+
         self.set_summary_attrs()
 
     def get_timelineplot(self):
