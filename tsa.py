@@ -1066,6 +1066,58 @@ class CondCollection:
                 print('Could not fetch results from database.')
                 print(traceback.print_exc())
 
+    def to_workbook(self):
+        """
+        Return an ``openpyxl.Workbook`` with a single worksheet
+        containing basic data of the condition collection.
+        """
+        wb = xl.Workbook()
+        ws = wb.active
+        ws.title = self.title or 'conditions'
+
+        # Headers in fixed cells & styling
+        headers = {'A1': 'start',
+                   'B1': 'end',
+                   'D1': 'analyzed',
+                   'A3': 'site',
+                   'B3': 'master_alias',
+                   'C3': 'condition',
+                   'D3': 'data_from',
+                   'E3': 'data_until',
+                   'F3': 'valid',
+                   'G3': 'notvalid',
+                   'H3': 'nodata'
+                   }
+        for k, v in headers.items():
+            ws[k] = v
+            ws[k].font = xl.styles.Font(bold=True)
+
+        # Global values
+        ws['A2'] = self.time_from
+        ws['B2'] = self.time_until
+        ws['D2'] = self.created_timestamp
+
+        # Condition rows
+        r = 4
+        for cnd in self.conditions:
+            ws[f'A{r}'] = cnd.site
+            ws[f'B{r}'] = cnd.master_alias
+            ws[f'C{r}'] = cnd.condition
+            ws[f'D{r}'] = cnd.data_from
+            ws[f'E{r}'] = cnd.data_until
+            ws[f'F{r}'] = cnd.percentage_valid
+            ws[f'G{r}'] = cnd.percentage_notvalid
+            ws[f'H{r}'] = cnd.percentage_nodata
+
+            # Percent format
+            ws[f'F{r}'].number_format = '0.00 %'
+            ws[f'G{r}'].number_format = '0.00 %'
+            ws[f'H{r}'].number_format = '0.00 %'
+
+            r += 1
+
+        return wb
+
     def __getitem__(self, key):
         """
         Returns the Condition instance on the corresponding index.
