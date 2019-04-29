@@ -399,6 +399,9 @@ class Condition:
         # Excel row for prompting, if made from Excel sheet
         self.excel_row = excel_row
 
+        # List for saving error strings
+        self.errmsgs = []
+
         # Original formattings are kept for printing purposes
         self.orig_site = site
         self.orig_master_alias = master_alias
@@ -447,16 +450,17 @@ class Condition:
         self.percentage_notvalid = None
         self.percentage_nodata = None
 
-    def error_context(self):
+    def error_context(self, before='', after=''):
         """
         Return information on condition and its Excel row if available,
         to be used with error messages.
         """
-        s = f'ERROR with condition {self.id_string}'
+        s = before + '\n'
+        s += f'ERROR with condition {self.id_string}'
         if self.excel_row:
             s += f'\n(row {self.excel_row} in Excel sheet):\n'
         else:
-            s += ':\n'
+            s += ':\n' + after
         return s
 
     def make_blocks(self):
@@ -476,6 +480,7 @@ class Condition:
             errtext = self.error_context()
             errtext += 'Unequal number of opening and closing parentheses:\n'
             errtext += '{:d} opening and {:d} closing'.format(n_open, n_close)
+            self.errmsgs.append(errtext)
             raise ValueError(errtext)
 
         # Eliminate multiple whitespaces
@@ -593,14 +598,20 @@ class Condition:
                 if i == 0:
                     if el[0] not in allowed_first:
                         errtext = '{"{:s}" not allowed as first element:\n'.format(el[1])
+                        errtext = self.error_context(after=errtext)
+                        self.errmsgs.append(errtext)
                         raise ValueError(errtext)
                 elif i == last_i:
                     if el[0] not in allowed_last:
                         errtext = '"{:s}" not allowed as last element:\n'.format(el[1])
+                        errtext = self.error_context(after=errtext)
+                        self.errmsgs.append(errtext)
                         raise ValueError(errtext)
                 if i < last_i:
                     if (el[0], tuples[i+1][0]) not in allowed_pairs:
                         errtext = '"{:s}" not allowed right before "{:s}":\n'.format(el[1], tuples[i+1][1])
+                        errtext = self.error_context(after=errtext)
+                        self.errmsgs.append(errtext)
                         raise ValueError(errtext)
 
         # Check the correct order of the tuples.
@@ -706,7 +717,9 @@ class Condition:
                 self.has_view = True
             except psycopg2.DatabaseError as e:
                 pg_conn.rollback()
-                raise psycopg2.DatabaseError(e)
+                errtext = self.error_context(after=e)
+                self.errmsgs.append(errtext)
+                raise psycopg2.DatabaseError(errtext)
 
     def set_summary_attrs(self):
         """
