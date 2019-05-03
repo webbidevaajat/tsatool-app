@@ -19,10 +19,14 @@ import pptx
 import openpyxl as xl
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from io import BytesIO
 from matplotlib import rcParams
 from getpass import getpass
 from datetime import datetime
 from datetime import timedelta
+from pptx.util import Pt
+from pptx.util import Cm
+from pptx.dml.color import RGBColor
 
 # Set matplotlib parameters globally
 rcParams['font.family'] = 'sans-serif'
@@ -872,6 +876,21 @@ class Condition:
 
         return ax
 
+    def save_timelineplot(self, fobj, w, h):
+        """
+        Save main timeline plot as png picture into given file object
+        with given pixel dimensions.
+        """
+        DPI = 300
+        w = w / DPI
+        h = h / DPI
+        fig = self.get_timelineplot().get_figure()
+        fig.dpi = DPI
+        fig.set_size_inches(w, h)
+        fig.savefig(fname=fobj,
+                    format='png')
+        plt.close(fig)
+
     def __getitem__(self, key):
         """
         Returns the Block instance on the corresponding index.
@@ -1171,6 +1190,7 @@ class CondCollection:
         MAINPLOT_IDX = 11,   # Main timeline plot placeholder
         FOOTER_IDX = 16,     # Slide footer placeholder
         )
+        MAINPLOT_H_PX = 3840 # Main timeline plot height in pixels
 
         pres = pptx.Presentation(pptx_object)
         layout = pres.slide_layouts[0]
@@ -1186,11 +1206,15 @@ class CondCollection:
             s = pres.slides.add_slide(layout)
 
             # Slide header
-            txt = 'TSA report '
+            txt = 'TSA report: '
             if self.title is not None:
                 txt += self.title
             txt += ' ' + self.created_timestamp.strftime('%d.%m.%Y')
             s.placeholders[phi['HEADER_IDX']].text = txt
+
+            # Slide footer
+            txt = 'TSATool v0.1, copyright WSP Finland'
+            s.placeholders[phi['FOOTER_IDX']].text = txt
 
             # Condition title
             s.placeholders[phi['TITLE_IDX']].text = c.id_string
@@ -1209,18 +1233,57 @@ class CondCollection:
             s.placeholders[phi['TIMERANGE_IDX']].text = txt
 
             # Master condition validity table
-            # TODO
+            tb_shape = s.placeholders[phi['VALIDTABLE_IDX']].insert_table(rows=3, cols=4)
+            tb = tb_shape.table
+
+            tb.cell(0, 0).text = ''
+
+            tb.cell(0, 1).text = 'Voimassa'
+            tb.cell(0, 2).text = 'Ei voimassa'
+            tb.cell(0, 3).text = 'Tieto puuttuu'
+
+            tb.cell(1, 0).text = 'Yhteensä'
+            txt = strfdelta(c.tottime_valid, '{days} pv {hours} h {minutes} min')
+            tb.cell(1, 1).text = txt
+            txt = strfdelta(c.tottime_notvalid, '{days} pv {hours} h {minutes} min')
+            tb.cell(1, 2).text = txt
+            txt = strfdelta(c.tottime_nodata, '{days} pv {hours} h {minutes} min')
+            tb.cell(1, 3).text = txt
+
+            tb.cell(2, 0).text = 'Osuus tarkasteluajasta'
+            txt = '{} %'.format(round(c.percentage_valid*100, 2))
+            tb.cell(2, 1).text = txt
+            txt = '{} %'.format(round(c.percentage_notvalid*100, 2))
+            tb.cell(2, 2).text = txt
+            txt = '{} %'.format(round(c.percentage_nodata*100, 2))
+            tb.cell(2, 3).text = txt
+
+            for cl in tb.iter_cells():
+                cl.fill.background()
+                for ph in cl.text_frame.paragraphs:
+                    ph.font.name = 'Montserrat'
+                    ph.font.size = Pt(8)
+                    ph.font.color.rgb = RGBColor.from_string('000000')
+
+            for row in tb.rows:
+                row.height = Cm(0.64)
 
             # Condition errors and warnings
-            txt = '; '.join(c.errmsgs)
+            txt = '; '.join(c.errmsgs) or ' '
             s.placeholders[phi['ERRORS_IDX']].text = txt
 
-            # Condition main timeline plot
-            # TODO
+            # Condition main timeline plot; ignored if no data to viz
+            if c.main_df is None:
+                continue
+            # Find out the proportion of plot height of the width
+            wh_factor = s.placeholders[phi['MAINPLOT_IDX']].height \
+                        / s.placeholders[phi['MAINPLOT_IDX']].width
+            w, h = MAINPLOT_H_PX, wh_factor*MAINPLOT_H_PX
+            with BytesIO() as fobj:
+                c.save_timelineplot(fobj, w, h)
+                s.placeholders[phi['MAINPLOT_IDX']].insert_picture(fobj)
 
-            # Slide footer
-            txt = 'TSATool v0.1, copyright WSP Finland'
-            s.placeholders[phi['FOOTER_IDX']].text = txt
+        return pres
 
     def __getitem__(self, key):
         """
