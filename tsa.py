@@ -207,6 +207,7 @@ class Block:
         self.station = None
         self.station_id = None
         self.source_alias = None
+        self.source_view = None
         self.sensor = None
         self.sensor_id = None
         self.operator = None
@@ -267,6 +268,7 @@ class Block:
             self.site = self.parent_site
             try:
                 self.source_alias = to_pg_identifier(self.raw_logic)
+                self.source_view = f'{self.site}_{self.source_alias}'
             except ValueError as e:
                 raise ValueError(self.error_context(after=e))
 
@@ -278,6 +280,7 @@ class Block:
             try:
                 self.site = to_pg_identifier(parts[0])
                 self.source_alias = to_pg_identifier(parts[1])
+                self.source_view = f'{self.site}_{self.source_alias}'
             except ValueError as e:
                 raise ValueError(self.error_context(after=e))
 
@@ -320,38 +323,62 @@ class Block:
         Set sensor id based on name-id dict,
         presumably gotten from database.
         """
-        try:
-            self.sensor_id = nameids[self.sensor]
-        except KeyError:
-            errtext = f"Sensor '{self.sensor}' not found in database."
-            raise KeyError(self.error_context(after=errtext))
+        if self.secondary == False:
+            try:
+                self.sensor_id = nameids[self.sensor]
+            except KeyError:
+                errtext = f"Sensor '{self.sensor}' not found in database."
+                raise KeyError(self.error_context(after=errtext))
 
     def get_sql_def(self):
         """
-        Create SQL ``pack_ranges`` function call
-        string to be used as part of the corresponding
+        Create SQL call
+        to be used as part of the corresponding
         Condition table creation.
         """
-        if not self.sensor_id:
-            errtext = 'No sensor_id set for\n'
-            errtext += str(self)
-            raise Exception(self.error_context(after=errtext))
+        if self.secondary is None:
+            errtext = 'Block type (primary/secondary) is not defined.'
+            errtext = self.error_context(after=errtext)
+            raise Exception(errtext)
 
-        if self.secondary:
-            errtext = 'Analyzing secondary blocks is not yet supported:\n'
-            errtext += str(self)
-            raise Exception(self.error_context(after=errtext))
+        elif self.secondary:
+            # Block is SECONDARY -> try to pick boolean values
+            # and time ranges from existing db view
+            sql = ("SELECT tsrange(vfrom, vuntil) AS valid_r, "
+                   f"master AS {self.alias} "
+                   f"FROM {self.source_view}")
 
-        sql = (f"SELECT valid_r, istrue AS {self.alias} "
-               "FROM pack_ranges("
-               "p_obs_relation := 'obs_main', "
-               "p_maxminutes := 30, "
-               f"p_statid := {self.station_id}, "
-               f"p_seid := {self.sensor_id}, "
-               f"p_operator := '{self.operator}', "
-               f"p_seval := '{self.value_str}')")
+        else:
+            # Block is PRIMARY -> make pack_ranges call
+            # to form time ranges and boolean values
+            if not self.sensor_id:
+                errtext = 'No sensor_id set for primary condition'
+                errtext = self.error_context(after=errtext)
+                raise Exception(errtext)
+
+            sql = (f"SELECT valid_r, istrue AS {self.alias} "
+                   "FROM pack_ranges("
+                   "p_obs_relation := 'obs_main', "
+                   "p_maxminutes := 30, "
+                   f"p_statid := {self.station_id}, "
+                   f"p_seid := {self.sensor_id}, "
+                   f"p_operator := '{self.operator}', "
+                   f"p_seval := '{self.value_str}')")
 
         return sql
+
+    def view_exists(self, viewnames):
+        """
+        Check if the source view for secondary block exists
+        in the list of view names (presumably fetched from database).
+        With primary view automatically returns ``True``.
+        """
+        if self.secondary is None:
+            errtext = 'Block type (primary/secondary) is not defined.'
+            errtext = self.error_context(after=errtext)
+            raise Exception(errtext)
+
+        return self.source_view in viewnames or self.secondary == False
 
     def __str__(self):
         if self.secondary:
@@ -685,12 +712,14 @@ class Condition:
             if not bl.secondary:
                 self.stations.add(bl.station)
 
-    def create_db_view(self, pg_conn=None, verbose=False):
+    def create_db_view(self, pg_conn=None, verbose=False, viewnames=[], execute=True):
         """
         Create temporary table corresponding to the condition.
+        Existence of secondary block source views is checked
+        over ``viewnames``.
         Effective only if a database connection is present.
+        With execute=False, only returns the sql statements as string.
         """
-        # TODO: define secondary condition behaviour
 
         drop_sql = f"DROP VIEW IF EXISTS {self.id_string};\n"
         sql = f"CREATE OR REPLACE TEMP VIEW {self.id_string} AS ( \nWITH "
@@ -742,19 +771,20 @@ class Condition:
         if not pg_conn:
             errtext = 'WARNING: no database connection'
             self.add_error(errtext)
-            return
 
-        with pg_conn.cursor() as cur:
-            try:
-                cur.execute(drop_sql)
-                cur.execute(sql)
-                pg_conn.commit()
-                self.has_view = True
-            except psycopg2.DatabaseError as e:
-                pg_conn.rollback()
-                self.add_error(e)
-                errtext = self.error_context(after=e)
-                raise psycopg2.DatabaseError(errtext)
+        if execute and pg_conn:
+            with pg_conn.cursor() as cur:
+                try:
+                    cur.execute(drop_sql)
+                    cur.execute(sql)
+                    pg_conn.commit()
+                    self.has_view = True
+                except psycopg2.DatabaseError as e:
+                    pg_conn.rollback()
+                    self.add_error(e)
+                    errtext = self.error_context(after=e)
+        elif not execute:
+            return '\n'.join([drop_sql, sql])
 
     def set_summary_attrs(self):
         """
@@ -980,6 +1010,7 @@ class CondCollection:
         self.statids_available = self.get_stations_in_view()
 
         self.setup_obs_view()
+        self.viewnames = []
 
     def add_error(self, e):
         """
@@ -1124,27 +1155,50 @@ class CondCollection:
             for bl in cnd.blocks:
                 bl.set_sensor_id(nameids)
 
+    def get_temporary_views(self):
+        """
+        Set str list of temporary views currently available in db.
+        """
+        if not self.pg_conn:
+            self.add_error('WARNING: No db connection, cannot get temporary views list')
+            return
+        with self.pg_conn.cursor() as cur:
+            try:
+                sql = ("SELECT table_name FROM information_schema.views "
+                       "WHERE table_schema LIKE '%pg_temp%';")
+                cur.execute(sql)
+                res = cur.fetchall()
+            except Exception as e:
+                self.pg_conn.rollback()
+                self.add_error(e)
+                return
+        self.viewnames = [el[0] for el in res]
+
     def create_condition_views(self, verbose=False):
         """
-        For each Condition, try to create the corresponding
-        database view.
+        For each Condition, create the corresponding database view.
+        Primary conditions are handled first, only then secondary ones;
+        if there are secondary conditions depending further on each other,
+        it is up to the user to give them in correct order!
         """
-        # TODO: secondary Condition handling,
-        #       make primary ones first and
-        #       then try secondary ones until they
-        #       find existing identifiers from the database
-        #       to create their views.
+
+        # First round for primary ones only
         for cnd in self.conditions:
             if cnd.secondary:
-                print(f'{str(cnd)}\n')
-                print('Secondary conditions not yet supported.')
                 continue
-            try:
-                cnd.create_db_view(pg_conn=self.pg_conn, verbose=verbose)
-            except Exception as e:
-                print(f'{str(cnd)}:\n')
-                print('Could not create a view.')
-                print(traceback.print_exc())
+            cnd.create_db_view(pg_conn=self.pg_conn,
+                               verbose=verbose,
+                               viewnames=self.viewnames)
+        self.get_temporary_views()
+
+        # Second round for secondary ones,
+        # viewnames list is now updated every time
+        for cnd in self.conditions:
+            if cnd.secondary:
+                cnd.create_db_view(pg_conn=self.pg_conn,
+                                   verbose=verbose,
+                                   viewnames=self.viewnames)
+                self.get_temporary_views()
 
     def fetch_all_results(self):
         """
