@@ -463,12 +463,12 @@ class Condition:
         # Total time will be set to represent
         # actual min and max timestamps of the data
         self.tottime = self.time_until - self.time_from
-        self.tottime_valid = None
-        self.tottime_notvalid = None
-        self.tottime_nodata = None
-        self.percentage_valid = None
-        self.percentage_notvalid = None
-        self.percentage_nodata = None
+        self.tottime_valid = timedelta(0)
+        self.tottime_notvalid = timedelta(0)
+        self.tottime_nodata = self.tottime
+        self.percentage_valid = 0
+        self.percentage_notvalid = 0
+        self.percentage_nodata = 1
 
     def error_context(self, before='', after=''):
         """
