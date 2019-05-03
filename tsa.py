@@ -474,6 +474,15 @@ class Condition:
         self.percentage_notvalid = 0
         self.percentage_nodata = 1
 
+    def add_error(self, e):
+        """
+        Add error message to error message list.
+        Only unique errors are collected, in order to avoid
+        piling up repetitive messages from loops, for example.
+        """
+        if e not in self.errmsgs:
+            self.errmsgs.append(e)
+
     def error_context(self, before='', after=''):
         """
         Return information on condition and its Excel row if available,
@@ -504,7 +513,7 @@ class Condition:
             errtext = self.error_context()
             errtext += 'Unequal number of opening and closing parentheses:\n'
             errtext += '{:d} opening and {:d} closing'.format(n_open, n_close)
-            self.errmsgs.append(errtext)
+            self.add_error(errtext)
             raise ValueError(errtext)
 
         # Eliminate multiple whitespaces
@@ -623,19 +632,19 @@ class Condition:
                     if el[0] not in allowed_first:
                         errtext = '{"{:s}" not allowed as first element:\n'.format(el[1])
                         errtext = self.error_context(after=errtext)
-                        self.errmsgs.append(errtext)
+                        self.add_error(errtext)
                         raise ValueError(errtext)
                 elif i == last_i:
                     if el[0] not in allowed_last:
                         errtext = '"{:s}" not allowed as last element:\n'.format(el[1])
                         errtext = self.error_context(after=errtext)
-                        self.errmsgs.append(errtext)
+                        self.add_error(errtext)
                         raise ValueError(errtext)
                 if i < last_i:
                     if (el[0], tuples[i+1][0]) not in allowed_pairs:
                         errtext = '"{:s}" not allowed right before "{:s}":\n'.format(el[1], tuples[i+1][1])
                         errtext = self.error_context(after=errtext)
-                        self.errmsgs.append(errtext)
+                        self.add_error(errtext)
                         raise ValueError(errtext)
 
         # Check the correct order of the tuples.
@@ -731,6 +740,8 @@ class Condition:
             print(sql)
 
         if not pg_conn:
+            errtext = 'WARNING: no database connection'
+            self.add_error(errtext)
             return
 
         with pg_conn.cursor() as cur:
@@ -741,8 +752,8 @@ class Condition:
                 self.has_view = True
             except psycopg2.DatabaseError as e:
                 pg_conn.rollback()
+                self.add_error(e)
                 errtext = self.error_context(after=e)
-                self.errmsgs.append(errtext)
                 raise psycopg2.DatabaseError(errtext)
 
     def set_summary_attrs(self):
@@ -800,7 +811,8 @@ class Condition:
         and its blocks on a timeline.
         """
         if self.main_df is None:
-            raise Exception('No data to visualize.')
+            self.add_error('Could not create a plot since there is no data to visualize.')
+            return
 
         def getfacecolor(val):
             """
@@ -960,12 +972,32 @@ class CondCollection:
         self.stations = set()
         self.id_strings = set()
 
+        self.errmsgs = []
+
         self.pg_conn = pg_conn
 
         self.setup_statobs_view()
         self.statids_available = self.get_stations_in_view()
 
         self.setup_obs_view()
+
+    def add_error(self, e):
+        """
+        Add error message to error message list.
+        Only unique errors are collected, in order to avoid
+        piling up repetitive messages from loops, for example.
+        """
+        if e not in self.errmsgs:
+            self.errmsgs.append(e)
+
+    def list_errors(self):
+        """
+        List error messages as string if there are any.
+        """
+        if self.errmsgs:
+            out = f'There were {len(self.errmsgs)} warnings or errors:\n'
+            out += '\n'.join(self.errmsgs)
+            return out
 
     def set_default_times(self):
         """
@@ -993,12 +1025,14 @@ class CondCollection:
                 try:
                     cur.execute(sql, (self.time_from, self.time_until))
                     self.pg_conn.commit()
-                except:
+                except Exception as e:
                     self.pg_conn.rollback()
                     print(traceback.print_exc())
+                    self.add_error(e)
         else:
-            if verbose:
-                print('No db connection, cannot create view')
+            errtext = 'WARNING: No db connection, cannot create view "statobs_time"'
+            self.add_error(errtext)
+            print(errtext) if verbose
 
     def get_stations_in_view(self):
         """
@@ -1012,7 +1046,8 @@ class CondCollection:
                 statids = [el[0] for el in statids]
                 return statids
         else:
-            return None
+            self.add_error('WARNING: No db connection, cannot get stations from database')
+            return
 
     def setup_obs_view(self):
         """
@@ -1021,6 +1056,7 @@ class CondCollection:
         that works as the main source for Block queries.
         """
         if not self.pg_conn:
+            self.add_error('WARNING: No db connection, cannot set up view "obs_main"')
             return
         with self.pg_conn.cursor() as cur:
             sql = ("CREATE OR REPLACE TEMP VIEW obs_main AS "
@@ -1031,9 +1067,10 @@ class CondCollection:
             try:
                 cur.execute(sql)
                 self.pg_conn.commit()
-            except:
+            except Exception as e:
                 self.pg_conn.rollback()
                 print(traceback.print_exc())
+                self.add_error(e)
 
     def add_station(self, station):
         """
@@ -1048,7 +1085,9 @@ class CondCollection:
             stid = int(''.join(i for i in station if i.isdigit()))
             if self.pg_conn:
                 if stid not in self.statids_available:
-                    print(f'WARNING: no observations for station {stid} in database!')
+                    errtext = f'WARNING: no observations for station {stid} in database!'
+                    print(errtext)
+                    self.add_error(errtext)
             self.stations.add(station)
 
     def add_condition(self, site, master_alias, raw_condition, excel_row=None):
@@ -1056,16 +1095,18 @@ class CondCollection:
         Add new Condition instance, raise error if one exists already
         with same site-master_alias identifier.
         """
-        candidate = Condition(site, master_alias, raw_condition, self.time_range, excel_row)
-        if candidate.id_string in self.id_strings:
-            errtext = 'Identifier {:s} is already reserved, cannot add\n'.format(candidate.id_string)
-            errtext += raw_condition
-            raise ValueError(errtext)
-        else:
-            self.conditions.append(candidate)
-            self.id_strings.add(candidate.id_string)
-            for s in candidate.stations:
-                self.add_station(s)
+        try:
+            candidate = Condition(site, master_alias, raw_condition, self.time_range, excel_row)
+            if candidate.id_string in self.id_strings:
+                errtext = f'Identifier {candidate.id_string} is already reserved, cannot add it twice'
+                raise ValueError(errtext)
+            else:
+                self.conditions.append(candidate)
+                self.id_strings.add(candidate.id_string)
+                for s in candidate.stations:
+                    self.add_station(s)
+        except Exception as e:
+            self.add_error(e)
 
     def set_sensor_ids(self):
         """
@@ -1073,8 +1114,8 @@ class CondCollection:
         and set sensor ids for all Blocks in all Conditions.
         """
         if not self.pg_conn:
+            self.add_error('WARNING: No db connection, cannot get sensor ids from database')
             return
-            # TODO: action upon no pg connection?
         with self.pg_conn.cursor() as cur:
             cur.execute("SELECT id, lower(name) AS name FROM sensors;")
             tb = cur.fetchall()
