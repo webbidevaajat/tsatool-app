@@ -432,14 +432,16 @@ class CondCollection:
         return self.conditions[key]
 
     def __str__(self):
-        # TODO: create a meaningful print representation
-        out = 'A CondCollection.\n'
-        out += '  Time range:\n'
-        out += f"    from {self.time_from.strftime('%Y-%m-%d %H:%M:%S')}\n"
-        out += f"    to   {self.time_until.strftime('%Y-%m-%d %H:%M:%S')}\n"
-        out += f'  {len(self.stations)} stations:\n'
-        out += f'    {", ".join(list(self.stations))}\n'
-        out += f'  {len(self.conditions)} conditions:\n'
+        t = self.title
+        if t is None:
+            t = ', no title'
+        out = (f'CondCollection {t}\n'
+               '  Time range:\n'
+               f"    from {self.time_from.strftime('%Y-%m-%d %H:%M:%S')}\n"
+               f"    to   {self.time_until.strftime('%Y-%m-%d %H:%M:%S')}\n"
+               f'  {len(self.stations)} stations:\n'
+               f'    {", ".join(list(self.stations))}\n'
+               f'  {len(self.conditions)} conditions:\n')
         for c in self.conditions:
             out += f'{str(c)}\n'
         return out

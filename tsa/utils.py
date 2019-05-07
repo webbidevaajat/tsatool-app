@@ -112,3 +112,13 @@ def strfdelta(tdelta, fmt):
     d['hours'], rem = divmod(tdelta.seconds, 3600)
     d['minutes'], d['seconds'] = divmod(rem, 60)
     return fmt.format(**d)
+
+def trunc_str(s, n=80):
+    """
+    Truncate string ``s`` such that ``n-4`` first characters + `` ...``
+    are returned (e.g., for printing). For shorter strings,
+    return ``s`` as it is.
+    """
+    if len(s) <= n-4:
+        return s
+    return s[:(n-5)] + ' ...'

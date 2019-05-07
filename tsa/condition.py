@@ -7,6 +7,7 @@ import matplotlib.dates as mdates
 from .block import Block
 from .utils import to_pg_identifier
 from .utils import eliminate_umlauts
+from .utils import trunc_str
 from matplotlib import rcParams
 from datetime import timedelta
 
@@ -568,9 +569,9 @@ class Condition:
             s = '  Secondary '
         else:
             s = '  Primary '
-        s += 'Condition {:s}:\n'.format(self.id_string)
-        s += '    {:s}\n'.format(self.condition)
-        s += '    ALIAS: {:s}'.format(self.alias_condition)
+        s += (f'Condition {self.id_string}:\n'
+              f'    {trunc_str(self.condition, n=76)}\n'
+              f'    ALIAS: {trunc_str(self.alias_condition, n=76)}')
         return s
 
     def __repr__(self):
