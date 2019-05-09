@@ -44,7 +44,7 @@ class CondCollection:
         self.created_timestamp = datetime.now()
 
         self.conditions = []
-        self.stations = set()
+        self.station_ids = set()
         self.id_strings = set()
 
         self.errmsgs = []
@@ -148,23 +148,18 @@ class CondCollection:
                 print(traceback.print_exc())
                 self.add_error(e)
 
-    def add_station(self, station):
+    def add_station(self, stid):
         """
-        Add ``station`` to ``self.stations`` if not already there.
+        Add ``stid`` to ``self.station_ids`` if not already there.
         If db connection is available, check if the main view
         contains that station id.
-
-        .. note::   station identifier must contain station integer id
-                    when letters are removed.
         """
-        if station not in self.stations:
-            stid = int(''.join(i for i in station if i.isdigit()))
+        if stid not in self.station_ids:
             if self.pg_conn:
                 if stid not in self.statids_available:
                     errtext = f'WARNING: no observations for station {stid} in database!'
-                    print(errtext)
                     self.add_error(errtext)
-            self.stations.add(station)
+            self.station_ids.add(stid)
 
     def add_condition(self, site, master_alias, raw_condition, excel_row=None):
         """
@@ -179,8 +174,8 @@ class CondCollection:
             else:
                 self.conditions.append(candidate)
                 self.id_strings.add(candidate.id_string)
-                for s in candidate.stations:
-                    self.add_station(s)
+                for stid in candidate.station_ids:
+                    self.add_station(stid)
         except Exception as e:
             self.add_error(e)
 

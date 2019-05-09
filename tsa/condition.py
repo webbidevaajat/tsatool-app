@@ -95,7 +95,7 @@ class Condition:
         self.secondary = None
         self.make_blocks()
 
-        self.stations = set()
+        self.station_ids = set()
         self.list_stations()
 
         self.has_view = False
@@ -318,12 +318,12 @@ class Condition:
 
     def list_stations(self):
         """
-        Add unique stations of primary `self.blocks`
-        to `self.stations` set
+        Add unique station ids of primary `self.blocks`
+        to `self.station_ids` set
         """
         for bl in self.blocks:
             if not bl.secondary:
-                self.stations.add(bl.station)
+                self.station_ids.add(bl.station_id)
 
     def create_db_view(self, pg_conn=None, verbose=False, viewnames=[], execute=True):
         """
