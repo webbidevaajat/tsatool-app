@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 # Block class, called by Condition
 
 from .utils import to_pg_identifier
