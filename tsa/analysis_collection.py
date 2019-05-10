@@ -6,7 +6,30 @@
 import os
 import openpyxl as xl
 from .cond_collection import CondCollection
+from .utils import trunc_str
 from datetime import datetime
+
+class Action:
+    """
+    Template for CLI actions / choices related to AnalysisCollection,
+    with some informative attributes.
+    """
+    def __init__(self, title, content, message=''):
+        self.title = title
+        self.content = content
+        self.message = message
+
+    def __str__(self):
+        """
+        Pick-compatible string representation, lines max 101 chars
+        """
+        if not self.message:
+            return '{:33} {:67}'.format(trunc_str(self.title, n=33),
+                                        trunc_str(self.content, n=67))
+        else:
+            return '{:33} {:33} {:33}'.format(trunc_str(self.title, n=33),
+                                              trunc_str(self.content, n=33),
+                                              trunc_str(self.message, n=33))
 
 class AnalysisCollection:
     """
@@ -15,36 +38,128 @@ class AnalysisCollection:
     Enables validating CondCollections separately
     and then analysing them.
 
+    Any input and output of an analysis is / must be located
+    in ``analysis`` directory of the project root.
     The collection is based on an Excel file,
     and each worksheet produces a CondCollection (unless valid).
     The results (common xlsx file, and a pptx file for each CondCollection)
-    are saved into ``output_dir`` and can be optionally zipped.
+    are saved into a new directory named after ``name``,
+    or after the Excel filename if no name given,
+    and they can be optionally zipped.
 
     .. note: Existing files with same filepath will be overwritten.
     """
 
-    def __init__(self, xlsx_path=None, output_dir=None):
-        self.input_xlsx_path = xlsx_path or ''
-        self.output_dir = output_dir or ''
-        self.title = os.path.basename(output_dir) or ''
+    def __init__(self, input_xlsx=None, name=None):
+        self.input_xlsx = input_xlsx
+        # TODO: validate / modify filename
+        self.name = name
+        # TODO: validate / modify output name
+        self.base_dir = os.getcwd()
+        self.data_dir = os.path.join(self.base_dir, 'analysis')
+        self.sheetnames = []
         self.collections = []
         self.statids_in_db = set()
+        self.n_errors = 0
+        self.out_formats = ['xlsx', 'pptx']
+        # TODO: method for collecting overall errors
 
-    def set_input_xlsx_path(self, path):
+    def list_main_actions(self):
         """
-        Set the input excel file path.
-        Throws an error if it does not exist.
+        Return list of main actions on the analysis collection,
+        along with the related statuses to be prompted.
+        This is to be used with the interactive CLI main menu.
         """
-        # TODO
-        pass
+        ls = []
+
+        # 0th: input excel filename
+        if self.input_xlsx is None:
+            ls.append(Action('Set input Excel file',
+                             'No valid input set',
+                             'SET INPUT EXCEL FILE!'))
+        else:
+            ls.append(Action('Set input Excel file',
+                             self.input_xlsx,
+                             'Input Excel selected'))
+
+        # 1st: select sheets
+        if self.input_xlsx is None:
+            ls.append(Action('Select condition sheets',
+                             'No sheets selected',
+                             'SET INPUT EXCEL FILE FIRST!'))
+        elif not self.sheetnames:
+            ls.append(Action('Select condition sheets',
+                             'No sheets selected',
+                             'All will be used by default.'))
+        else:
+            ls.append(Action('Select condition sheets',
+                             f'{len(self.sheetnames)} sheets selected'))
+
+        # 2nd: validate sheets
+        if self.input_xlsx is None:
+            ls.append(Action('Validate condition sheets',
+                             'No conditions read',
+                             'SET INPUT EXCEL FILE FIRST!'))
+        elif not self.collections:
+            ls.append(Action('Validate condition sheets',
+                             'No conditions read'))
+        else:
+            ls.append(Action('Validate condition sheets',
+                             f'{len(self.collections)} condition sets read'))
+
+        # 3rd: list errors / warnings
+        ls.append(Action('List errors and warnings',
+                         f'{self.n_errors} errors or warnings'))
+
+        # 4th: set output name
+        if self.name is None:
+            ls.append(Action('Set output name',
+                             'No output name set',
+                             'Will be auto-generated'))
+        else:
+            ls.append(Action('Set output name',
+                             self.name))
+
+        # 5th: select output formats
+        ls.append(Action('Select output formats',
+                         ', '.join(self.out_formats)))
+
+        # 6th: run analyses and save output
+        if self.input_xlsx is None:
+            ls.append(Action('Run & save analyses',
+                             'Not ready to run',
+                             'SET INPUT EXCEL FILE FIRST!'))
+        elif not self.collections:
+            ls.append(Action('Run & save analyses',
+                             'Not ready to run',
+                             'VALIDATE SHEETS FIRST!'))
+        else:
+            ls.append(Action('Run & save analyses',
+                             'Ready to run'))
+
+        # 7th: exit program
+        ls.append(Action('Exit program', ''))
+
+        return ls
+
+    def set_input_xlsx(self, path):
+        """
+        Set the input excel file path,
+        **relative to** ``[project_root]/analysis/``.
+        Throws an error if it does not exist or is not an .xlsx file.
+        """
+        if not os.path.exists(path):
+            raise Exception(f'File {path} does not exist!')
+        if not path.endswith('.xslx'):
+            raise Exception(f'File {path} is not an .xlsx file!')
 
     def set_output_dir(self, path):
         """
-        Set the output directory for result files.
+        Set the output directory for result files,
+        **relative to** ``[project_root]/analysis/``.
         Will be created if does not exist.
         Throws an error upon invalid path.
         """
-        # TODO
         pass
 
     def add_collection(self):
