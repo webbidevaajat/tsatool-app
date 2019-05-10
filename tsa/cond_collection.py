@@ -262,13 +262,13 @@ class CondCollection:
                 print('Could not fetch results from database.')
                 print(traceback.print_exc())
 
-    def to_workbook(self):
+    def to_worksheet(self, wb):
         """
-        Return an ``openpyxl.Workbook`` with a single worksheet
-        containing basic data of the condition collection.
+        Add a worksheet to an ``openpyxl.Workbook`` instance
+        containing summary results of the condition collection.
         """
-        wb = xl.Workbook()
-        ws = wb.active
+        assert isinstance(wb, xl.Workbook)
+        ws = wb.create_sheet()
         ws.title = self.title or 'conditions'
 
         # Headers in fixed cells & styling
