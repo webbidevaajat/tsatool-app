@@ -10,19 +10,13 @@ import os
 def main():
     cwd = os.getcwd()
 
-    dirpath = os.path.join(cwd, 'data')
-    if not os.path.exists(dirpath):
-        os.mkdir(dirpath)
-        print(f'{dirpath} created')
-    else:
-        print(f'{dirpath} already exists')
-
-    dirpath = os.path.join(cwd, 'logs')
-    if not os.path.exists(dirpath):
-        os.mkdir(dirpath)
-        print(f'{dirpath} created')
-    else:
-        print(f'{dirpath} already exists')
+    for folder in ['data', 'logs', 'analysis']:
+        dirpath = os.path.join(cwd, folder)
+        if not os.path.exists(dirpath):
+            os.mkdir(dirpath)
+            print(f'{dirpath} created')
+        else:
+            print(f'{dirpath} already exists')
 
     cfpath = os.path.join(cwd, 'db_config.json')
     if not os.path.exists(cfpath):
