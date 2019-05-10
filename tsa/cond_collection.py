@@ -114,16 +114,18 @@ class CondCollection:
             if verbose: print(errtext)
 
     def get_stations_in_view(self):
+        # TODO: clean up behaviour per view (CondCollection)
+        #       and per entire dataset (AnalysisCollection)
         """
         Get stations available in ``statobs_time`` view.
         """
         if self.pg_conn:
             with self.pg_conn.cursor() as cur:
                 sql = "SELECT DISTINCT statid FROM statobs_time ORDER BY statid;"
-                cur.execute(sql, (self.time_from, self.time_until))
+                cur.execute(sql)
                 statids = cur.fetchall()
                 statids = [el[0] for el in statids]
-                return statids
+                return set(statids)
         else:
             self.add_error('WARNING: No db connection, cannot get stations from database')
             return
@@ -154,13 +156,13 @@ class CondCollection:
     def add_station(self, stid):
         """
         Add ``stid`` to ``self.station_ids`` if not already there.
-        If db connection is available, check if the main view
-        contains that station id.
+        If station ids in the db main view have been fetched,
+        check if the main view contains that station id.
         """
         if stid not in self.station_ids:
-            if self.pg_conn:
+            if self.statids_available:
                 if stid not in self.statids_available:
-                    errtext = f'WARNING: no observations for station {stid} in database!'
+                    errtext = f'WARNING: no observations for station {stid} in database view!'
                     self.add_error(errtext)
             self.station_ids.add(stid)
 
@@ -182,10 +184,12 @@ class CondCollection:
         except Exception as e:
             self.add_error(e)
 
-    def set_sensor_ids(self):
+    def set_sensor_ids(self, nameids=None):
         """
         Get sensor name - id correspondence from the database,
         and set sensor ids for all Blocks in all Conditions.
+        Optionally, the ``nameids`` can be fed from outside, in which case
+        querying the database is omitted.
         """
         if not self.pg_conn:
             self.add_error('WARNING: No db connection, cannot get sensor ids from database')
@@ -244,6 +248,7 @@ class CondCollection:
                 self.get_temporary_views()
 
     def fetch_all_results(self):
+        # TODO: tqdm progress bar
         """
         Fetch results
         for all Conditions that have a corresponding view in the database.
