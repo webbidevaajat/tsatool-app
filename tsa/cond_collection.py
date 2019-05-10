@@ -191,13 +191,14 @@ class CondCollection:
         Optionally, the ``nameids`` can be fed from outside, in which case
         querying the database is omitted.
         """
-        if not self.pg_conn:
-            self.add_error('WARNING: No db connection, cannot get sensor ids from database')
-            return
-        with self.pg_conn.cursor() as cur:
-            cur.execute("SELECT id, lower(name) AS name FROM sensors;")
-            tb = cur.fetchall()
-            nameids = {k:v for v, k in tb}
+        if nameids is None:
+            if not self.pg_conn:
+                self.add_error('WARNING: No db connection, cannot get sensor ids from database')
+                return
+            with self.pg_conn.cursor() as cur:
+                cur.execute("SELECT id, lower(name) AS name FROM sensors;")
+                tb = cur.fetchall()
+                nameids = {k:v for v, k in tb}
         for cnd in self.conditions:
             for bl in cnd.blocks:
                 bl.set_sensor_id(nameids)
