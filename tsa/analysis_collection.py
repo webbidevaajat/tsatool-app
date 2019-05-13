@@ -106,16 +106,17 @@ class AnalysisCollection:
     def __init__(self, input_xlsx=None, name=None):
         self.input_xlsx = input_xlsx
         # TODO: validate / modify filename
-        self.name = name or self.autoname()
+        self._name = name or self.autoname()
         # TODO: validate / modify output name
         self.base_dir = os.getcwd()
         self.data_dir = os.path.join(self.base_dir, 'analysis')
+        assert os.path.exists(self.data_dir)
         self.workbook = None
         self.sheetnames = []
         self.collections = []
+        self.errmsgs = []
         self.statids_in_db = set()
-        self.n_errors = 0
-        self.out_formats = ['xlsx', 'pptx']
+        self.out_formats = ['xlsx', 'pptx', 'log']
         self.db_params = DBParams()
         # TODO: method for collecting overall errors
 
@@ -146,6 +147,20 @@ class AnalysisCollection:
                 raise Exception(f'"{s}" is not in workbook sheets!')
             self.sheetnames.append(s)
 
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, newname):
+        """
+        Ensure the name can be used as file and dir name.
+        """
+        newname = str(newname)
+        newname = newname.strip()
+        newname = newname.replace(' ', '_')
+        self._name = ''.join([c for c in newname if c.isalnum()])
+
     @staticmethod
     def autoname():
         """
@@ -154,14 +169,30 @@ class AnalysisCollection:
         ts = datetime.now().strftime('%Y%m%d_%H%M%S')
         return f'analysis_{ts}'
 
-    def set_output_dir(self, path):
+    def get_outdir(self):
         """
-        Set the output directory for result files,
-        **relative to** ``[project_root]/analysis/``.
-        Will be created if does not exist.
-        Throws an error upon invalid path.
+        Return output directory path based on ``data_dir``
+        and ``name``. Make if it does not exist.
         """
-        pass
+        outpath = os.path.join(self.data_dir, self.name)
+        if not os.path.exists(outpath):
+            os.mkdir(outpath)
+        return outpath
+
+    def list_errors(self):
+        """
+        Collect together all error and warning messages
+        of condition collections and their child items,
+        return as list of strings.
+        """
+        errs = [f'SESSION: {m}' for m in self.errmsgs]
+        for condcoll in self.collections:
+            msgs = [f'COLLECTION: {m}' for m in condcoll.errmsgs]
+            errs.extend(msgs)
+            for cond in condcoll.conditions:
+                msgs = [f'CONDITION: {m}' for m in cond.errmsgs]
+                errs.extend(msgs)
+        return errs
 
     def add_collection(self):
         """

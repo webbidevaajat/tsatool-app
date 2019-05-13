@@ -87,7 +87,7 @@ class CLIAnalysisColl(AnalysisCollection):
 
         # 4th: list errors / warnings
         ls.append(Action('List errors and warnings',
-                         f'{self.n_errors} errors or warnings'))
+                         f'{len(self.list_errors())} errors or warnings'))
 
         # 5th: set output name
         if self.name is None:
@@ -199,6 +199,79 @@ class CLIAnalysisColl(AnalysisCollection):
             return 3
         return 2
 
+    def cli_prepare_sheets(self):
+        pass
+        # TODO
+
+    def cli_list_errors(self):
+        """
+        List current errors interactively or into a file.
+        """
+        errs = self.list_errors()
+        if not errs:
+            sel, i = pick(options=['(exit)'],
+                          title='No errors or warnings')
+        else:
+            opts = ['Print errors and warnings interactively',
+                    'Save errors and warnings into file',
+                    '(exit)']
+            title = f'{len(errs)} errors or warnings'
+            sel, i = pick(options=opts,
+                          title=title)
+        if i == 0:
+            # Print interactively, exit if given sth starting with 'e'
+            for i, err in enumerate(errs):
+                nxt = input(f'{i+1}/{len(errs)} {err}')
+                if len(nxt) > 0 and nxt[0] == 'e':
+                    break
+            return 4
+        elif i == 1:
+            outpath = os.path.join(self.get_outdir(), 'errors.txt')
+            alt = input(f'Output file path [default: {outpath}]: ')
+            if alt:
+                outpath = alt
+            try:
+                with open(outpath, 'w') as fobj:
+                    fobj.write('\n'.join(errs))
+            except:
+                traceback.print_exc()
+                input('(press ENTER to continue)')
+            finally:
+                return 4
+        else:
+            return 4
+
+    def cli_set_name(self):
+        """
+        Set analysis name that is used
+        in output folder and file names.
+        """
+        print('Enter analysis name (will be made into valid file / dir name)')
+        newname = input(f'[hit ENTER to keep current name {self.name}]: ')
+        if newname:
+            self.name = newname
+        return 5
+
+    def cli_set_output_formats(self):
+        """
+        Set output formats of analysis results.
+        """
+        def printrow(t):
+            return f'{t[0]:5} [{t[1]}]'
+        opts = [('xlsx', 'Excel with summary results (similar to input Excel)'),
+                ('pptx', 'PowerPoint presentation from each condition collection'),
+                ('log', 'Save a debugging & error log')]
+        title = ('Select (SPACE) output formats and hit ENTER\n'
+                 f'or select nothing to keep current formats [{", ".join(self.out_formats)}]')
+        sel = pick(options=opts,
+                   title=title,
+                   multi_select=True,
+                   options_map_func=printrow)
+        if sel:
+            sel = [el[0][0] for el in sel]
+            self.out_formats = sel
+        return 6
+
 def main():
     parser = argparse.ArgumentParser(description='Prepare, validate and run TSA analyses interactively.')
     parser.add_argument('-i', '--input',
@@ -230,6 +303,8 @@ def main():
         ########################
         # This is the main menu.
         ########################
+        if defidx is None:
+            defidx = 0
         act, idx = pick(options=anls.list_main_actions(),
                         title=maintitle,
                         indicator='=>',
@@ -250,13 +325,13 @@ def main():
             pass # TODO
         elif idx == 4:
             # List errors / warnings
-            pass
+            defidx = anls.cli_list_errors()
         elif idx == 5:
             # Output name selection
-            pass
+            defidx = anls.cli_set_name()
         elif idx == 6:
             # Output formats
-            pass
+            defidx = anls.cli_set_output_formats()
         elif idx == 7:
             # Run and save analyses
             pass
