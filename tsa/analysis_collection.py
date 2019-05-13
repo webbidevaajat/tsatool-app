@@ -4,32 +4,85 @@
 # Collection of CondCollections
 
 import os
+import json
 import openpyxl as xl
 from .cond_collection import CondCollection
 from .utils import trunc_str
 from datetime import datetime
+from getpass import getpass
 
-class Action:
+class DBParams:
     """
-    Template for CLI actions / choices related to AnalysisCollection,
-    with some informative attributes.
+    Stores parameters for database connection.
     """
-    def __init__(self, title, content, message=''):
-        self.title = title
-        self.content = content
-        self.message = message
+    def __init__(self, dbname=None, user=None, host=None, port=5432):
+        self.dbname = dbname
+        self.user = user
+        self.password = None    # WARNING: stored as plain str
+        self.host = host
+        self.port = port
+
+    def read_config(self, path):
+        """
+        Read and set params from file (except password)
+        """
+        with open(path, 'r') as cf_file:
+            cf = json.load(cf_file)
+        self.dbname = cf['DATABASE']
+        self.user = cf['ADMIN_USER']
+        self.host = cf['HOST']
+        self.port = cf['PORT']
+
+    def set_value_interactively(self, par):
+        if par == 'dbname':
+            self.dbname = input('Database name: ')
+        elif par == 'user':
+            self.user = input('Database user: ')
+        elif par == 'password':
+            self.password = getpass('Database password: ')
+        elif par == 'host':
+            self.host = input('Database host: ')
+        elif par == 'port':
+            self.port = int(input('Database port number: '))
+        else:
+            raise Exception(f'Unknown DB parameter {par}')
+
+    def keys(self):
+        return ['dbname', 'user', 'password', 'host', 'port']
+
+    def as_tuples(self):
+        placeholder = 'no password set'
+        if self.password is not None:
+            placeholder = '*' * len(self.password)
+        d = [('dbname', self.dbname),
+             ('user', self.user),
+             ('password', placeholder),
+             ('host', self.host),
+             ('port', str(self.port))]
+        return d
+
+    def get_status(self):
+        missing = []
+        for k in self.keys():
+            if self.__dict__[k] is None:
+                missing.append(k)
+        if not missing:
+            return 'DB params ready'
+        else:
+            return 'Missing {}'.format(', '.join(missing))
+
+    def __getitem__(self, key):
+        return self.__dict__[key]
 
     def __str__(self):
-        """
-        Pick-compatible string representation, lines max 101 chars
-        """
-        if not self.message:
-            return '{:33} {:67}'.format(trunc_str(self.title, n=33),
-                                        trunc_str(self.content, n=67))
-        else:
-            return '{:33} {:33} {:33}'.format(trunc_str(self.title, n=33),
-                                              trunc_str(self.content, n=33),
-                                              trunc_str(self.message, n=33))
+        s = 'DBParams\n'
+        for k in self.keys():
+            if k == 'password' and self.password is not None:
+                v = '*'*len(self.password)
+            else:
+                v = self.__dict__[k]
+            s += f'{k:8}: {v}\n'
+        return s
 
 class AnalysisCollection:
     """
@@ -53,105 +106,53 @@ class AnalysisCollection:
     def __init__(self, input_xlsx=None, name=None):
         self.input_xlsx = input_xlsx
         # TODO: validate / modify filename
-        self.name = name
+        self.name = name or self.autoname()
         # TODO: validate / modify output name
         self.base_dir = os.getcwd()
         self.data_dir = os.path.join(self.base_dir, 'analysis')
+        self.workbook = None
         self.sheetnames = []
         self.collections = []
         self.statids_in_db = set()
         self.n_errors = 0
         self.out_formats = ['xlsx', 'pptx']
+        self.db_params = DBParams()
         # TODO: method for collecting overall errors
-
-    def list_main_actions(self):
-        """
-        Return list of main actions on the analysis collection,
-        along with the related statuses to be prompted.
-        This is to be used with the interactive CLI main menu.
-        """
-        ls = []
-
-        # 0th: input excel filename
-        if self.input_xlsx is None:
-            ls.append(Action('Set input Excel file',
-                             'No valid input set',
-                             'SET INPUT EXCEL FILE!'))
-        else:
-            ls.append(Action('Set input Excel file',
-                             self.input_xlsx,
-                             'Input Excel selected'))
-
-        # 1st: select sheets
-        if self.input_xlsx is None:
-            ls.append(Action('Select condition sheets',
-                             'No sheets selected',
-                             'SET INPUT EXCEL FILE FIRST!'))
-        elif not self.sheetnames:
-            ls.append(Action('Select condition sheets',
-                             'No sheets selected',
-                             'All will be used by default.'))
-        else:
-            ls.append(Action('Select condition sheets',
-                             f'{len(self.sheetnames)} sheets selected'))
-
-        # 2nd: validate sheets
-        if self.input_xlsx is None:
-            ls.append(Action('Validate condition sheets',
-                             'No conditions read',
-                             'SET INPUT EXCEL FILE FIRST!'))
-        elif not self.collections:
-            ls.append(Action('Validate condition sheets',
-                             'No conditions read'))
-        else:
-            ls.append(Action('Validate condition sheets',
-                             f'{len(self.collections)} condition sets read'))
-
-        # 3rd: list errors / warnings
-        ls.append(Action('List errors and warnings',
-                         f'{self.n_errors} errors or warnings'))
-
-        # 4th: set output name
-        if self.name is None:
-            ls.append(Action('Set output name',
-                             'No output name set',
-                             'Will be auto-generated'))
-        else:
-            ls.append(Action('Set output name',
-                             self.name))
-
-        # 5th: select output formats
-        ls.append(Action('Select output formats',
-                         ', '.join(self.out_formats)))
-
-        # 6th: run analyses and save output
-        if self.input_xlsx is None:
-            ls.append(Action('Run & save analyses',
-                             'Not ready to run',
-                             'SET INPUT EXCEL FILE FIRST!'))
-        elif not self.collections:
-            ls.append(Action('Run & save analyses',
-                             'Not ready to run',
-                             'VALIDATE SHEETS FIRST!'))
-        else:
-            ls.append(Action('Run & save analyses',
-                             'Ready to run'))
-
-        # 7th: exit program
-        ls.append(Action('Exit program', ''))
-
-        return ls
 
     def set_input_xlsx(self, path):
         """
         Set the input excel file path,
-        **relative to** ``[project_root]/analysis/``.
+        **relative to** ``[project_root]/analysis/``,
+        and read the workbook contents.
         Throws an error if it does not exist or is not an .xlsx file.
         """
         if not os.path.exists(path):
             raise Exception(f'File {path} does not exist!')
-        if not path.endswith('.xslx'):
+        if not path.endswith('.xlsx'):
             raise Exception(f'File {path} is not an .xlsx file!')
+        self.input_xlsx = path
+        self.workbook = xl.load_workbook(filename=path,
+                                         read_only=True)
+
+    def set_sheetnames(self, sheets):
+        """
+        Set Excel sheets to analyze.
+        """
+        if self.workbook is None:
+            raise Exception('No Excel workbook selected!')
+        self.sheetnames = []
+        for s in sheets:
+            if s not in self.workbook.sheetnames:
+                raise Exception(f'"{s}" is not in workbook sheets!')
+            self.sheetnames.append(s)
+
+    @staticmethod
+    def autoname():
+        """
+        Autogenerate a name by timestamp
+        """
+        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+        return f'analysis_{ts}'
 
     def set_output_dir(self, path):
         """
