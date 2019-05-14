@@ -13,6 +13,7 @@ TODO_notes.txt
 TEMP*
 
 # Data files
+analysis/
 data/
 *.csv
 lotju*
