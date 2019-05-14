@@ -179,6 +179,15 @@ class AnalysisCollection:
             os.mkdir(outpath)
         return outpath
 
+    def add_error(self, e):
+        """
+        Add error message to error message list.
+        Only unique errors are collected, in order to avoid
+        piling up repetitive messages from loops, for example.
+        """
+        if e not in self.errmsgs:
+            self.errmsgs.append(e)
+
     def list_errors(self):
         """
         Collect together all error and warning messages
