@@ -312,9 +312,7 @@ class CondCollection:
 
             r += 1
 
-        return wb
-
-    def to_pptx(self, pptx_object):
+    def to_pptx(self, pptx_template):
         """
         Return a ``pptx`` presentation object,
         making a slide of each condition.
@@ -336,7 +334,7 @@ class CondCollection:
         )
         MAINPLOT_H_PX = 3840 # Main timeline plot height in pixels
 
-        pres = pptx.Presentation(pptx_object)
+        pres = pptx.Presentation(pptx_template)
         layout = pres.slide_layouts[0]
 
         # Ensure placeholder indices exist as they should
@@ -428,6 +426,13 @@ class CondCollection:
                 s.placeholders[phi['MAINPLOT_IDX']].insert_picture(fobj)
 
         return pres
+
+    def save_pptx(self, pptx_template, out_path):
+        """
+        Call ``.to_pptx`` and save result to file.
+        """
+        pptx_obj = self.to_pptx(pptx_template=pptx_template)
+        pptx_obj.save(out_path)
 
     def __getitem__(self, key):
         """
