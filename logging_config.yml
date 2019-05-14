@@ -11,16 +11,34 @@ handlers:
     formatter: simple
     level: INFO
     stream: ext://sys.stdout
+  setup_file:
+    class: logging.handlers.TimedRotatingFileHandler
+    formatter: precise
+    level: DEBUG
+    filename: 'logs/setuplog'
+    when: D
+    delay: True
+  ops_file:
+    class: logging.handlers.TimedRotatingFileHandler
+    formatter: precise
+    level: DEBUG
+    filename: 'logs/opslog'
+    when: D
+    delay: True
   tsapp_file:
     class: logging.handlers.TimedRotatingFileHandler
     formatter: precise
     level: DEBUG
     filename: 'logs/tsapplog'
-    when: S
+    when: D
     delay: True
 loggers:
   tsapplogger:
     handlers: [tsapp_file]
+  setuplogger:
+    handlers: [setup_file]
+  opslogger:
+    handlers: [ops_file]
 root:
   level: DEBUG
   handlers: [console]

@@ -6,17 +6,26 @@ to create necessary directories and config files.
 """
 
 import os
+import yaml
+import logging
+import logging.config
+
+with open('logging_config.yml', 'r') as f:
+    config = yaml.safe_load(f.read())
+    logging.config.dictConfig(config)
+    log = logging.getLogger('setuplogger')
 
 def main():
     cwd = os.getcwd()
+    log.info(f'Setting up {cwd}')
 
     for folder in ['data', 'logs', 'analysis']:
         dirpath = os.path.join(cwd, folder)
         if not os.path.exists(dirpath):
             os.mkdir(dirpath)
-            print(f'{dirpath} created')
+            log.info(f'{dirpath} created')
         else:
-            print(f'{dirpath} already exists')
+            log.info(f'{dirpath} already exists')
 
     cfpath = os.path.join(cwd, 'db_config.json')
     if not os.path.exists(cfpath):
@@ -29,9 +38,9 @@ def main():
 }'''
         with open(cfpath, 'w') as outfile:
             outfile.write(cf_str)
-        print(f'{cfpath} created with default values')
+        log.info(f'{cfpath} created with default values')
     else:
-        print(f'{cfpath} already exists')
+        log.info(f'{cfpath} already exists')
 
 if __name__ == '__main__':
     main()
