@@ -53,12 +53,15 @@ class CondCollection:
         self.errmsgs = []
 
         self.pg_conn = pg_conn
-
-        self.setup_statobs_view()
-        self.statids_available = self.get_stations_in_view()
-
-        self.setup_obs_view()
+        self.statids_available = None
         self.viewnames = []
+
+    def setup_views():
+        """
+        Set up time-limited statobs view and joint main observation view.
+        """
+        self.setup_statobs_view()
+        self.setup_obs_view()
 
     def add_error(self, e):
         """
@@ -114,8 +117,6 @@ class CondCollection:
             if verbose: print(errtext)
 
     def get_stations_in_view(self):
-        # TODO: clean up behaviour per view (CondCollection)
-        #       and per entire dataset (AnalysisCollection)
         """
         Get stations available in ``statobs_time`` view.
         """
@@ -125,10 +126,9 @@ class CondCollection:
                 cur.execute(sql)
                 statids = cur.fetchall()
                 statids = [el[0] for el in statids]
-                return set(statids)
+                self.statids_available = set(statids)
         else:
             self.add_error('WARNING: No db connection, cannot get stations from database')
-            return
 
     def setup_obs_view(self):
         """
