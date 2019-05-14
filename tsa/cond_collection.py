@@ -184,24 +184,24 @@ class CondCollection:
         except Exception as e:
             self.add_error(e)
 
-    def set_sensor_ids(self, nameids=None):
+    def set_sensor_ids(self, pairs=None):
         """
         Get sensor name - id correspondence from the database,
         and set sensor ids for all Blocks in all Conditions.
         Optionally, the ``nameids`` can be fed from outside, in which case
         querying the database is omitted.
         """
-        if nameids is None:
+        if pairs is None or len(pairs) == 0:
             if not self.pg_conn:
                 self.add_error('WARNING: No db connection, cannot get sensor ids from database')
                 return
             with self.pg_conn.cursor() as cur:
                 cur.execute("SELECT id, lower(name) AS name FROM sensors;")
                 tb = cur.fetchall()
-                nameids = {k:v for v, k in tb}
+                pairs = {k:v for v, k in tb}
         for cnd in self.conditions:
             for bl in cnd.blocks:
-                bl.set_sensor_id(nameids)
+                bl.set_sensor_id(pairs)
 
     def get_temporary_views(self):
         """
@@ -451,7 +451,8 @@ class CondCollection:
         return out
 
     @classmethod
-    def from_dictlist(cls, dictlist, time_from, time_until, pg_conn=None, title=None):
+    def from_dictlist(cls, dictlist, time_from, time_until,
+                      pg_conn=None, title=None, sensor_pairs=None):
         """
         Create instance and add conditions from list of dicts.
         Dicts must have corresponding keys
@@ -461,11 +462,13 @@ class CondCollection:
         cc = cls(time_from, time_until, pg_conn, title)
         for d in dictlist:
             cc.add_condition(**d)
-        cc.set_sensor_ids()
+        # TODO: detach database specific stuff
+        cc.set_sensor_ids(pairs=sensor_pairs)
         return cc
 
     @classmethod
-    def from_xlsx_sheet(cls, ws, pg_conn=None):
+    def from_xlsx_sheet(cls, ws,
+                        pg_conn=None, sensor_pairs=None):
         """
         Create a condition collection for analysis
         based on an ``openpyxl`` ``worksheet`` object ``ws``.
@@ -516,7 +519,8 @@ class CondCollection:
             time_from=time_from,
             time_until=time_until,
             pg_conn=pg_conn,
-            title=ws.title
+            title=ws.title,
+            sensor_pairs=sensor_pairs
         )
 
         return cc
