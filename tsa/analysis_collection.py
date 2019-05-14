@@ -3,6 +3,7 @@
 
 # Collection of CondCollections
 
+import logging
 import os
 import json
 import openpyxl as xl
@@ -11,6 +12,8 @@ from .utils import trunc_str
 from datetime import datetime
 from getpass import getpass
 from collections import OrderedDict
+
+log = logging.getLogger(__name__)
 
 class DBParams:
     """

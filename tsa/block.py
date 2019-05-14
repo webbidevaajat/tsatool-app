@@ -3,7 +3,10 @@
 
 # Block class, called by Condition
 
+import logging
 from .utils import to_pg_identifier
+
+log = logging.getLogger(__name__)
 
 class Block:
     """

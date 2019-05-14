@@ -3,6 +3,7 @@
 
 # Collection of Conditions for analysis
 
+import logging
 import traceback
 import pptx
 import openpyxl as xl
@@ -12,6 +13,8 @@ from io import BytesIO
 from pptx.util import Pt
 from pptx.util import Cm
 from pptx.dml.color import RGBColor
+
+log = logging.getLogger(__name__)
 
 class CondCollection:
     """

@@ -3,9 +3,12 @@
 
 # Utility functions for tsa package
 
+import logging
 import os
 import json
 import psycopg2
+
+log = logging.getLogger(__name__)
 
 def tsadb_connect(username=None, password=None, ask=False):
     """

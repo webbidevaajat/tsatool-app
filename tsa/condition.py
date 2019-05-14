@@ -3,6 +3,7 @@
 
 # Condition class, called by CondCollection
 
+import logging
 import re
 import pandas
 import matplotlib.pyplot as plt
@@ -13,6 +14,8 @@ from .utils import eliminate_umlauts
 from .utils import trunc_str
 from matplotlib import rcParams
 from datetime import timedelta
+
+log = logging.getLogger(__name__)
 
 # Set matplotlib parameters globally
 rcParams['font.family'] = 'sans-serif'

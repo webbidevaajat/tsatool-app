@@ -4,12 +4,20 @@ Command line interface for running TSA analyses.
 
 import os
 import sys
+import yaml
 import argparse
 import traceback
 import psycopg2
+import logging
+import logging.config
 from pick import pick
 from tsa import AnalysisCollection
 from tsa.utils import trunc_str
+
+with open('logging_config.yml', 'r') as f:
+    config = yaml.safe_load(f.read())
+    logging.config.dictConfig(config)
+    log = logging.getLogger('tsapplogger')
 
 class Action:
     """
