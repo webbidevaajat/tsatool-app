@@ -105,14 +105,16 @@ class AnalysisCollection:
     """
 
     def __init__(self, input_xlsx=None, name=None):
-        self.input_xlsx = input_xlsx
+        self.input_xlsx = None
         # TODO: validate / modify filename
-        self._name = name or self.autoname()
+        self._name = self.name = name or self.autoname()
         # TODO: validate / modify output name
         self.base_dir = os.getcwd()
         self.data_dir = os.path.join(self.base_dir, 'analysis')
         assert os.path.exists(self.data_dir)
         self.workbook = None
+        if input_xlsx:
+            self.set_input_xlsx(path=input_xlsx)
         self.sheetnames = []
         self.collections = OrderedDict()
         self.errmsgs = []
@@ -277,6 +279,7 @@ class AnalysisCollection:
         or for all collections if none given.
         Analyses are run against collection-specific db connections.
         """
+        pass
 
     def __getitem__(self):
         """

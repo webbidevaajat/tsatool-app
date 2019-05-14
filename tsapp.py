@@ -343,7 +343,8 @@ def main():
     args = parser.parse_args()
 
     # TODO: take cl arguments into account
-    anls = CLIAnalysisColl()
+    anls = CLIAnalysisColl(input_xlsx=args.input,
+                           name=args.name)
     defidx = 0
     maintitle = (f'   {"#"*15}\n'
                  '   TSAPP main menu\n'
