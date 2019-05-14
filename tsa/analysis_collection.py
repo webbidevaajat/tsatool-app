@@ -109,9 +109,7 @@ class AnalysisCollection:
 
     def __init__(self, input_xlsx=None, name=None):
         self.input_xlsx = None
-        # TODO: validate / modify filename
         self._name = self.name = name or self.autoname()
-        # TODO: validate / modify output name
         self.base_dir = os.getcwd()
         self.data_dir = os.path.join(self.base_dir, 'analysis')
         assert os.path.exists(self.data_dir)
