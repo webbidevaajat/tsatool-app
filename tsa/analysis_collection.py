@@ -10,6 +10,7 @@ from .cond_collection import CondCollection
 from .utils import trunc_str
 from datetime import datetime
 from getpass import getpass
+from collections import OrderedDict
 
 class DBParams:
     """
@@ -113,12 +114,11 @@ class AnalysisCollection:
         assert os.path.exists(self.data_dir)
         self.workbook = None
         self.sheetnames = []
-        self.collections = []
+        self.collections = OrderedDict()
         self.errmsgs = []
         self.statids_in_db = set()
         self.out_formats = ['xlsx', 'pptx', 'log']
         self.db_params = DBParams()
-        # TODO: method for collecting overall errors
 
     def set_input_xlsx(self, path):
         """
@@ -194,27 +194,22 @@ class AnalysisCollection:
                 errs.extend(msgs)
         return errs
 
-    def add_collection(self):
+    def add_collection(self, title):
         """
-        Add a CondCollection and ensure it has a ``title``.
+        Add a CondCollection from worksheet by title.
+        This does *not* account for ``.sheetnames``: that is only a container
+        for further tools that add pre-selected worksheets
         Duplicate titles are not allowed.
-        """
-        # TODO
-        pass
 
-    def read_collections(self):
+        .. note: Adding by an existing title overwrites the old collection.
         """
-        Read in the CondCollections from Excel file worksheets.
-        Record errors for any invalid sheet that was omitted.
-        """
-        # TODO
-        pass
+        if self.workbook is None:
+            raise Exception('No workbook loaded, cannot add collection')
+        if title not in self.workbook.sheetnames:
+            raise Exception(f'"{title}" not in workbook sheets')
 
-    def get_collection_titles(self):
-        """
-        Return a list of titles of CondCollections available.
-        """
-        return [coll.title for coll in self.collections]
+        ws = self.workbook[title]
+        self.collections[title] = CondCollection.from_xlsx_sheet(ws)
 
     def save_statids_in_statobs(self, pg_conn):
         """
@@ -241,8 +236,9 @@ class AnalysisCollection:
             if coll.station_ids != self.statids_in_db.intersection(coll.station_ids):
                 missing_ids = list(coll.station_ids - self.statids_in_db).sort()
                 missing_ids = [str(el) for el in missing_ids]
-                err = ('WARNING: Following station ids are not available in db observations:'
+                err = ('WARNING: Following station ids are not available in db observations:\n'
                        ', '.join(missing_ids))
+                print(err)
                 coll.add_error(err)
 
 
@@ -250,8 +246,7 @@ class AnalysisCollection:
         """
         Run analyses for CondCollections selected by given int indices,
         or for all collections if none given.
-        This means everything that is run against collection-specific
-        database connections.
+        Analyses are run against collection-specific db connections.
         """
 
     def __getitem__(self):
