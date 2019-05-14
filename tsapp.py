@@ -80,13 +80,13 @@ class CLIAnalysisColl(AnalysisCollection):
 
         # 3rd: validate sheets
         if self.input_xlsx is None:
-            ls.append(Action('Validate condition sheets',
+            ls.append(Action('Prepare condition sheets',
                              'No conditions read. Set input Excel first!'))
         elif not self.collections:
-            ls.append(Action('Validate condition sheets',
+            ls.append(Action('Prepare condition sheets',
                              'No conditions read'))
         else:
-            ls.append(Action('Validate condition sheets',
+            ls.append(Action('Prepare condition sheets',
                              f'{len(self.collections)} condition sets read'))
 
         # 4th: list errors / warnings
@@ -154,13 +154,14 @@ class CLIAnalysisColl(AnalysisCollection):
                 if sel.endswith('.xlsx'):
                     sel = os.path.join(d, sel)
                     self.set_input_xlsx(sel)
+                    log.debug(f'Set input xlsx to {sel}')
                     return 1
                 elif sel == '(exit)':
                     return 0
                 else:
                     d = os.path.normpath(os.path.join(d, sel))
         except:
-            traceback.print_exc()
+            log.exception('Error with setting input xlsx.')
             input('(press ENTER to continue)')
             return 0
 
@@ -184,7 +185,7 @@ class CLIAnalysisColl(AnalysisCollection):
             self.set_sheetnames(sheets=sel)
             return 2
         except:
-            traceback.print_exc()
+            log.exception('Error with sheet names.')
             input('(press ENTER to continue)')
             return 0
 
@@ -201,6 +202,7 @@ class CLIAnalysisColl(AnalysisCollection):
                         options_map_func=printrow)
         if param[0] == '(exit)':
             return 2
+        log.debug(f'Setting DB parameter {param[0]}')
         self.db_params.set_value_interactively(param[0])
         if self.db_params.get_status() == 'DB params ready':
             return 3
@@ -214,31 +216,31 @@ class CLIAnalysisColl(AnalysisCollection):
         and check if their station ids exist in the db.
         """
         if self.db_params.get_status() != 'DB params ready':
-            print('ERROR: Set database parameters first!')
+            print('Set database parameters first!')
             _ = input('(Hit ENTER to continue)')
             return 2
         if self.workbook is None:
-            print('ERROR: Select Excel file first!')
+            print('Select Excel file first!')
             _ = input('(Hit ENTER to continue)')
             return 0
-        print('Going to fetch available station ids and sensor name-id pairs from database.')
+        log.info('Going to fetch available station ids and sensor name-id pairs from database.')
         go = input('(Hit ENTER to run or type "exit" and hit ENTER to cancel)')
         if go.startswith('e'):
             return 3
         # On no selected sheetnames, set them to all available
         if not self.sheetnames:
-            print('No sheetnames selected, using all available sheets.')
+            log.info('No sheetnames selected, using all available sheets.')
             self.sheetnames = self.workbook.sheetnames
         try:
-            print('Connecting to database ...')
+            log.info('Connecting to database ...')
             with psycopg2.connect(**self.db_params, connect_timeout=5) as conn:
-                print('Fetching available station ids ...')
+                log.info('Fetching available station ids ...')
                 self.save_statids_in_statobs(conn)
-                print('Fetching sensor name-id pairs ...')
+                log.info('Fetching sensor name-id pairs ...')
                 self.save_sensor_pairs(conn)
-            print(f'Fetched {len(self.statids_in_db)} station ids and {len(self.sensor_pairs)} sensor name-id pairs.')
+            log.info(f'Fetched {len(self.statids_in_db)} station ids and {len(self.sensor_pairs)} sensor name-id pairs.')
         except:
-            traceback.print_exc()
+            log.exception('Error with database connection.')
             print('(press ENTER to continue without station ids and sensor pairs')
             go = input(' or type "exit" and hit ENTER to exit)')
             if len(go) > 0 and go.startswith('e'):
@@ -246,7 +248,7 @@ class CLIAnalysisColl(AnalysisCollection):
         # Add selected worksheet contents, pass erroneous ones but log an error
         for s in self.sheetnames:
             try:
-                print(f'Adding collection "{s}" ...')
+                log.info(f'Adding collection "{s}" ...')
                 self.add_collection(s)
             except Exception as e:
                 traceback.print_exc()
@@ -254,15 +256,15 @@ class CLIAnalysisColl(AnalysisCollection):
                 _ = input('(Hit ENTER to continue)')
         print(f'{len(self.collections)} collections added from {len(self.sheetnames)} sheets.')
         if self.statids_in_db:
-            print('Going to validate collection station ids.')
+            log.info('Going to validate collection station ids.')
             _ = input('(Hit ENTER to continue)')
             n_errs = self.check_statids()
             if n_errs:
-                print(f'There were {n_errs} errors.')
+                log.info(f'There were {n_errs} errors.')
                 print('Select "List errors and warnings" to see them.')
         else:
-            err = 'WARNING: could not check station if ids exist in database'
-            print(err)
+            err = 'Could not check station if ids exist in database'
+            log.warning(err)
             self.add_error(err)
         _ = input('(Hit ENTER to exit)')
         return 4
@@ -286,7 +288,7 @@ class CLIAnalysisColl(AnalysisCollection):
             # Print interactively, exit if given sth starting with 'e'
             for i, err in enumerate(errs):
                 nxt = input(f'{i+1}/{len(errs)} {err}')
-                if len(nxt) > 0 and nxt[0] == 'e':
+                if nxt.startswith('e'):
                     break
             return 4
         elif i == 1:
@@ -298,7 +300,7 @@ class CLIAnalysisColl(AnalysisCollection):
                 with open(outpath, 'w') as fobj:
                     fobj.write('\n'.join(errs))
             except:
-                traceback.print_exc()
+                log.exception('Could not save errors to file')
                 input('(press ENTER to continue)')
             finally:
                 return 4
@@ -313,6 +315,7 @@ class CLIAnalysisColl(AnalysisCollection):
         print('Enter analysis name (will be made into valid file / dir name)')
         newname = input(f'[hit ENTER to keep current name {self.name}]: ')
         if newname:
+            log.debug(f'Set analysis name to {newname}')
             self.name = newname
         return 5
 
@@ -334,9 +337,11 @@ class CLIAnalysisColl(AnalysisCollection):
         if sel:
             sel = [el[0][0] for el in sel]
             self.out_formats = sel
+            log.debug(f'Selected {", ".join(sel)} as output formats')
         return 6
 
 def main():
+    log.debug('START OF TSAPP SESSION')
     parser = argparse.ArgumentParser(description='Prepare, validate and run TSA analyses interactively.')
     parser.add_argument('-i', '--input',
                         type=str,
@@ -347,8 +352,8 @@ def main():
                         help='Name of the output folder / zip / xlsx file',
                         metavar='OUTPUT_NAME')
     args = parser.parse_args()
+    log.debug(f'Arguments: {str(args)}')
 
-    # TODO: take cl arguments into account
     anls = CLIAnalysisColl(input_xlsx=args.input,
                            name=args.name)
     defidx = 0
@@ -360,9 +365,8 @@ def main():
     try:
         anls.db_params.read_config('db_config.json')
     except:
-        print('Could not find DB config file:')
-        traceback.print_exc()
-        input('(press ENTER to continue)')
+        log.exception('Could not find DB config file.')
+        _ = input('(press ENTER to continue)')
 
     while True:
         ########################
@@ -401,6 +405,7 @@ def main():
             # Run and save analyses
             pass
         else:
+            log.debug('END OF TSAPP SESSION')
             sys.exit()
 
 if __name__ == '__main__':
