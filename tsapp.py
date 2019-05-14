@@ -6,6 +6,7 @@ import os
 import sys
 import argparse
 import traceback
+import psycopg2
 from pick import pick
 from tsa import AnalysisCollection
 from tsa.utils import trunc_str
@@ -199,9 +200,66 @@ class CLIAnalysisColl(AnalysisCollection):
             return 3
         return 2
 
-    def cli_prepare_sheets(self):
-        pass
-        # TODO
+    def cli_prepare_collections(self):
+        """
+        Get available station ids from database,
+        get sensor name-id pairs from database,
+        read in collections from workbook sheets,
+        and check if their station ids exist in the db.
+        """
+        if self.db_params.get_status() != 'DB params ready':
+            print('ERROR: Set database parameters first!')
+            _ = input('(Hit ENTER to continue)')
+            return 2
+        if self.workbook is None:
+            print('ERROR: Select Excel file first!')
+            _ = input('(Hit ENTER to continue)')
+            return 0
+        print('Going to fetch available station ids and sensor name-id pairs from database.')
+        go = input('(Hit ENTER to run or type "exit" and hit ENTER to cancel)')
+        if go.startswith('e'):
+            return 3
+        # On no selected sheetnames, set them to all available
+        if not self.sheetnames:
+            print('No sheetnames selected, using all available sheets.')
+            self.sheetnames = self.workbook.sheetnames
+        try:
+            print('Connecting to database ...')
+            with psycopg2.connect(**self.db_params, connect_timeout=5) as conn:
+                print('Fetching available station ids ...')
+                self.save_statids_in_statobs(conn)
+                print('Fetching sensor name-id pairs ...')
+                self.save_sensor_pairs(conn)
+            print(f'Fetched {len(self.statids_in_db)} station ids and {len(self.sensor_pairs)} sensor name-id pairs.')
+        except:
+            traceback.print_exc()
+            print('(press ENTER to continue without station ids and sensor pairs')
+            go = input(' or type "exit" and hit ENTER to exit)')
+            if len(go) > 0 and go.startswith('e'):
+                return 3
+        # Add selected worksheet contents, pass erroneous ones but log an error
+        for s in self.sheetnames:
+            try:
+                print(f'Adding collection "{s}" ...')
+                self.add_collection(s)
+            except Exception as e:
+                traceback.print_exc()
+                self.add_error(e)
+                _ = input('(Hit ENTER to continue)')
+        print(f'{len(self.collections)} collections added from {len(self.sheetnames)} sheets.')
+        if self.statids_in_db:
+            print('Going to validate collection station ids.')
+            _ = input('(Hit ENTER to continue)')
+            n_errs = self.check_statids()
+            if n_errs:
+                print(f'There were {n_errs} errors.')
+                print('Select "List errors and warnings" to see them.')
+        else:
+            err = 'WARNING: could not check station if ids exist in database'
+            print(err)
+            self.add_error(err)
+        _ = input('(Hit ENTER to exit)')
+        return 4
 
     def cli_list_errors(self):
         """
@@ -321,8 +379,8 @@ def main():
             # Database parameters
             defidx = anls.cli_set_db_parameter()
         elif idx == 3:
-            # Sheet validation
-            pass # TODO
+            # Sheet preparation (read & check station id existence)
+            defidx = anls.cli_prepare_collections()
         elif idx == 4:
             # List errors / warnings
             defidx = anls.cli_list_errors()

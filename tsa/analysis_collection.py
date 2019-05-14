@@ -117,6 +117,7 @@ class AnalysisCollection:
         self.collections = OrderedDict()
         self.errmsgs = []
         self.statids_in_db = set()
+        self.sensor_pairs = {}
         self.out_formats = ['xlsx', 'pptx', 'log']
         self.db_params = DBParams()
 
@@ -195,7 +196,7 @@ class AnalysisCollection:
         return as list of strings.
         """
         errs = [f'SESSION: {m}' for m in self.errmsgs]
-        for condcoll in self.collections:
+        for condcoll in self.collections.values():
             msgs = [f'COLLECTION: {m}' for m in condcoll.errmsgs]
             errs.extend(msgs)
             for cond in condcoll.conditions:
@@ -209,6 +210,8 @@ class AnalysisCollection:
         This does *not* account for ``.sheetnames``: that is only a container
         for further tools that add pre-selected worksheets
         Duplicate titles are not allowed.
+        If sensor name-id pair dictionary is available,
+        it can be given here for successful construction of Blocks.
 
         .. note: Adding by an existing title overwrites the old collection.
         """
@@ -218,7 +221,19 @@ class AnalysisCollection:
             raise Exception(f'"{title}" not in workbook sheets')
 
         ws = self.workbook[title]
-        self.collections[title] = CondCollection.from_xlsx_sheet(ws)
+        # NOTE: sensor pairs input is a bit weird here, could be fixed
+        self.collections[title] = CondCollection.from_xlsx_sheet(ws,
+            sensor_pairs=self.sensor_pairs)
+
+    def save_sensor_pairs(self, pg_conn):
+        """
+        Get sensor name-id pairs from database and save them as dict.
+        ``pg_conn`` must be a valid, online connection instance to TSA db.
+        """
+        with pg_conn.cursor() as cur:
+            cur.execute("SELECT id, lower(name) AS name FROM sensors;")
+            tb = cur.fetchall()
+            self.sensor_pairs =  {k:v for v, k in tb}
 
     def save_statids_in_statobs(self, pg_conn):
         """
@@ -236,19 +251,24 @@ class AnalysisCollection:
         """
         For each CondCollection, check if its station ids
         are available in the ids from the database.
+        Returns number of errors occurred.
         """
         if not self.statids_in_db:
             err = ('List of available station ids in db is empty.\n'
                    'Were they correctly requested from database?')
             raise Exception(err)
-        for coll in self.collections:
+        n_errs = 0
+        for coll in self.collections.values():
+            print(f'Checking station ids for "{coll.title}" ...')
             if coll.station_ids != self.statids_in_db.intersection(coll.station_ids):
+                n_errs += 1
                 missing_ids = list(coll.station_ids - self.statids_in_db).sort()
                 missing_ids = [str(el) for el in missing_ids]
                 err = ('WARNING: Following station ids are not available in db observations:\n'
                        ', '.join(missing_ids))
                 print(err)
                 coll.add_error(err)
+        return n_errs
 
 
     def run_analyses(self, indices=None):
