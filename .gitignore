@@ -1,5 +1,6 @@
-# Configuration file, meant to be user-defined
+# Configuration files meant to be user-defined
 db_config.json
+db_config.yml
 
 # External documentation / temp sketch files
 *.docx
