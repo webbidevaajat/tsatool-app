@@ -50,22 +50,18 @@ class CLIAnalysisColl(AnalysisCollection):
         # 0th: input excel filename
         if self.input_xlsx is None:
             ls.append(Action('Set input Excel file',
-                             'No valid input set',
-                             'SET INPUT EXCEL FILE!'))
+                             'No valid input set. Set input Excel first!'))
         else:
             ls.append(Action('Set input Excel file',
-                             self.input_xlsx,
-                             'Input Excel selected'))
+                             self.input_xlsx))
 
         # 1st: select sheets
         if self.input_xlsx is None:
             ls.append(Action('Select condition sheets',
-                             'No sheets selected',
-                             'SET INPUT EXCEL FILE FIRST!'))
+                             'Set input Excel first!'))
         elif not self.sheetnames:
             ls.append(Action('Select condition sheets',
-                             'No sheets selected',
-                             'All will be used by default.'))
+                             'No sheets selected: all will be used by default.'))
         else:
             ls.append(Action('Select condition sheets',
                              f'{len(self.sheetnames)} sheets selected'))
@@ -77,8 +73,7 @@ class CLIAnalysisColl(AnalysisCollection):
         # 3rd: validate sheets
         if self.input_xlsx is None:
             ls.append(Action('Validate condition sheets',
-                             'No conditions read',
-                             'SET INPUT EXCEL FILE FIRST!'))
+                             'No conditions read. Set input Excel first!'))
         elif not self.collections:
             ls.append(Action('Validate condition sheets',
                              'No conditions read'))
@@ -93,8 +88,7 @@ class CLIAnalysisColl(AnalysisCollection):
         # 5th: set output name
         if self.name is None:
             ls.append(Action('Set output name',
-                             'No output name set',
-                             'Will be auto-generated'))
+                             'No output name set: will be auto-generated.'))
         else:
             ls.append(Action('Set output name',
                              self.name))
@@ -106,12 +100,16 @@ class CLIAnalysisColl(AnalysisCollection):
         # 7th: run analyses and save output
         if self.input_xlsx is None:
             ls.append(Action('Run & save analyses',
-                             'Not ready to run',
-                             'SET INPUT EXCEL FILE FIRST!'))
+                             'Not ready to run: set input Excel first!'))
+        elif self.db_params.get_status() != 'DB params ready':
+            ls.append(Action('Run & save analyses',
+                             'Not ready to run: prepare DB parameters first!'))
         elif not self.collections:
             ls.append(Action('Run & save analyses',
-                             'Not ready to run',
-                             'VALIDATE SHEETS FIRST!'))
+                             'Not ready to run: validate sheets first!'))
+        elif self.errmsgs:
+            ls.append(Action('Run & save analyses',
+                             'Ready to run (there are errors)'))
         else:
             ls.append(Action('Run & save analyses',
                              'Ready to run'))
