@@ -6,6 +6,8 @@ Tool for analyzing Finnish road weather station (TieSääAsema) data. Data will 
 
 To get familiar with road weather station data models and properties, see the documentation for the [real time API](https://www.digitraffic.fi/tieliikenne/).
 
+You can get a some kind of a clue about what this is about by reading our first [Wiki page](https://github.com/webbidevaajat/tsatool-app/wiki/Ehtosetin-muotoilu) about formatting the input data (in Finnish).
+
 **Please note** that this work is only halfway in progress. Many parts are "proof of concept", implemented in an experimental and suboptimal way just to get them work locally, they have not been tested extensively or included in a test suite, etc. Not sure if there are going to be much advances in future either, since the user pool of this tool will probably remain small.
 
 ---
