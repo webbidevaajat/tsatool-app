@@ -263,7 +263,7 @@ class CLIAnalysisColl(AnalysisCollection):
                 log.info(f'There were {n_errs} errors.')
                 print('Select "List errors and warnings" to see them.')
         else:
-            err = 'Could not check station if ids exist in database'
+            err = 'Could not check if station ids exist in database'
             log.warning(err)
             self.add_error(err)
         _ = input('(Hit ENTER to exit)')
