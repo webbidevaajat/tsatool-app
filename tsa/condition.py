@@ -6,6 +6,7 @@
 import logging
 import re
 import pandas
+import psycopg2
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from .block import Block
@@ -311,6 +312,12 @@ class Condition:
         # the alias of the corresponding block
         al_value = value
         for bl in self.blocks:
+            # FIXME: use method other than straight .replace.
+            # It probably has to ensure the correct character after
+            # the part to replace. Currently, cases like
+            # block 1: xxx > 0.4 and block 2: yyy > 0.45
+            # work incorrectly, since the "5" of the last one
+            # remains after the replacement (the alias).
             al_value = al_value.replace(bl.raw_logic, bl.alias)
         self.alias_condition = al_value
 
