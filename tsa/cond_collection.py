@@ -59,7 +59,7 @@ class CondCollection:
         self.statids_available = None
         self.viewnames = []
 
-    def setup_views():
+    def setup_views(self):
         """
         Set up time-limited statobs view and joint main observation view.
         """
