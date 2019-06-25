@@ -6,6 +6,7 @@
 import logging
 import os
 import json
+import psycopg2
 import openpyxl as xl
 from .cond_collection import CondCollection
 from .utils import trunc_str
@@ -274,13 +275,50 @@ class AnalysisCollection:
         return n_errs
 
 
-    def run_analyses(self, indices=None):
+    def run_analyses(self):
         """
-        Run analyses for CondCollections selected by given int indices,
-        or for all collections if none given.
+        Run analyses for CondCollections that were made from the selected Excel sheets,
+        and save results according to the selected formats and path names.
         Analyses are run against collection-specific db connections.
         """
-        pass
+        log.info('Starting analyses')
+        wb = None
+        ws = None
+        pptx_template_path = os.path.join(self.base_dir, 'data', 'report_template.pptx')
+        if 'xlsx' in self.out_formats:
+            wb_outpath = os.path.join(self.get_outdir(), f'{self.name}_report.xlsx')
+            wb = xl.Workbook()
+            ws = wb.active
+            ws.title = 'INFO'
+            ws['A1'].value = f"Analysis started {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            log.info(f'Results will be saved as EXCEL sheets to {wb_outpath}')
+        if 'pptx' in self.out_formats:
+            if os.path.exists(pptx_template_path):
+                log.info(f'Results will be saved as POWERPOINT reports per input sheet')
+            else:
+                log.warning(f'Could not find pptx report template file at {pptx_template_path},\
+                            ignoring Powerpoint reports!')
+                pptx_template_path = None
+        if 'xlsx' not in self.out_formats and 'pptx' not in self.out_formats:
+            log.warning('No results will be saved!')
+        for k, coll in self.collections.items():
+            try:
+                pptx_path = None
+                if pptx_template_path is not None:
+                    pptx_out_path = os.path.join(self.get_outdir(), f'{coll.title}_report.pptx')
+                with psycopg2.connect(**self.db_params) as con:
+                    coll.run_analysis(pg_conn=con,
+                                      wb=wb,
+                                      pptx_path=pptx_out_path,
+                                      pptx_template=pptx_template_path)
+            except:
+                log.exception(f'Fatal error with {coll.title}, passing')
+
+        if wb is not None:
+            ws['A2'].value = f"Analysis ended {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            wb.save(wb_outpath)
+            log.info(f'EXCEL results saved to {wb_outpath}')
+        log.info(f'END OF ANALYSES for analysis collection {self.name}')
 
     def __getitem__(self):
         """
