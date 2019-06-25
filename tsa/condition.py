@@ -96,7 +96,8 @@ class Condition:
         self.data_from = None
         self.data_until = None
 
-        # make_blocks() sets .blocks, .alias_condition and .secondary
+        # make_blocks() sets .condition_elements, .blocks, .alias_condition and .secondary
+        self.condition_elements = None
         self.blocks = None
         self.alias_condition = None
         self.secondary = None
@@ -298,7 +299,7 @@ class Condition:
         # This should raise and error and thus exit the method
         # if there is an illegal combination of elements next to each other.
         validate_order(idfied)
-        
+
         # If validation was successful, attributes can be set
 
         # Pick up all unique blocks in the order they appear
@@ -323,6 +324,7 @@ class Condition:
             elif el[0] == 'block':
                 alias_parts.append(el[1].alias)
         self.alias_condition = ''.join(alias_parts)
+        self.condition_elements = idfied
 
         # If any of the blocks is secondary,
         # then the whole condition is considered secondary.
