@@ -298,7 +298,7 @@ class Condition:
         # This should raise and error and thus exit the method
         # if there is an illegal combination of elements next to each other.
         validate_order(idfied)
-
+        
         # If validation was successful, attributes can be set
 
         # Pick up all unique blocks in the order they appear
@@ -308,18 +308,21 @@ class Condition:
                 blocks.append(el[1])
         self.blocks = sorted(blocks, key=lambda x: x.alias)
 
-        # Form alias condition by replacing original block parts by
-        # the alias of the corresponding block
-        al_value = value
-        for bl in self.blocks:
-            # FIXME: use method other than straight .replace.
-            # It probably has to ensure the correct character after
-            # the part to replace. Currently, cases like
-            # block 1: xxx > 0.4 and block 2: yyy > 0.45
-            # work incorrectly, since the "5" of the last one
-            # remains after the replacement (the alias).
-            al_value = al_value.replace(bl.raw_logic, bl.alias)
-        self.alias_condition = al_value
+        # Form the alias condition by constructing the parts back
+        # from the "identified" parts, but for blocks, this time
+        # use their alias instead of the raw condition string.
+        # Whitespaces must be added a bit differently for each type.
+        alias_parts = []
+        for el in idfied:
+            if el[0] == 'andor':
+                alias_parts.append(f' {el[1]} ')
+            elif el[0] == 'not':
+                alias_parts.append(f'{el[1]} ')
+            elif el[0] in ('open_par', 'close_par'):
+                alias_parts.append(el[1])
+            elif el[0] == 'block':
+                alias_parts.append(el[1].alias)
+        self.alias_condition = ''.join(alias_parts)
 
         # If any of the blocks is secondary,
         # then the whole condition is considered secondary.
