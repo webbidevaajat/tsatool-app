@@ -345,6 +345,7 @@ class CLIAnalysisColl(AnalysisCollection):
         Run analyses of the selected input sheets,
         producing xlsx and pptx reports according to the selected options.
         """
+        # TODO: check if ready for analysis, return index accordingly
         self.run_analyses()
         input('(press ENTER to continue)')
         return 8
@@ -412,7 +413,7 @@ def main():
             defidx = anls.cli_set_output_formats()
         elif idx == 7:
             # Run and save analyses
-            anls.run_analyses()
+            defidx = anls.cli_run_analyses()
             # TODO: error handling & information
         else:
             log.debug('END OF TSAPP SESSION')
