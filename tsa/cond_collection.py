@@ -3,11 +3,17 @@
 
 # Collection of Conditions for analysis
 
+# TODO: handling Postgres connection instances
+# is very ambiguous at the moment. Either the connection
+# should be treated robustly as an attribute or
+# given always from outside as an argument.
+
 import logging
 import traceback
 import pptx
 import openpyxl as xl
 from .condition import Condition
+from .utils import strfdelta
 from datetime import datetime
 from io import BytesIO
 from pptx.util import Pt
@@ -106,7 +112,7 @@ class CondCollection:
                        "FROM statobs "
                        "WHERE tfrom BETWEEN %s AND %s;")
                 if verbose:
-                    print(cur.mogrify(sql, (self.time_from, self.time_until)))
+                    log.debug(cur.mogrify(sql, (self.time_from, self.time_until)))
                 try:
                     cur.execute(sql, (self.time_from, self.time_until))
                     self.pg_conn.commit()
@@ -252,18 +258,17 @@ class CondCollection:
                 self.get_temporary_views()
 
     def fetch_all_results(self):
-        # TODO: tqdm progress bar
         """
         Fetch results
         for all Conditions that have a corresponding view in the database.
         """
-        for cnd in self.conditions:
+        cnd_len = len(self.conditions)
+        for i, cnd in enumerate(self.conditions):
+            log.info(f'Fetching {i+1}/{cnd_len} {cnd.id_string} ...')
             try:
                 cnd.fetch_results_from_db(pg_conn=self.pg_conn)
             except Exception as e:
-                print(f'{str(cnd)}:\n')
-                print('Could not fetch results from database.')
-                print(traceback.print_exc())
+                log.exception(f'Could not fetch results for {cnd.id_string}')
 
     def to_worksheet(self, wb):
         """
