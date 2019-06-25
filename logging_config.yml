@@ -32,9 +32,18 @@ handlers:
     filename: 'logs/tsapplog'
     when: D
     delay: True
+  tsabatch_file:
+    class: logging.handlers.TimedRotatingFileHandler
+    formatter: precise
+    level: DEBUG
+    filename: 'logs/tsabatchlog'
+    when: D
+    delay: True
 loggers:
   tsapplogger:
     handlers: [tsapp_file]
+  tsabatchlogger:
+    handlers: [tsabatch_file]
   setuplogger:
     handlers: [setup_file]
   opslogger:

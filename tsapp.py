@@ -1,5 +1,5 @@
 """
-Command line interface for running TSA analyses.
+Interactive CLI for running TSA analyses.
 """
 
 import os
