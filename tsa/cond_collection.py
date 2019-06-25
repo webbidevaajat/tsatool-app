@@ -290,7 +290,8 @@ class CondCollection:
                    'E3': 'data_until',
                    'F3': 'valid',
                    'G3': 'notvalid',
-                   'H3': 'nodata'
+                   'H3': 'nodata',
+                   'I3': 'rows'
                    }
         for k, v in headers.items():
             ws[k] = v
@@ -312,6 +313,7 @@ class CondCollection:
             ws[f'F{r}'] = cnd.percentage_valid
             ws[f'G{r}'] = cnd.percentage_notvalid
             ws[f'H{r}'] = cnd.percentage_nodata
+            ws[f'I{r}'] = cnd.n_rows
 
             # Percent format
             ws[f'F{r}'].number_format = '0.00 %'
