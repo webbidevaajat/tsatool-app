@@ -442,6 +442,37 @@ class CondCollection:
         pptx_obj = self.to_pptx(pptx_template=pptx_template)
         pptx_obj.save(out_path)
 
+    def run_analysis(self, pg_conn, wb=None, pptx_path=None, pptx_template=None):
+        """
+        Call necessary methods to run the condition analysis
+        and save results to the specified
+        ``openpyxl.Workbook`` instance ``wb`` as new worksheet
+        and the ``pptx_path`` as ``.pptx`` file.
+        If an output is ``None``, it is not created.
+        """
+        log.info(f'Started analysis for collection {self.title}')
+        self.pg_conn = pg_conn
+        log.info('Setting up DB views')
+        self.setup_views()
+        log.info('Creating condition views')
+        self.create_condition_views()
+        self.fetch_all_results()
+
+        if wb is not None:
+            try:
+                log.info(f'Adding {self.title} to Excel workbook')
+                self.to_worksheet(wb)
+            except:
+                log.exception('Could not make Excel report sheet')
+
+        if pptx_path is not None and pptx_template is not None:
+            try:
+                log.info(f'Saving pptx report to {pptx_path}')
+                self.save_pptx(pptx_template=pptx_template, out_path=pptx_path)
+            except:
+                log.exception('Could not make pptx report')
+        log.info(f'END OF ANALYSIS for collection {self.title}')
+
     def __getitem__(self, key):
         """
         Returns the Condition instance on the corresponding index.
