@@ -340,6 +340,15 @@ class CLIAnalysisColl(AnalysisCollection):
             log.debug(f'Selected {", ".join(sel)} as output formats')
         return 6
 
+    def cli_run_analyses(self):
+        """
+        Run analyses of the selected input sheets,
+        producing xlsx and pptx reports according to the selected options.
+        """
+        self.run_analyses()
+        input('(press ENTER to continue)')
+        return 8
+
 def main():
     log.debug('START OF TSAPP SESSION')
     parser = argparse.ArgumentParser(description='Prepare, validate and run TSA analyses interactively.')
@@ -403,7 +412,8 @@ def main():
             defidx = anls.cli_set_output_formats()
         elif idx == 7:
             # Run and save analyses
-            pass
+            anls.run_analyses()
+            # TODO: error handling & information
         else:
             log.debug('END OF TSAPP SESSION')
             sys.exit()
