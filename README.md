@@ -1,8 +1,8 @@
-# tsatool-app (311386)
+# tsatool-app
 
 *Under construction!*
 
-Tool for analyzing Finnish road weather station (TieSääAsema) data. Data will be located and handled in a PostgreSQL & [Timescale](https://www.timescale.com/) database.
+Tool for analyzing Finnish road weather station (TieSääAsema) data. Data will is located and handled in a PostgreSQL & [Timescale](https://www.timescale.com/) database, and analyses are run by Python API. **See the [Wiki page](https://github.com/webbidevaajat/tsatool-app/wiki) for more details and examples.**
 
 To get familiar with road weather station data models and properties, see the documentation for the [real time API](https://www.digitraffic.fi/tieliikenne/).
 
