@@ -62,4 +62,4 @@ However, if you use e.g. pgAdmin on your local machine and want to connect to th
 ---
 # Copyright
 
-WSP Finland 2019, all rights reserved for the time being.
+WSP Finland & ITM Finland 2019
