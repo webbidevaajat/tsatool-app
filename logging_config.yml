@@ -48,6 +48,8 @@ loggers:
     handlers: [setup_file]
   opslogger:
     handlers: [ops_file]
+  notebooklogger:
+    handlers: [console]
 root:
   level: DEBUG
   handlers: [console]
