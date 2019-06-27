@@ -139,7 +139,7 @@ class CondCollection:
         else:
             self.add_error('WARNING: No db connection, cannot get stations from database')
 
-    def setup_obs_view(self):
+    def setup_obs_view(self, verbose=False):
         """
         After creating the ``statobs_time`` view,
         create a joint temporary view ``obs_main``
@@ -154,6 +154,8 @@ class CondCollection:
                    "FROM statobs_time "
                    "INNER JOIN seobs "
                    "ON statobs_time.id = seobs.obsid;")
+            if verbose:
+                log.debug(sql)
             try:
                 cur.execute(sql)
                 self.pg_conn.commit()
