@@ -15,13 +15,13 @@ You can get a some kind of a clue about what this is about by reading our first 
 
 - Check that you have the correct Python version and required libraries installed (see below), and possibly start your virtual environment
 - Run the `tsapp.py` CLI. The CLI provides you with various steps of preparing and analyzing a set of sensor conditions.
-  - *TODO: other parts of the CLI should work, but launching the main analysis stage is not yet implemented*
-- `tsapp.py` will call the `tsa` API that can be found in its own directory here. The API in turn will communicate with the database.
+- Run the `tsabatch.py` scripts with required arguments: see `python tsabatch.py --help` first. This is a tool for batch analyses: all the sheets of an Excel file are analyzed, and the analysis procedure is started without stopping on any errors or warnings.
+- The command line tools will call the `tsa` API that can be found in its own directory here. The API in turn will communicate with the database.
 
 ---
 # Installation
 
-**Note:** there is some installation script stuff included (see for example `setup_dir.py` that should make some required directories after you've cloned this repository), but there is **no** rigid, tested and complete installation process yet.
+**TODO: complete setup & test procedure** with database initialization, test data insertions and test runs.
 
 Make sure you have the following stuff installed. Commands needed for the Ubuntu server are given accordingly.
 
