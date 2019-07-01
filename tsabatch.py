@@ -4,20 +4,26 @@ Meant for background use: all input and output parameters
 are assumed clean and valid, and there are no interactive
 wait / confirmation steps!
 """
-
 import os
 import sys
-import yaml
 import argparse
 import psycopg2
 import logging
+import logging.handlers
 import logging.config
 from tsa import AnalysisCollection
 
-with open('logging_config.yml', 'r') as f:
-    config = yaml.safe_load(f.read())
-    logging.config.dictConfig(config)
-    log = logging.getLogger('tsabatchlogger')
+log = logging.getLogger('tsa')
+log.setLevel(logging.DEBUG)
+fh = logging.handlers.TimedRotatingFileHandler(os.path.join('logs', 'tsabatchlog'))
+fh.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s; %(name)s; %(levelname)s; %(message)s')
+fh.setFormatter(formatter)
+ch.setFormatter(formatter)
+log.addHandler(fh)
+log.addHandler(ch)
 
 def main():
     log.debug('START OF TSABATCH SESSION')
