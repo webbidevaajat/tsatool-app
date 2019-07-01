@@ -5,6 +5,7 @@ db_config.yml
 # External documentation / temp sketch files
 *.docx
 *.pptx
+!report_template.pptx # Allow pptx report base required by the TSA tool
 *.pdf
 *.tmp
 TODO_notes.txt
@@ -14,7 +15,6 @@ TEMP*
 
 # Data files
 analysis/
-data/
 *.csv
 lotju*
 *.xlsx
