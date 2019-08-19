@@ -1,3 +1,82 @@
+-- tsa PostgreSQL / TimescaleDB database setup
+-- Arttu K / WSP Finland 8/2019
+--
+-- Check that Timescale is installed and Postgres is configured
+-- accordingly (e.g. by the tuning tool provided by Timescale).
+-- Run this script in an empty tsa db as admin user.
+--
+-- 1) Extensions
+-- 2) Tables, timescale hypertables
+-- 3) Trigger functions and triggers
+-- 4) pack_ranges function
+
+CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+CREATE EXTENSION IF NOT EXISTS btree_gist CASCADE;
+
+CREATE TABLE IF NOT EXISTS stations (
+  id        integer     PRIMARY KEY,
+  geom      jsonb,
+  prop      jsonb,
+  modified  timestamptz DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sensors (
+  id                integer     PRIMARY KEY,
+  name              text        NOT NULL,
+  shortname         text,
+  unit              text,
+  accuracy          integer,
+  nameold           text,
+  valuedescriptions jsonb,
+  description       text,
+  modified          timestamptz DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS statobs (
+  id        bigserial   NOT NULL,
+  tfrom     timestamptz NOT NULL,
+  statid    integer     NOT NULL REFERENCES stations (id),
+  modified  timestamptz DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (tfrom, statid)
+);
+
+SELECT create_hypertable('statobs', 'tfrom');
+
+CREATE TABLE IF NOT EXISTS seobs (
+  id        bigserial   PRIMARY KEY,
+  obsid     bigint      NOT NULL,
+  seid      integer     NOT NULL,
+  seval     real        NOT NULL,
+  modified  timestamptz DEFAULT CURRENT_TIMESTAMP
+);
+
+SELECT create_hypertable('seobs', 'id', chunk_time_interval => 10000000);
+
+CREATE INDEX seobs_obsid_idx ON seobs(obsid);
+CREATE INDEX seobs_seid_seval_idx ON seobs(seid, seval);
+
+DROP FUNCTION IF EXISTS update_modified_column() CASCADE;
+CREATE OR REPLACE FUNCTION update_modified_column()
+  RETURNS TRIGGER AS $$
+    BEGIN
+      NEW.modified = NOW();
+      RETURN NEW;
+    END;
+  $$ language 'plpgsql';
+
+CREATE TRIGGER upd_stations_modified
+  BEFORE UPDATE ON stations
+  FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+CREATE TRIGGER upd_sensors_modified
+  BEFORE UPDATE ON sensors
+  FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+CREATE TRIGGER upd_statobs_modified
+  BEFORE UPDATE ON statobs
+  FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+CREATE TRIGGER upd_seobs_modified
+  BEFORE UPDATE ON seobs
+  FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+
 -- This function is to be used for each Block instance in tsa.
 -- A relation / temp view / whatever `p_obs_relation`
 -- must exist, and it must contain the sensor observations
@@ -110,4 +189,4 @@ FROM total_range_tb
 WHERE isfirst', p_operator, p_seval, p_obs_relation)
 USING p_statid, p_seid, p_maxminutes;
 END
-$func$  LANGUAGE plpgsql;
+$func$ LANGUAGE plpgsql;
