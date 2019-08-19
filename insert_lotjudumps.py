@@ -27,8 +27,10 @@ ID|AIKA|ASEMA_ID
 import logging
 import os
 import sys
+import csv
+import pytz
+import argparse
 import psycopg2
-import urllib.request
 from io import StringIO
 from tsa import tsadb_connect
 from datetime import datetime
@@ -51,6 +53,7 @@ def copy_to_table(conn, data, table):
     try:
         data.seek(0)
         with conn.cursor() as cur:
+            # TODO: use copy_expert
             cur.copy_from(
                 file=data,
                 table=table
@@ -94,95 +97,119 @@ def format_anturi_arvo_line(l):
         log.exception('could not format line')
         return None
 
+def convert_ids(csv_file, from_field, to_field):
+    """
+    Read ids from ``csv_file``,
+    return a dict where keys are integer ids from field ``from_field``
+    and values are integer ids from field ``to_field``.
+    """
+    conversion = {}
+    with open(csv_file, 'r') as fobj:
+        reader = csv.DictReader(fobj, delimiter=',', quotechar='"')
+        for l in reader:
+            from_id = int(l[from_field])
+            to_id = int(l[to_field])
+            conversion[from_id] = to_id
+    return conversion
+
+def format_timestamp(ts_str):
+    """
+    Parse ``dd.mm.YYYY HH:MM:SS,0000...`` timestamp string
+    (used in Lotju files) into datetime,
+    assume timezone 'Europe/Helsinki',
+    and convert into standard UTC timestamp string.
+    """
+    ts = ts_str.split(',')[0]
+    ts = datetime.strptime(ts, '%d.%m.%Y %H:%M:%S')
+    ts = pytz.timezone('Europe/Helsinki').localize(ts)
+    ts = ts.astimezone(pytz.timezone('UTC'))
+    ts = ts.strftime('%Y-%m-%d %H:%M:%S%z')
+    return ts
+
+def parse_tiesaa_mittatieto(csv_file, conversion, station_ids):
+    """
+    Parse raw ``tiesaa_mittatieto`` file,
+    convert station ids, select rows if station id selection provided,
+    return a dict tree with converted station ids as keys
+    and ``obs_id:timestamp`` dictionary lists as values.
+    """
+    statobs = {}
+    check_statids = len(station_ids) > 0
+    with open(csv_file, 'r') as fobj:
+        reader = csv.DictReader(fobj, delimiter='|')
+        for l in reader:
+            obsid = int(l['ID'])
+            ts = format_timestamp(l['AIKA'])
+            statid = conversion[int(l['ASEMA_ID'])]
+            if check_statids:
+                if statid not in station_ids:
+                    continue
+            # TODO: add station id to statobs keys,
+            # init obsid:ts list,
+            # add entries to that list
+
 def main():
-    log.info('START OF A NEW SESSION')
-    interactive = False
-    cont = 'y'
+    parser = argparse.ArgumentParser(description='Insert LOTJU dumps to tsa database.')
+    parser.add_argument('-a', '--anturi_arvo',
+                        type=str,
+                        help='Path or URL of anturi_arvo file',
+                        metavar='ANTURI_ARVO_FILE',
+                        required=True)
+    parser.add_argument('-t', '--tiesaa_mittatieto',
+                        type=str,
+                        help='Path or URL of tiesaa_mittatieto file',
+                        metavar='TIESAA_MITTATIETO_FILE',
+                        required=True)
+    parser.add_argument('-s', '--stations',
+                        type=int,
+                        help='Station ids to insert data from, sep by space, or empty for all available',
+                        default=[],
+                        nargs='+')
+    parser.add_argument('-l', '--limit',
+                        type=int,
+                        help='Limit number of station observations to insert, or empty for all available',
+                        default=0)
+    parser.add_argument('-c', '--conversions',
+                        type=str,
+                        help='ID conversion files 1) laskennallinen_anturi and 2) tiesaa_asema'
+                        default=[os.path.join('data', 'laskennallinen_anturi.csv'),
+                                 os.path.join('data', 'tiesaa_asema.csv')],
+                        nargs=2)
+    parser.add_argument('-u', '--username',
+                        type=str,
+                        help='Database username',
+                        default='postgres')
+    parser.add_argument('-p', '--password',
+                        type='str',
+                        help='Database password',
+                        default='')
+    args = parser.parse_args()
+
+    log.info('STARTING LOTJUDUMPS INSERTION')
     conn = None
-    # How many rows are inserted at a time:
-    chunk_limit = 100000
     try:
-        conn = tsadb_connect()
-        months = [f'{s:02d}' for s in range(1, 3)]
-        base_url = 'https://tiesaahistoria-jakelu.s3.amazonaws.com/2018/'
-        tiesaa_urls = [f'{base_url}tiesaa_mittatieto-2018_{m}.csv' for m in months]
-        log.info('using following tiesaa urls:\n{}'.format('\n'.join(tiesaa_urls)))
-        anturi_urls = [f'{base_url}anturi_arvo-2018_{m}.csv' for m in months]
-        log.info('using following anturi urls:\n{}'.format('\n'.join(anturi_urls)))
+        conn = tsadb_connect(username=args.username, password=args.password)
+
+        # ID CONVERSIONS
+        stid_conv = convert_ids(csv_file=args.conversions[0],
+                                from_field='ID',
+                                to_field='VANHA_ID')
+        seid_conv = convert_ids(csv_file=args.conversions[1],
+                                from_field='ID',
+                                to_field='VANHA_ID')
+        log.info(f'{len(stid_conv)} station ids and {len(seid_conv)} sensor ids converted')
 
         # TIESAA_MITTATIETO INSERTIONS
-        log.info('starting tiesaa_mittatieto insertions')
-        for u in tiesaa_urls:
-            log.info(f'Going to copy from {u}')
-            if interactive:
-                cont = input('Continue? [y if yes] ')
-            if cont != 'y':
-                raise Exception('no user permission to continue')
-            i = 0
-            i_tot = 0
-            try:
-                with urllib.request.urlopen(u, timeout=60) as urlconn:
-                    output = StringIO()
-                    while True:
-                        l = urlconn.readline().decode('utf-8')
-                        if not l:
-                            if output:
-                                copy_to_table(conn, output, 'tiesaa_mittatieto')
-                            output.close()
-                            break
-                        if i >= chunk_limit:
-                            copy_to_table(conn, output, 'tiesaa_mittatieto')
-                            output.close()
-                            output = StringIO()
-                            i_tot += i
-                            log.info(f'{i_tot} lines written so far')
-                            i = 0
-                        l = format_tiesaa_mittatieto_line(l)
-                        if l:
-                            output.write(l)
-                        i += 1
-                log.info(f'{i_tot} lines from {u} written to tiesaa_mittatieto')
-            except Exception as e:
-                log.exception('write operation failed')
+        sel_ids = args.stations
+        filter_ids = len(sel_ids) > 0
+
 
         # ANTURI_ARVO INSERTIONS
-        log.info('starting anturi_arvo insertions')
-        for u in anturi_urls:
-            log.info(f'Going to copy from {u}')
-            if interactive:
-                cont = input('Continue? [y if yes] ')
-            if cont != 'y':
-                raise Exception('no user permission to continue')
-            i = 0
-            i_tot = 0
-            try:
-                with urllib.request.urlopen(u, timeout=60) as urlconn:
-                    output = StringIO()
-                    while True:
-                        l = urlconn.readline().decode('utf-8')
-                        if not l:
-                            if output:
-                                copy_to_table(conn, output, 'anturi_arvo')
-                            output.close()
-                            break
-                        if i >= chunk_limit:
-                            copy_to_table(conn, output, 'anturi_arvo')
-                            output.close()
-                            output = StringIO()
-                            i_tot += i
-                            log.info(f'{i_tot} lines written so far')
-                            i = 0
-                        l = format_anturi_arvo_line(l)
-                        if l:
-                            output.write(l)
-                        i += 1
-                log.info(f'{i_tot} lines from {u} written to anturi_arvo')
-            except Exception as e:
-                log.exception('write operation failed')
+
 
         log.info('END OF SCRIPT')
     except Exception as e:
-        log.exception('script interrupted')
+        log.exception('Script interrupted')
     finally:
         if conn:
             conn.close()
