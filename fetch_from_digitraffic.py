@@ -19,7 +19,7 @@ import sys
 from getpass import getpass
 from psycopg2.extras import execute_values
 
-from tsa import tsadb_connect
+from tsa.utils import tsadb_connect
 
 def get_stations():
     """
