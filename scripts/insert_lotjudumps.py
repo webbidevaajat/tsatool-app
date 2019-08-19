@@ -1,12 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This script copies 'anturi' and 'tiesaa' csv datasets
-to corresponding raw data tables in the tsa database.
+This script filters given 'anturi' and 'tiesaa' csv datasets
+(which should be of LOTJU format)
+by given station ids and copies them
+to corresponding 'seobs' and 'statobs' data tables in the tsa database,
+converting sensor and station ids between new and old id systems.
 
-This shall not be used in a reproducible way;
-later datasets will probably be distributed
-in a format different than the current csv dumps in the S3 bucket.
+Example LOTJU ``anturi_arvo-YYYY-MM.csv`` contents:
+```
+ID|ANTURI_ID|ARVO|MITTATIETO_ID
+23453494515|1|0.5|411814242
+23453494576|7|-0.3|411814242
+23453494577|9|-3.1|411814242
+```
+
+Example LOTJU ``tiesaa_mittatieto-YYYY-MM.csv`` contents:
+```
+ID|AIKA|ASEMA_ID
+411813852|01.01.2018 00:00:00,000000000|202
+411813860|01.01.2018 00:00:00,000000000|223
+411813867|01.01.2018 00:00:00,000000000|229
+```
 """
 
 import logging
