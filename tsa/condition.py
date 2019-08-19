@@ -403,7 +403,7 @@ class Condition:
                            "SELECT vt AS vfrom, LEAD(vt, 1) OVER (ORDER BY vt) AS vuntil \n"
                            "FROM master_seq), \n")
             create_sql += ("master_ranges AS ( \n"
-                           "SELECT tsrange(vfrom, vuntil) AS valid_r \n"
+                           "SELECT tstzrange(vfrom, vuntil) AS valid_r \n"
                            "FROM master_ranges_wlastnull \n"
                            "WHERE vuntil IS NOT NULL) \n")
             block_join_els = ['master_ranges']

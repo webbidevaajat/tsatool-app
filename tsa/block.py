@@ -211,7 +211,7 @@ class Block:
         elif self.secondary:
             # Block is SECONDARY -> try to pick boolean values
             # and time ranges from existing db view
-            sql = ("SELECT tsrange(vfrom, vuntil) AS valid_r, "
+            sql = ("SELECT tstzrange(vfrom, vuntil) AS valid_r, "
                    f"master AS {self.alias} "
                    f"FROM {self.source_view}")
 
