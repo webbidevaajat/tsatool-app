@@ -63,7 +63,7 @@ class CondCollection:
 
         self.pg_conn = pg_conn
         self.statids_available = None
-        self.viewnames = []
+        self.temptables = []
 
     def setup_views(self):
         """
@@ -214,16 +214,16 @@ class CondCollection:
             for bl in cnd.blocks:
                 bl.set_sensor_id(pairs)
 
-    def get_temporary_views(self):
+    def get_temporary_relations(self):
         """
-        Set str list of temporary views currently available in db.
+        Set str list of temporary tables and views currently available in db.
         """
         if not self.pg_conn:
-            self.add_error('WARNING: No db connection, cannot get temporary views list')
+            self.add_error('WARNING: No db connection, cannot get temporary relations list')
             return
         with self.pg_conn.cursor() as cur:
             try:
-                sql = ("SELECT table_name FROM information_schema.views "
+                sql = ("SELECT table_name FROM information_schema.tables "
                        "WHERE table_schema LIKE '%pg_temp%';")
                 cur.execute(sql)
                 res = cur.fetchall()
@@ -231,11 +231,11 @@ class CondCollection:
                 self.pg_conn.rollback()
                 self.add_error(e)
                 return
-        self.viewnames = [el[0] for el in res]
+        self.temptables = [el[0] for el in res]
 
-    def create_condition_views(self, verbose=False):
+    def create_condition_temptables(self, verbose=False):
         """
-        For each Condition, create the corresponding database view.
+        For each Condition, create the corresponding temporary table in db.
         Primary conditions are handled first, only then secondary ones;
         if there are secondary conditions depending further on each other,
         it is up to the user to give them in correct order!
@@ -245,19 +245,25 @@ class CondCollection:
         for cnd in self.conditions:
             if cnd.secondary:
                 continue
-            cnd.create_db_view(pg_conn=self.pg_conn,
-                               verbose=verbose,
-                               viewnames=self.viewnames)
-        self.get_temporary_views()
+            try:
+                cnd.create_db_temptable(pg_conn=self.pg_conn,
+                                        verbose=verbose,
+                                        src_tables=self.temptables)
+            except Exception as e:
+                log.exception(e)
+        self.get_temporary_relations()
 
         # Second round for secondary ones,
         # viewnames list is now updated every time
         for cnd in self.conditions:
             if cnd.secondary:
-                cnd.create_db_view(pg_conn=self.pg_conn,
-                                   verbose=verbose,
-                                   viewnames=self.viewnames)
-                self.get_temporary_views()
+                try:
+                    cnd.create_db_temptable(pg_conn=self.pg_conn,
+                                            verbose=verbose,
+                                            src_tables=self.temptables)
+                    self.get_temporary_relations()
+                except Exception as e:
+                    log.exception(e)
 
     def fetch_all_results(self):
         """
@@ -459,7 +465,7 @@ class CondCollection:
         log.info('Setting up DB views')
         self.setup_views()
         log.info('Creating condition views')
-        self.create_condition_views()
+        self.create_condition_temptables()
         self.fetch_all_results()
 
         if wb is not None:

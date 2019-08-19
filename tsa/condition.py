@@ -344,61 +344,83 @@ class Condition:
             if not bl.secondary:
                 self.station_ids.add(bl.station_id)
 
-    def create_db_view(self, pg_conn=None, verbose=False, viewnames=[], execute=True):
+    def create_db_temptable(self, pg_conn=None, verbose=False, src_tables=[], execute=True):
         """
         Create temporary table corresponding to the condition.
-        Existence of secondary block source views is checked
-        over ``viewnames``.
+        Existence of secondary block source tables is checked against ``src_tables``.
         Effective only if a database connection is present.
+        Views ``statobs_time`` and ``statobs_time`` must exist.
         With execute=False, only returns the sql statements as string.
         """
+        log.debug(f'Creating temp table {self.id_string}')
+        if len(self.blocks) == 0:
+            raise Exception(f'{self.id_string}: no Blocks to construct database query')
+        # Any relation with the same name is dropped first.
+        # An idiot-proof step to prevent base tables from being dropped here
+        # (TODO: could be included at the class init level already)
+        if self.id_string in ['stations', 'statobs', 'sensors', 'seobs', 'laskennallinen_anturi', 'tiesaa_asema']:
+            raise Exception(f'Do not use {self.id_string} as Condition identifier as it is a db table name!')
+        drop_sql = f"DROP TABLE IF EXISTS {self.id_string};\n"
 
-        drop_sql = f"DROP VIEW IF EXISTS {self.id_string};\n"
-        sql = f"CREATE OR REPLACE TEMP VIEW {self.id_string} AS ( \nWITH "
+        # Block-related data structures in the db are defined as temp tables
+        # whose lifespan only covers the current transaction:
+        # this prevents namespace conflicts with, e.g., similar aliases shared by multiple sites
+        # and keeps the identifier reasonably short. Moreover, Block-related
+        # datasets are not needed between Conditions (-> db sessions) as such.
+        block_defs = []
+        for bl in self.blocks:
+            s = f"CREATE TEMP TABLE {bl.alias} ON COMMIT DROP AS ({bl.get_sql_def()});"
+            block_defs.append(s)
 
-        bl_defs = [f"{bl.alias} AS ({bl.get_sql_def()})" for bl in self.blocks]
-        sql += ', \n'.join(bl_defs)
+        # Temp table representing the Condition persists along with the connection / session,
+        # and it is constructed as follows:
+        # - Make the Block parts (dropped at the end of the transaction)
+        # - Create the "most granular" validity ranges series from all the Block temp tables as "master_ranges"
+        # - Left join the Block temp tables to master_ranges
+        # If there is only one Block, master_ranges is not needed.
+        create_sql = "\n".join(block_defs)
 
-        if len(self.blocks) < 2:
-            last_cte = self.blocks[0].alias
+        if len(self.blocks) == 1:
+            create_sql += (f"\nCREATE TEMP TABLE {self.id_string} AS ( \n"
+                           "SELECT \n"
+                           "lower(valid_r) AS vfrom, \n"
+                           "upper(valid_r) AS vuntil, \n"
+                           "upper(valid_r)-lower(valid_r) AS vdiff, \n"
+                           f"{self.blocks[0].alias}, \n"
+                           f"{self.blocks[0].alias} AS master \n"
+                           f"FROM {self.blocks[0].alias});")
         else:
-            sql += ', \n'
-
-            # Agglomerate time range join CTEs
-            ctes = []
-            i = 2
-            while i <= len(self.blocks):
-                subsel = self.blocks[-i:]
-                nr_seq = '_'.join([str(bl.order_nr) for bl in subsel])
-                idfier = f"{self.master_alias}_{nr_seq}"
-                if not ctes:
-                    last_cte = subsel[-1].alias
-                else:
-                    last_cte = ctes[-1][0]
-                cte_def = f"{idfier} AS (SELECT \n"
-                cte_def += f"{subsel[0].alias}.valid_r * {last_cte}.valid_r AS valid_r, \n"
-                cte_def += ', \n'.join([bl.alias for bl in subsel]) + ' \n'
-                cte_def += f"FROM {subsel[0].alias} \n"
-                cte_def += f"JOIN {last_cte} \n"
-                cte_def += f"ON {subsel[0].alias}.valid_r && {last_cte}.valid_r)"
-                ctes.append((idfier, cte_def))
-                i += 1
-
-            last_cte = ctes[-1][0]
-            sql += ', \n'.join([cte[1] for cte in ctes])
-
-        sql += ' \n'
-        sql += ("SELECT \n"
-                "lower(valid_r) AS vfrom, \n"
-                "upper(valid_r) AS vuntil, \n"
-                "upper(valid_r)-lower(valid_r) AS vdiff, \n")
-        sql += ", \n".join([bl.alias for bl in self.blocks]) + ", \n"
-        sql += f"({self.alias_condition}) AS master \n"
-        sql += f"FROM {last_cte});"
+            master_seq_els = []
+            for bl in self.blocks:
+                s = f"SELECT unnest( array [lower(valid_r), upper(valid_r)] ) AS vt FROM {bl.alias}"
+                master_seq_els.append(s)
+            master_seq_sql = "\nUNION \n".join(master_seq_els)
+            create_sql += (f"\nCREATE TEMP TABLE {self.id_string} AS ( \n"
+                           "WITH master_seq AS ( \n"
+                           f"{master_seq_sql} \n"
+                           "ORDER BY vt), \n")
+            create_sql += ("master_ranges_wlastnull AS ( \n"
+                           "SELECT vt AS vfrom, LEAD(vt, 1) OVER (ORDER BY vt) AS vuntil \n"
+                           "FROM master_seq), \n")
+            create_sql += ("master_ranges AS ( \n"
+                           "SELECT tsrange(vfrom, vuntil) AS valid_r \n"
+                           "FROM master_ranges_wlastnull \n"
+                           "WHERE vuntil IS NOT NULL) \n")
+            block_join_els = ['master_ranges']
+            for bl in self.blocks:
+                s = f"LEFT JOIN {bl.alias} ON master_ranges.valid_r && {bl.alias}.valid_r"
+                block_join_els.append(s)
+            block_join_sql = " \n".join(block_join_els)
+            create_sql += ("SELECT \n"
+                           "lower(master_ranges.valid_r) AS vfrom, \n"
+                           "upper(master_ranges.valid_r) AS vuntil, \n"
+                           "upper(master_ranges.valid_r)-lower(master_ranges.valid_r) AS vdiff, \n")
+            create_sql +=  ", \n".join([f"{bl.alias}" for bl in self.blocks]) + ", \n"
+            create_sql += f"({self.alias_condition}) AS master \nFROM {block_join_sql});"
 
         if verbose:
-            print(drop_sql)
-            print(sql)
+            log.info(drop_sql)
+            log.info(create_sql)
 
         if not pg_conn:
             errtext = 'WARNING: no database connection'
@@ -408,15 +430,15 @@ class Condition:
             with pg_conn.cursor() as cur:
                 try:
                     cur.execute(drop_sql)
-                    cur.execute(sql)
+                    pg_conn.commit()
+                    cur.execute(create_sql)
                     pg_conn.commit()
                     self.has_view = True
                 except psycopg2.DatabaseError as e:
+                    log.exception(e)
                     pg_conn.rollback()
-                    self.add_error(e)
                     errtext = self.error_context(after=e)
-        elif not execute:
-            return '\n'.join([drop_sql, sql])
+                    self.add_error(errtext)
 
     def set_summary_attrs(self):
         """
