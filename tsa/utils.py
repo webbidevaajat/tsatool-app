@@ -7,6 +7,7 @@ import logging
 import os
 import json
 import psycopg2
+from getpass import getpass
 
 log = logging.getLogger(__name__)
 
