@@ -3,12 +3,16 @@
 --
 -- Check that Timescale is installed and Postgres is configured
 -- accordingly (e.g. by the tuning tool provided by Timescale).
--- Run this script in an empty tsa db as admin user.
+-- Run this script in an empty database cluster as admin user.
 --
--- 1) Extensions
--- 2) Tables, timescale hypertables
--- 3) Trigger functions and triggers
--- 4) pack_ranges function
+-- - Create tsa database
+-- - Extensions
+-- - Tables, timescale hypertables
+-- - Trigger functions and triggers
+-- - pack_ranges function
+
+CREATE DATABASE tsa;
+\connect tsa;
 
 CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 CREATE EXTENSION IF NOT EXISTS btree_gist CASCADE;
