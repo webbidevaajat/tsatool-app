@@ -12,6 +12,8 @@ to connect to the database. Database admin credentials
 are needed for the insertion operations.
 """
 
+# TODO: refactor, use logging, remove unnecessary prompts
+
 import psycopg2
 import requests
 import json
@@ -97,7 +99,7 @@ def main():
     print('STATIONS and SENSORS')
     print('from Digitraffic into TSA database')
     print('\n******************************\n')
-    pg_conn = tsadb_connect(ask=True)
+    pg_conn = tsadb_connect()
     if not pg_conn:
         sys.exit()
 
@@ -106,20 +108,21 @@ def main():
 
     # **************************
     # Operations on STATION data
-    write = False
+    # write = False
+    write = True
     stations = get_stations()
-    if input('Do you want to write current '
-             'station data to database? [y if yes] ') == 'y':
-        write = True
-    else:
-        print('Skipped inserting station data.')
+    # if input('Do you want to write current '
+    #          'station data to database? [y if yes] ') == 'y':
+    #     write = True
+    # else:
+    #     print('Skipped inserting station data.')
     cur.execute("SELECT COUNT(*) FROM stations;")
     exist_count = cur.fetchone()[0]
-    if exist_count > 0:
-        print('Table "stations" already has {:d} rows.'.format(exist_count))
-        if input('Do you want to overwrite old rows? [y if yes] ') != 'y':
-            print('Skipped inserting station data.')
-            write = False
+    # if exist_count > 0:
+    #     print('Table "stations" already has {:d} rows.'.format(exist_count))
+    #     if input('Do you want to overwrite old rows? [y if yes] ') != 'y':
+    #         print('Skipped inserting station data.')
+    #         write = False
 
     if write:
         if exist_count > 0:
@@ -138,20 +141,20 @@ def main():
 
     # Operations on SENSOR data
     # *************************
-    write = False
+    # write = False
     sensors = get_sensors()
-    if input('Do you want to write current '
-             'station data to database? [y if yes] ') == 'y':
-        write = True
-    else:
-        print('Skipped inserting sensor data.')
+    # if input('Do you want to write current '
+    #          'station data to database? [y if yes] ') == 'y':
+    #     write = True
+    # else:
+    #     print('Skipped inserting sensor data.')
     cur.execute("SELECT COUNT(*) FROM sensors;")
     exist_count = cur.fetchone()[0]
-    if exist_count > 0:
-        print('Table "sensors" already has {:d} rows.'.format(exist_count))
-        if input('Do you want to overwrite old rows? [y if yes] ') != 'y':
-            print('Skipped inserting sensor data.')
-            write = False
+    # if exist_count > 0:
+    #     print('Table "sensors" already has {:d} rows.'.format(exist_count))
+    #     if input('Do you want to overwrite old rows? [y if yes] ') != 'y':
+    #         print('Skipped inserting sensor data.')
+    #         write = False
 
     if write:
         if exist_count > 0:
