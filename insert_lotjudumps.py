@@ -276,7 +276,8 @@ def main():
                 statid_short_selected.append(statid_conv_inv[sid])
             except KeyError:
                 log.warning(f'Statid {sid} omitted: no corresponding short id found')
-        tsm_parsed = parse_tiesaa_mittatieto(csv_file=args.tiesaa_mittatieto,
+        tsm_file = os.path.join('data', args.tiesaa_mittatieto)
+        tsm_parsed = parse_tiesaa_mittatieto(csv_file=tsm_file,
                                              conversion=statid_conv,
                                              station_ids=statid_short_selected)
         tsm_report_els = [(k, len(v)) for k, v in tsm_parsed.items()]
@@ -294,7 +295,8 @@ def main():
         for v in tsm_parsed.values():   # Dictionaries under station ids
             for k in v.keys():          # Obs ids as keys
                 tsm_obsids.add(k)
-        aa_parsed = parse_anturi_arvo(csv_file=args.anturi_arvo,
+        aa_file = os.path.join('data', args.anturi_arvo)
+        aa_parsed = parse_anturi_arvo(csv_file=aa_file,
                                       tsm_ids=tsm_obsids,
                                       seid_conv=seid_conv,
                                       row_limit=args.limit)
