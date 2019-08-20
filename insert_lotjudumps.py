@@ -182,8 +182,12 @@ def copy_to_table(conn, fields, rows, table, chunk_size=1000000):
     Copy ``rows`` to comma-separated ``fields``
     of database ``table`` over ``conn``
     in chunks of ``chunk_size`` rows.
+
+    NOTE: We first copy data to temp table and then insert it
+    with the upsert functionality (ON CONFLICT DO NOTHING), since
+    ignoring duplicate primary key rows is not directly possible with COPY FROM.
     """
-    sql = (f"COPY {table} ({fields}) "
+    copy_sql = (f"COPY tmp_table ({fields}) "
            "FROM STDIN WITH DELIMITER ',';")
     nrows = len(rows)
     log.info(f'Copying {nrows} rows to table {table} in chunks of {chunk_size}')
@@ -192,13 +196,17 @@ def copy_to_table(conn, fields, rows, table, chunk_size=1000000):
         j = min(chunk_size, nrows)
         while j <= min(chunk_size, nrows) and i < j:
             log.info(f'{i}/{nrows} ...')
-            debug_rows = '\n'.join(rows[i:(i+3)]) + '...\n' + '\n'.join(rows[(j-3):j])
+            debug_rows = '\n'.join(rows[i:(i+3)]) + '\n...\n' + '\n'.join(rows[(j-3):j])
             log.debug('\n' + debug_rows)
             with StringIO() as fobj:
                 fobj.write('\n'.join(rows[i:j]))
                 fobj.seek(0)
                 with conn.cursor() as cur:
-                    cur.copy_expert(sql=sql, file=fobj)
+                    cur.execute("CREATE TEMP TABLE tmp_table ON COMMIT DROP AS "
+                                f"SELECT * FROM {table} WITH NO DATA;")
+                    cur.copy_expert(sql=copy_sql, file=fobj)
+                    cur.execute(f"INSERT INTO {table} SELECT * FROM tmp_table "
+                                "ON CONFLICT DO NOTHING;")
                     conn.commit()
             i = j
             j = min(j + chunk_size, nrows)
