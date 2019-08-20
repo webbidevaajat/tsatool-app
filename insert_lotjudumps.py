@@ -217,15 +217,15 @@ def copy_to_table(conn, fields, rows, table, chunk_size=1000000):
 
 def main():
     parser = argparse.ArgumentParser(description='Insert LOTJU dumps to tsa database.')
-    parser.add_argument('-a', '--anturi_arvo',
-                        type=str,
-                        help='Path or URL of anturi_arvo file',
-                        metavar='ANTURI_ARVO_FILE',
-                        required=True)
     parser.add_argument('-t', '--tiesaa_mittatieto',
                         type=str,
-                        help='Path or URL of tiesaa_mittatieto file',
+                        help='Name of tiesaa_mittatieto file (under data/)',
                         metavar='TIESAA_MITTATIETO_FILE',
+                        required=True)
+    parser.add_argument('-a', '--anturi_arvo',
+                        type=str,
+                        help='Name of anturi_arvo file (under data/)',
+                        metavar='ANTURI_ARVO_FILE',
                         required=True)
     parser.add_argument('-s', '--stations',
                         type=int,
