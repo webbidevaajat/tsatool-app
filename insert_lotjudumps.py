@@ -38,64 +38,13 @@ from datetime import datetime
 log = logging.getLogger(__name__)
 formatter = logging.Formatter('%(asctime)s; %(levelname)s; %(message)s',
                               '%Y-%m-%d %H:%M:%S')
-fh = logging.FileHandler(os.path.join('logs', 'lotjudumps.log'))
-fh.setFormatter(formatter)
-log.addHandler(fh)
+# fh = logging.FileHandler(os.path.join('logs', 'lotjudumps.log'))
+# fh.setFormatter(formatter)
+# log.addHandler(fh)
 ch = logging.StreamHandler(sys.stdout)
-ch.setFormatter(logging.Formatter('%(message)s'))
+ch.setFormatter(logging.Formatter('%(asctime)s; %(message)s'))
 log.addHandler(ch)
 log.setLevel(logging.DEBUG)
-
-def copy_to_table(conn, data, table):
-    """
-    Copy StringIO ``data`` to database ``table`` over ``conn``
-    """
-    try:
-        data.seek(0)
-        with conn.cursor() as cur:
-            # TODO: use copy_expert
-            cur.copy_from(
-                file=data,
-                table=table
-            )
-        conn.commit()
-        log.info('copied to {}'.format(table))
-    except psycopg2.InternalError as e:
-        conn.rollback()
-        log.exception('DB internal error, rolling back')
-    except Exception as e:
-        log.exception('could not copy to table')
-
-def format_tiesaa_mittatieto_line(l):
-    """
-    Prepare line ``l`` for ``tiesaa_mittatieto`` insertion
-    """
-    try:
-        l = l.strip().split('|')
-        assert len(l) == 3
-        if 'ID' in l[0]:
-            log.info('header line detected, skipping')
-            return None
-        # Format timestamp
-        l[1] = l[1].split(',')[0]
-        l[1] = datetime.strptime(l[1], '%d.%m.%Y %H:%M:%S')
-        l[1] = l[1].strftime('%Y-%m-%d %H:%M:%S')
-        return f"{l[0]}\t'{l[1]}'\t{l[2]}\n"
-    except Exception as e:
-        log.exception('could not format line')
-        return None
-
-def format_anturi_arvo_line(l):
-    """
-    Prepare line ``l`` for ``anturi_arvo`` insertion
-    """
-    try:
-        l = l.strip().split('|')
-        assert len(l) == 5
-        return '\t'.join(l[:4]) + '\n'
-    except Exception as e:
-        log.exception('could not format line')
-        return None
 
 def convert_ids(csv_file, from_field, to_field):
     """
@@ -104,12 +53,18 @@ def convert_ids(csv_file, from_field, to_field):
     and values are integer ids from field ``to_field``.
     """
     conversion = {}
-    with open(csv_file, 'r') as fobj:
+    with open(csv_file, 'r', newline='') as fobj:
         reader = csv.DictReader(fobj, delimiter=',', quotechar='"')
+        i = 0
         for l in reader:
-            from_id = int(l[from_field])
-            to_id = int(l[to_field])
-            conversion[from_id] = to_id
+            i += 1
+            try:
+                from_id = int(l[from_field])
+                to_id = int(l[to_field])
+                conversion[from_id] = to_id
+            except ValueError:
+                log.warning(f'Conversion error on line {i} of file {csv_file}, skipping')
+                continue
     return conversion
 
 def format_timestamp(ts_str):
@@ -129,24 +84,128 @@ def format_timestamp(ts_str):
 def parse_tiesaa_mittatieto(csv_file, conversion, station_ids):
     """
     Parse raw ``tiesaa_mittatieto`` file,
-    convert station ids, select rows if station id selection provided,
+    select rows if station id selection provided,
+    convert station ids,
     return a dict tree with converted station ids as keys
-    and ``obs_id:timestamp`` dictionary lists as values.
+    and ``obs_id:timestamp`` dictionary as values.
+
+    NOTE: ``station_ids`` filter must correspond to the "from_id" (short id),
+    i.e., they must be converted first!
     """
     statobs = {}
     check_statids = len(station_ids) > 0
     with open(csv_file, 'r') as fobj:
         reader = csv.DictReader(fobj, delimiter='|')
+        i = 0
         for l in reader:
+            i += 1
+            try:
+                short_statid = int(l['ASEMA_ID'])
+            except ValueError:
+                log.warning(f'Int conversion failed on line {i}, skipping')
+                continue
+            if check_statids:
+                if short_statid not in station_ids:
+                    continue
+            try:
+                statid = conversion[int(l['ASEMA_ID'])]
+            except KeyError:
+                log.warning((f"Statid {int(l['ASEMA_ID'])} not in conversion (line {i})"))
+                continue
             obsid = int(l['ID'])
             ts = format_timestamp(l['AIKA'])
-            statid = conversion[int(l['ASEMA_ID'])]
-            if check_statids:
-                if statid not in station_ids:
-                    continue
-            # TODO: add station id to statobs keys,
-            # init obsid:ts list,
-            # add entries to that list
+            if statid not in statobs.keys():
+                statobs[statid] = {obsid: ts}
+            else:
+                statobs[statid][obsid] = ts
+    return statobs
+
+def flatten_tiesaa_mittatieto(parsed_tree):
+    """
+    Flatten tiesaa_mittatieto data from dict tree
+    to database-ready rows.
+    """
+    rows = []
+    for k, v in parsed_tree.items():
+        stid = k
+        for mid, ts in v.items():
+            rows.append(f'{mid},{ts},{stid}')
+    return rows
+
+def parse_anturi_arvo(csv_file, tsm_ids, seid_conv, row_limit):
+    """
+    Parse raw ``anturi_arvo`` file,
+    filter rows by '``MITTATIETO_ID`` in ``tsm_ids``,
+    convert ``ANTURI_ID``,
+    return database-ready rows as list.
+    """
+    rows = []
+    with open(csv_file, 'r') as fobj:
+        reader = csv.DictReader(fobj, delimiter='|')
+        i = 0
+        for l in reader:
+            i += 1
+            if row_limit > 0 and i > row_limit:
+                return rows
+            if i % 1000000 == 0:
+                log.debug(f'Line {i} ...')
+            try:
+                mid = int(l['MITTATIETO_ID'])
+            except ValueError:
+                log.warning(f'Int conversion of MITTATIETO_ID failed on line {i}, skipping')
+            if mid not in tsm_ids:
+                continue
+            try:
+                oid = int(l['ID'])
+            except ValueError:
+                log.warning(f'Int conversion of ID failed on line {i}, skipping')
+                continue
+            try:
+                aid = seid_conv[int(l['ANTURI_ID'])]
+            except ValueError:
+                log.warning(f'Int conversion of ANTURI_ID failed on line {i}, skipping')
+                continue
+            except KeyError:
+                log.warning(f'Conversion not found for ANTURI_ID on line {i}, skipping')
+                continue
+            try:
+                val = float(l['ARVO'])
+            except ValueError:
+                log.warning(f'Float conversion of ARVO failed on line {i}, skipping')
+                continue
+            rows.append(f'{oid},{mid},{aid},{val}')
+    return rows
+
+
+def copy_to_table(conn, fields, rows, table, chunk_size=1000000):
+    """
+    Copy ``rows`` to comma-separated ``fields``
+    of database ``table`` over ``conn``
+    in chunks of ``chunk_size`` rows.
+    """
+    sql = (f"COPY {table} ({fields}) "
+           "FROM STDIN WITH DELIMITER ',';")
+    nrows = len(rows)
+    log.info(f'Copying {nrows} rows to table {table} in chunks of {chunk_size}')
+    try:
+        i = 0
+        j = min(chunk_size, nrows)
+        while j <= min(chunk_size, nrows) and i < j:
+            log.info(f'{i}/{nrows} ...')
+            debug_rows = '\n'.join(rows[i:(i+3)]) + '...\n' + '\n'.join(rows[(j-3):j])
+            log.debug('\n' + debug_rows)
+            with StringIO() as fobj:
+                fobj.write('\n'.join(rows[i:j]))
+                fobj.seek(0)
+                with conn.cursor() as cur:
+                    cur.copy_expert(sql=sql, file=fobj)
+                    conn.commit()
+            i = j
+            j = min(j + chunk_size, nrows)
+        log.info(f'All rows copied to table {table}')
+    except:
+        conn.rollback()
+        log.exception('Error copying to db, rolling back')
 
 def main():
     parser = argparse.ArgumentParser(description='Insert LOTJU dumps to tsa database.')
@@ -167,22 +226,22 @@ def main():
                         nargs='+')
     parser.add_argument('-l', '--limit',
                         type=int,
-                        help='Limit number of station observations to insert, or empty for all available',
+                        help='Max number of anturi_arvo lines to read, or empty/non-positive to read all',
                         default=0)
     parser.add_argument('-c', '--conversions',
                         type=str,
-                        help='ID conversion files 1) laskennallinen_anturi and 2) tiesaa_asema'
-                        default=[os.path.join('data', 'laskennallinen_anturi.csv'),
-                                 os.path.join('data', 'tiesaa_asema.csv')],
+                        help='ID conversion files 1) laskennallinen_anturi and 2) tiesaa_asema',
+                        default=[os.path.join('data', 'tiesaa_asema.csv'),
+                                 os.path.join('data', 'laskennallinen_anturi.csv')],
                         nargs=2)
     parser.add_argument('-u', '--username',
                         type=str,
                         help='Database username',
                         default='postgres')
     parser.add_argument('-p', '--password',
-                        type='str',
+                        type=str,
                         help='Database password',
-                        default='')
+                        default='postgres')
     args = parser.parse_args()
 
     log.info('STARTING LOTJUDUMPS INSERTION')
@@ -191,21 +250,59 @@ def main():
         conn = tsadb_connect(username=args.username, password=args.password)
 
         # ID CONVERSIONS
-        stid_conv = convert_ids(csv_file=args.conversions[0],
+        statid_conv = convert_ids(csv_file=args.conversions[0],
                                 from_field='ID',
                                 to_field='VANHA_ID')
         seid_conv = convert_ids(csv_file=args.conversions[1],
                                 from_field='ID',
                                 to_field='VANHA_ID')
-        log.info(f'{len(stid_conv)} station ids and {len(seid_conv)} sensor ids converted')
+        log.info(f'{len(statid_conv)} station ids and {len(seid_conv)} sensor ids converted')
 
-        # TIESAA_MITTATIETO INSERTIONS
-        sel_ids = args.stations
-        filter_ids = len(sel_ids) > 0
+        # TIESAA_MITTATIETO
+        # We use inverted station id conversion here
+        # so we can compare "short" station ids in raw data directly.
+        statid_conv_inv = {v:k for k, v in statid_conv.items()}
+        statid_short_selected = []
+        for sid in args.stations:
+            try:
+                statid_short_selected.append(statid_conv_inv[sid])
+            except KeyError:
+                log.warning(f'Statid {sid} omitted: no corresponding short id found')
+        tsm_parsed = parse_tiesaa_mittatieto(csv_file=args.tiesaa_mittatieto,
+                                             conversion=statid_conv,
+                                             station_ids=statid_short_selected)
+        tsm_report_els = [(k, len(v)) for k, v in tsm_parsed.items()]
+        tsm_report_els = sorted(tsm_report_els, key=lambda el: el[0])
+        tsm_report_els = '\n'.join([f'{k}:\t{v}' for k, v in tsm_report_els])
+        log.info((f'Number of tiesaa_mittatieto elements parsed per station:\n'
+                  f'{tsm_report_els}'))
 
+        # ANTURI_ARVO
+        # tiesaa_mittatieto observation ids are combined
+        # so they can be used to filter only required anturi_arvo
+        # observations already when parsing the large raw data file.
+        # TODO: also filter sensor ids?
+        tsm_obsids = set()
+        for v in tsm_parsed.values():   # Dictionaries under station ids
+            for k in v.keys():          # Obs ids as keys
+                tsm_obsids.add(k)
+        aa_parsed = parse_anturi_arvo(csv_file=args.anturi_arvo,
+                                      tsm_ids=tsm_obsids,
+                                      seid_conv=seid_conv,
+                                      row_limit=args.limit)
+        log.info(f'{len(aa_parsed)} anturi_arvo rows')
 
-        # ANTURI_ARVO INSERTIONS
-
+        # DATABASE INSERTIONS
+        # tiesaa_mittatieto data are flattened first
+        tsm_flat = flatten_tiesaa_mittatieto(tsm_parsed)
+        copy_to_table(conn,
+                      fields='id,tfrom,statid',
+                      rows=tsm_flat,
+                      table='statobs')
+        copy_to_table(conn,
+                      fields='id,obsid,seid,seval',
+                      rows=aa_parsed,
+                      table='seobs')
 
         log.info('END OF SCRIPT')
     except Exception as e:
