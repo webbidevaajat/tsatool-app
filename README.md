@@ -16,9 +16,55 @@ You can get a some kind of a clue about what this is about by reading our first 
 
 ## Inserting data
 
-- **TODO:** fetch and insert `stations` and `sensors` from Digitraffic API
-- **TODO:** insert raw data from LOTJU dump files to `statobs` and `seobs`
-- **TODO: other data sources?**
+Before inserting data, you must have the database ready
+and have the `db_config.yml` file updated accordingly in the root directory, e.g.:
+
+```
+host: localhost
+port: 5432
+database: tsa
+admin_user: postgres
+```
+
+### Station and sensor metadata
+
+Run `python fetch_from_digitraffic.py` to insert stations and sensors
+data into the corresponding tables.
+This will insert the **current** data from the Digitraffic API as it is.
+
+### Observations from LOTJU files
+
+For inserting raw time series data to sensor and station observation tables
+from LOTJU dump files, there is a script called `insert_lotjudumps.py`.
+This must be run with some arguments, and there must be some data available
+to it under the `data/` directory:
+
+- Monthly LOTJU csv files that are usually named
+`tiesaa_mittatieto-[YYYY]_[MM].csv` and `anturi_arvo-[YYYY]_[MM].csv`.
+These must be given after arguments `-t` and `-a` *without* the `data/`
+directory (will be used as default).
+- Conversion csv files for "short" and "long" ids of stations and sensors.
+LOTJU uses "short" integer ids (`ID` in the files),
+and we use "long" ids (`VANHA_ID`) in the analyses.
+These should available as
+`data/tiesaa_asema.csv` and `data/laskennallinen_anturi.csv`.
+
+**Do not insert all the data of a month without filtering**.
+The amount of raw data is huge. Instead, provide the station ids (long ones)
+you want to insert data from after argument `-s`, separated by whitespace.
+
+A particularly slow part of the insertion script is reading
+the `anturi_arvo` file. For debugging purposes, you may want to parse
+n first lines only. You can set this limit after the `-l` argument.
+
+**Example usage:**
+
+```
+python insert_lotjudumps.py -t tiesaa_mittatieto-2018_01.csv
+\ -a anturi_arvo-2018_01.csv -s 1019 1121 1132 -l 1000000
+```
+
+**TODO: other data sources?**
 
 ## Running analyses
 
