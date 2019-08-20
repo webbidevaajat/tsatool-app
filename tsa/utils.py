@@ -5,7 +5,7 @@
 
 import logging
 import os
-import json
+import yaml
 import psycopg2
 from getpass import getpass
 
@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 def tsadb_connect(username=None, password=None, ask=False):
     """
-    Using ``db_config.json`` file in the root directory,
+    Using ``db_config.yml`` file in the root directory,
     connect to the TSA database.
     :param username: database username as string; defaults to
                      'ADMIN_USER' of the config file
@@ -23,22 +23,21 @@ def tsadb_connect(username=None, password=None, ask=False):
                      defaults to ``False``
     :return:         connection instance, or None on error
     """
-    cf_filename = os.path.join(os.getcwd(), 'db_config.json')
-    with open(cf_filename, 'r') as cf_file:
-        cf = json.load(cf_file)
+    with open('db_config.yml', 'r') as f:
+        cf = yaml.safe_load(f.read())
     if username is None:
         if ask:
             username = input('Database username: ')
         else:
-            username = cf['ADMIN_USER']
+            username = cf['admin_user']
     if password is None:
         password = getpass('Password for user "{:s}": '.format(username))
     try:
-        pg_conn = psycopg2.connect(dbname=cf['DATABASE'],
+        pg_conn = psycopg2.connect(dbname=cf['database'],
                                    user=username,
                                    password=password,
-                                   host=cf['HOST'],
-                                   port=cf['PORT'],
+                                   host=cf['host'],
+                                   port=cf['port'],
                                    connect_timeout=5)
         return pg_conn
     except psycopg2.OperationalError as e:
