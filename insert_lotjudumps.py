@@ -242,20 +242,14 @@ def main():
                         default=[os.path.join('data', 'tiesaa_asema.csv'),
                                  os.path.join('data', 'laskennallinen_anturi.csv')],
                         nargs=2)
-    parser.add_argument('-u', '--username',
-                        type=str,
-                        help='Database username',
-                        default='postgres')
-    parser.add_argument('-p', '--password',
-                        type=str,
-                        help='Database password',
-                        default='postgres')
     args = parser.parse_args()
 
     log.info('STARTING LOTJUDUMPS INSERTION')
     conn = None
     try:
-        conn = tsadb_connect(username=args.username, password=args.password)
+        # TODO: give password from environment var, for instance,
+        #       to enable non-interactive use? Now user has to type it in.
+        conn = tsadb_connect()
 
         # ID CONVERSIONS
         statid_conv = convert_ids(csv_file=args.conversions[0],
