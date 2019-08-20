@@ -31,7 +31,7 @@ def tsadb_connect(username=None, password=None, ask=False):
         else:
             username = cf['admin_user']
     if password is None:
-        password = getpass('Password for user "{:s}": '.format(username))
+        password = os.getenv('POSTGRES_PASSWORD') or getpass('Password for user "{:s}": '.format(username))
     try:
         pg_conn = psycopg2.connect(dbname=cf['database'],
                                    user=username,
