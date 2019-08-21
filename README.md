@@ -6,7 +6,7 @@ Tool for analyzing Finnish road weather station (TieSääAsema) data. Data will 
 
 To get familiar with road weather station data models and properties, see the documentation for the [real time API](https://www.digitraffic.fi/tieliikenne/).
 
-You can get a some kind of a clue about what this is about by reading our first [Wiki page](https://github.com/webbidevaajat/tsatool-app/wiki/Ehtosetin-muotoilu) about formatting the input data (in Finnish).
+You can get some kind of a clue about what this is about by reading our first [Wiki page](https://github.com/webbidevaajat/tsatool-app/wiki/Ehtosetin-muotoilu) about formatting the input data (in Finnish).
 
 **TODO:** database model (briefly)
 
@@ -16,14 +16,37 @@ You can get a some kind of a clue about what this is about by reading our first 
 
 ## Inserting data
 
-Before inserting data, you must have the database ready
-and have the `db_config.yml` file updated accordingly in the root directory, e.g.:
+### Docker DB instance
+
+For now, we use a temporary Docker container to test the database functionalities.
+Since Postgres' port 5432 is likely to be reserved for your local Postgres server,
+bind your container to some other port, such as 7001 here. Example:
 
 ```
-host: localhost
-port: 5432
+docker run -d --name tsdb -p 127.0.0.1:7001:5432 -e POSTGRES_PASSWORD=[pw_of_your_choice] timescale/timescaledb:latest-pg11
+```
+
+To successfully run the Python scripts that communicate with the database,
+make sure your `db_config.yml` file in the root directory
+is updated accordingly:
+
+```
+host: 127.0.0.1
+port: 7001
 database: tsa
 admin_user: postgres
+```
+
+You can save the `postgres` password locally to env variable `POSTGRES_PASSWORD`,
+(e.g. `SET "POSTGRES_PASSWORD=[pw_of_your_choice]"` on Windows cmd line)
+so `tsa.utils.tsadb_connect()` is able to use it directly.
+If the env variable is not available, you will be asked to type the password.
+
+Now run the database initialization script on your local machine
+(assuming you have `psql` installed along with a local Postgres installation):
+
+```
+psql -U postgres -h 127.0.0.1 -p 7001 -f scripts\init_db.sql
 ```
 
 ### Station and sensor metadata
@@ -31,6 +54,15 @@ admin_user: postgres
 Run `python fetch_from_digitraffic.py` to insert stations and sensors
 data into the corresponding tables.
 This will insert the **current** data from the Digitraffic API as it is.
+
+Alternatively, you can run an SQL file that inserts a snapshot
+of the metadata values (without JSON properties):
+
+```
+psql -U postgres -h 127.0.0.1 -p 7001 -f scripts\insert_stations_sensors.sql
+```
+
+**TODO:** Find a better way to insert metadata from a static source.
 
 ### Observations from LOTJU files
 
@@ -60,11 +92,17 @@ n first lines only. You can set this limit after the `-l` argument.
 **Example usage:**
 
 ```
-python insert_lotjudumps.py -t tiesaa_mittatieto-2018_01.csv
-\ -a anturi_arvo-2018_01.csv -s 1019 1121 1132 -l 1000000
+python insert_lotjudumps.py -t tiesaa_mittatieto-2018_01.csv -a anturi_arvo-2018_01.csv -s 1019 1121 1132 -l 3000000
 ```
 
 **TODO: other data sources?**
+
+Finally, you can get a summary of the data available
+in the database by running this SQL script:
+
+```
+psql -U postgres -h 127.0.0.1 -p 7001 -d tsa -f scripts\observations_summary.sql
+```
 
 ## Running analyses
 
