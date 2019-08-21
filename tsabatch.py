@@ -40,7 +40,7 @@ def main():
                         required=True)
     parser.add_argument('-p', '--password',
                         type=str,
-                        help='Database password (of the user in db_config.json file)',
+                        help='Database password (of the user in db_config.yml file)',
                         metavar='DB_PASSWORD',
                         required=True)
     args = parser.parse_args()
@@ -53,9 +53,9 @@ def main():
         log.exception('Could not set input Excel file name.')
         sys.exit()
 
-    # Read DB params from config file, add password
+    # Read DB params from defaul config file, add password
     try:
-        anls.db_params.read_config('db_config.json')
+        anls.db_params.read_config()
         anls.db_params.password = args.password
     except:
         log.exception('Could not find DB config file.')

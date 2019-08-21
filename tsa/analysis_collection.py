@@ -5,7 +5,7 @@
 
 import logging
 import os
-import json
+import yaml
 import psycopg2
 import openpyxl as xl
 from .cond_collection import CondCollection
@@ -27,16 +27,16 @@ class DBParams:
         self.host = host
         self.port = port
 
-    def read_config(self, path):
+    def read_config(self, path='db_config.yml'):
         """
         Read and set params from file (except password)
         """
-        with open(path, 'r') as cf_file:
-            cf = json.load(cf_file)
-        self.dbname = cf['DATABASE']
-        self.user = cf['ADMIN_USER']
-        self.host = cf['HOST']
-        self.port = cf['PORT']
+        with open(path, 'r') as f:
+            cf = yaml.safe_load(f.read())
+        self.dbname = cf['database']
+        self.user = cf['admin_user']
+        self.host = cf['host']
+        self.port = cf['port']
 
     def set_value_interactively(self, par):
         if par == 'dbname':
