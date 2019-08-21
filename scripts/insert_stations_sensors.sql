@@ -1,8 +1,9 @@
 -- Inserting stations and sensors table contents
 -- as of 2019-08-20.
 -- Note that JSONB fields are NOT filled!
--- 
+--
 -- Arttu K 8/2019
+\c tsa;
 INSERT INTO stations (id) VALUES
 (1001),
 (1002),
