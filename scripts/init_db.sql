@@ -112,7 +112,7 @@ CREATE TRIGGER upd_seobs_modified
 --			p_operator := '>=',
 --			p_seval := '0.5');
 
-DROP FUNCTION IF EXISTS pack_ranges;
+DROP FUNCTION IF EXISTS pack_ranges();
 CREATE OR REPLACE FUNCTION
 pack_ranges(p_obs_relation text,
 			p_maxminutes integer,
