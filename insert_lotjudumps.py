@@ -38,9 +38,9 @@ from datetime import datetime
 log = logging.getLogger(__name__)
 formatter = logging.Formatter('%(asctime)s; %(levelname)s; %(message)s',
                               '%Y-%m-%d %H:%M:%S')
-# fh = logging.FileHandler(os.path.join('logs', 'lotjudumps.log'))
-# fh.setFormatter(formatter)
-# log.addHandler(fh)
+fh = logging.FileHandler(os.path.join('logs', 'lotjudumps.log'))
+fh.setFormatter(formatter)
+log.addHandler(fh)
 ch = logging.StreamHandler(sys.stdout)
 ch.setFormatter(logging.Formatter('%(asctime)s; %(message)s'))
 log.addHandler(ch)
