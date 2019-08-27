@@ -143,40 +143,40 @@ def parse_anturi_arvo(csv_file, tsm_ids, seid_conv, row_limit):
     with open(csv_file, 'r') as fobj:
         reader = csv.DictReader((line.replace('\0','') for line in fobj), delimiter='|')
         i = 0
-            for l in reader:
+        for l in reader:
+            try:
+                i += 1
+                if row_limit > 0 and i > row_limit:
+                    return rows
+                if i % 1000000 == 0:
+                    log.debug(f'Line {i} ...')
                 try:
-                    i += 1
-                    if row_limit > 0 and i > row_limit:
-                        return rows
-                    if i % 1000000 == 0:
-                        log.debug(f'Line {i} ...')
-                    try:
-                        mid = int(l['MITTATIETO_ID'])
-                    except ValueError:
-                        log.warning(f'Int conversion of MITTATIETO_ID failed on line {i}, skipping')
-                    if mid not in tsm_ids:
-                        continue
-                    try:
-                        oid = int(l['ID'])
-                    except ValueError:
-                        log.warning(f'Int conversion of ID failed on line {i}, skipping')
-                        continue
-                    try:
-                        aid = seid_conv[int(l['ANTURI_ID'])]
-                    except ValueError:
-                        log.warning(f'Int conversion of ANTURI_ID failed on line {i}, skipping')
-                        continue
-                    except KeyError:
-                        log.warning(f'Conversion not found for ANTURI_ID on line {i}, skipping')
-                        continue
-                    try:
-                        val = float(l['ARVO'])
-                    except ValueError:
-                        log.warning(f'Float conversion of ARVO failed on line {i}, skipping')
-                        continue
-                    rows.append(f'{oid},{mid},{aid},{val}')
-                except:
-                    log.error(f'Error on line {i}, skipping')
+                    mid = int(l['MITTATIETO_ID'])
+                except ValueError:
+                    log.warning(f'Int conversion of MITTATIETO_ID failed on line {i}, skipping')
+                if mid not in tsm_ids:
+                    continue
+                try:
+                    oid = int(l['ID'])
+                except ValueError:
+                    log.warning(f'Int conversion of ID failed on line {i}, skipping')
+                    continue
+                try:
+                    aid = seid_conv[int(l['ANTURI_ID'])]
+                except ValueError:
+                    log.warning(f'Int conversion of ANTURI_ID failed on line {i}, skipping')
+                    continue
+                except KeyError:
+                    log.warning(f'Conversion not found for ANTURI_ID on line {i}, skipping')
+                    continue
+                try:
+                    val = float(l['ARVO'])
+                except ValueError:
+                    log.warning(f'Float conversion of ARVO failed on line {i}, skipping')
+                    continue
+                rows.append(f'{oid},{mid},{aid},{val}')
+            except:
+                log.error(f'Error on line {i}, skipping')
     return rows
 
 
