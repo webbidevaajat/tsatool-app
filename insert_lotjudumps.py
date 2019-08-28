@@ -63,7 +63,7 @@ class LotjuHandler:
     :param month:           month of LOTJU files (int), note that months < 10
                             must appear in the file names as `01`, `02` etc.!
     :param stations_keep:   list of station ids (int) to insert into db,
-                            according to `VANHA_ID`; if empty, all are inserted
+                            according to Lotju `VANHA_ID`; if empty, all are inserted
     :param sensors_keep:    like above but for sensor ids
     :chunk_size:            max n of rows copied to db at a time
     :limit:                 stop insertions after this amount of rows;
@@ -74,16 +74,19 @@ class LotjuHandler:
                  chunk_size=1000000, limit=0):
         self.anturi_file = self.check_file("anturi", year, month)
         self.tiesaa_file = self.check_file("tiesaa", year, month)
-        self.stations = stations_keep
-        self.sensors = sensors_keep
+        self.stations_keep = stations_keep
+        self.sensors_keep = sensors_keep
         self.chunk_size = chunk_size
         self.limit = limit
         self.conn = None
         self.warnings = dict()
+        self.anturi_mapping = self.convert_ids("laskennallinen_anturi")
+        self.tiesaa_mapping = self.convert_ids("tiesaa_asema")
+        self.statobs = dict()
         self.n_anturi_inserted = 0
         self.n_tiesaa_inserted = 0
 
-    def check_file(self, srctype, y, m):
+    def check_file(self, srctype, year, month):
         """
         Check that file of `srctype` "anturi" or "tiesaa"
         with given year and month exists under `data/`.
@@ -101,299 +104,333 @@ class LotjuHandler:
             raise FileNotFoundError(candidate)
         return candidate
 
-    def warn_once(self, logger, type, contents):
+    def warn_once(self, type, contents, exc_info=False):
         """
         Handle warning logging to a `logger` object
         such that repetitive warnings are not recorded.
         Instead, first ones are logged, and the number of the rest
         can be written in the end of the log.
         """
-        if type not in self.issues.keys():
+        if type not in self.warnings.keys():
             self.warnings[type] = 1
-            logger.warning(f"{type}: {contents} (subsequent warnings of same type are NOT recorded)")
+            log.warning(f"{type}: {contents} (subsequent warnings of same type are NOT recorded)",
+                        exc_info=exc_info)
         else:
             self.warnings[type] += 1
 
-    def get_n_of_warnings(self, logger):
+    def log_init_summary(self):
+        """
+        Log a summary of initial attributes as INFO.
+        """
+        log.info('START OF LOTJU DUMP INSERTIONS')
+        log.info(f'- from {self.tiesaa_file} and {self.anturi_file}')
+        if len(self.stations_keep) > 0:
+            log.info('- keep stations ' + ', '.join([str(s) for s in self.stations_keep]))
+        else:
+            log.info('- keep all stations')
+        if len(self.sensors_keep) > 0:
+            log.info('- keep sensors ' + ', '.join([str(s) for s in self.sensors_keep]))
+        else:
+            log.info('- keep all sensors')
+        log.info(f'- max insert chunk size {self.chunk_size}')
+        log.info(f'- row read limit {self.limit}')
+
+    def log_warning_summary(self):
         """
         List number of `warn_once` warnings issued
         as one warning record per type.
         To be called in the end of a script.
         """
+        if len(self.warnings) > 0:
+            log.warning('Following warnings were calculated:')
         for k, v in self.warnings.items():
-            logger.warning(f"Total warnings of type '{k}': {v}")
+            log.warning(f"{v} occurrences of error '{k}'")
 
-def convert_ids(csv_file, from_field, to_field):
-    """
-    Read ids from ``csv_file``,
-    return a dict where keys are integer ids from field ``from_field``
-    and values are integer ids from field ``to_field``.
-    """
-    conversion = {}
-    with open(csv_file, 'r', newline='') as fobj:
-        reader = csv.DictReader(fobj, delimiter=',', quotechar='"')
-        i = 0
-        for l in reader:
-            i += 1
-            try:
-                from_id = int(l[from_field])
-                to_id = int(l[to_field])
-                conversion[from_id] = to_id
-            except ValueError:
-                log.warning(f'Conversion error on line {i} of file {csv_file}, skipping')
-                continue
-    return conversion
+    def log_final_summary(self):
+        """
+        Log a summary in the end of a script.
+        """
+        log.info('Parsing and inserting routines ended')
+        self.log_warning_summary()
+        log.info(f'- {self.n_tiesaa_inserted} statobs rows inserted')
+        log.info(f'- {self.n_anturi_inserted} seobs rows inserted')
+        log.info(f'END OF SCRIPT')
 
-def format_timestamp(ts_str):
-    """
-    Parse ``dd.mm.YYYY HH:MM:SS,0000...`` timestamp string
-    (used in Lotju files) into datetime,
-    assume timezone 'Europe/Helsinki',
-    and convert into standard UTC timestamp string.
-    """
-    ts = ts_str.split(',')[0]
-    ts = datetime.strptime(ts, '%d.%m.%Y %H:%M:%S')
-    ts = pytz.timezone('Europe/Helsinki').localize(ts)
-    ts = ts.astimezone(pytz.timezone('UTC'))
-    ts = ts.strftime('%Y-%m-%d %H:%M:%S%z')
-    return ts
-
-def parse_tiesaa_mittatieto(csv_file, conversion, station_ids):
-    """
-    Parse raw ``tiesaa_mittatieto`` file,
-    select rows if station id selection provided,
-    convert station ids,
-    return a dict tree with converted station ids as keys
-    and ``obs_id:timestamp`` dictionary as values.
-
-    NOTE: ``station_ids`` filter must correspond to the "from_id" (short id),
-    i.e., they must be converted first!
-    """
-    statobs = {}
-    check_statids = len(station_ids) > 0
-    with open(csv_file, 'r') as fobj:
-        reader = csv.DictReader(fobj, delimiter='|')
-        i = 0
-        for l in reader:
-            i += 1
-            try:
-                short_statid = int(l['ASEMA_ID'])
-            except ValueError:
-                log.warning(f'Int conversion failed on line {i}, skipping')
-                continue
-            if check_statids:
-                if short_statid not in station_ids:
-                    continue
-            try:
-                statid = conversion[int(l['ASEMA_ID'])]
-            except KeyError:
-                log.warning((f"Statid {int(l['ASEMA_ID'])} not in conversion (line {i})"))
-                continue
-            obsid = int(l['ID'])
-            ts = format_timestamp(l['AIKA'])
-            if statid not in statobs.keys():
-                statobs[statid] = {obsid: ts}
-            else:
-                statobs[statid][obsid] = ts
-    return statobs
-
-def flatten_tiesaa_mittatieto(parsed_tree):
-    """
-    Flatten tiesaa_mittatieto data from dict tree
-    to database-ready rows.
-    """
-    rows = []
-    for k, v in parsed_tree.items():
-        stid = k
-        for mid, ts in v.items():
-            rows.append(f'{mid},{ts},{stid}')
-    return rows
-
-def parse_anturi_arvo(csv_file, tsm_ids, seid_conv, row_limit):
-    """
-    Parse raw ``anturi_arvo`` file,
-    filter rows by '``MITTATIETO_ID`` in ``tsm_ids``,
-    convert ``ANTURI_ID``,
-    return database-ready rows as list.
-    """
-    rows = []
-    with open(csv_file, 'r') as fobj:
-        reader = csv.DictReader((line.replace('\0','') for line in fobj), delimiter='|')
-        i = 0
-        for l in reader:
-            try:
+    @staticmethod
+    def convert_ids(csv_file, from_field="ID", to_field="VANHA_ID"):
+        """
+        Read ids from ``csv_file`` located in `data/`,
+        return a dict where keys are integer ids from field ``from_field``
+        and values are integer ids from field ``to_field``.
+        """
+        csv_file = os.path.join('data', f'{csv_file}.csv')
+        conversion = dict()
+        with open(csv_file, 'r', newline='') as fobj:
+            reader = csv.DictReader(fobj, delimiter=',', quotechar='"')
+            i = 0
+            for l in reader:
                 i += 1
-                if row_limit > 0 and i > row_limit:
-                    return rows
-                if i % 1000000 == 0:
-                    log.debug(f'Line {i} ...')
+                try:
+                    from_id = int(l[from_field])
+                    to_id = int(l[to_field])
+                    conversion[from_id] = to_id
+                except ValueError:
+                    log.error(f'Conversion error on line {i} of file {csv_file}, skipping')
+                    continue
+        return conversion
+
+    @staticmethod
+    def format_timestamp(ts_str):
+        """
+        Parse ``dd.mm.YYYY HH:MM:SS,0000...`` timestamp string
+        (used in Lotju files) into datetime,
+        assume timezone 'Europe/Helsinki',
+        and convert into standard UTC timestamp string.
+        """
+        ts = ts_str.split(',')[0]
+        ts = datetime.strptime(ts, '%d.%m.%Y %H:%M:%S')
+        ts = pytz.timezone('Europe/Helsinki').localize(ts)
+        ts = ts.astimezone(pytz.timezone('UTC'))
+        ts = ts.strftime('%Y-%m-%d %H:%M:%S%z')
+        return ts
+
+    def parse_tiesaa_mittatieto(self):
+        """
+        Parse raw ``tiesaa_mittatieto`` file,
+        select rows if station id filter provided,
+        convert station ids,
+        return a dict tree with converted station ids as keys
+        and ``obs_id:timestamp`` dictionary as values.
+        """
+        log.info(f'Parsing {self.tiesaa_file} ...')
+        check_statids = len(self.stations_keep) > 0
+        with open(self.tiesaa_file, 'r') as fobj:
+            reader = csv.DictReader((line.replace('\0','') for line in fobj), delimiter='|')
+            i = 0
+            for l in reader:
+                if i >= self.limit > 0:
+                    log.info(f'Stopped tiesaa_mittatieto parsing after row limit {i}')
+                    break
+                i += 1
+                try:
+                    lotju_statid = int(l['ASEMA_ID'])
+                except ValueError:
+                    self.warn_once('Skip tiesaa_mittatieto line because of int ASEMA_ID error',
+                                   f'Int conversion of "ASEMA_ID" failed on line {i}, skipping')
+                    continue
+                try:
+                    statid = self.tiesaa_mapping[int(l['ASEMA_ID'])]
+                except KeyError:
+                    self.warn_once('Skip tiesaa_mittatieto line because of VANHA_ID missing from mapping',
+                                   f"Lotju station id {int(l['ASEMA_ID'])} not in tiesaa mapping (line {i})")
+                    continue
+                if check_statids and statid not in self.stations_keep:
+                    continue
+                obsid = int(l['ID'])
+                ts = self.format_timestamp(l['AIKA'])
+                if obsid not in self.statobs.keys():
+                    self.statobs[obsid] = {"ts": ts, "statid": statid}
+                else:
+                    self.warn_once('Skip tiesaa_mittatieto line because of duplicate observation id',
+                                   f"Found a duplicate tiesaa_mittatieto id, skipping (line {i})")
+        log.info(f'{i} lines parsed from {self.tiesaa_file}, {len(self.statobs)} station observations recorded')
+
+    def insert_statobs_by_keys(self, keys):
+        """
+        Collect statobs by given keys,
+        format for database insertion
+        and copy to database table ``statobs``
+        (ignoring already existing rows).
+        """
+        copy_sql = (f"COPY tmp_table (id,tfrom,statid) "
+               "FROM STDIN WITH DELIMITER ',';")
+        rows = []
+        for k, v in self.statobs.items():
+            if k not in keys:
+                continue
+            rows.append([k, v['ts'], v['statid']])
+        if len(rows) == 0:
+            log.info('No statobs rows to insert')
+            return
+        rows = '\n'.join([f'{r[0]},{r[1]},{r[2]}' for r in rows])
+        with StringIO() as fobj:
+            fobj.write(rows)
+            fobj.seek(0)
+            with self.conn.cursor() as cur:
+                try:
+                    cur.execute("CREATE TEMP TABLE tmp_table ON COMMIT DROP AS "
+                                "SELECT * FROM statobs WITH NO DATA;")
+                    cur.copy_expert(sql=copy_sql, file=fobj)
+                    cur.execute(f"WITH rows_inserted AS ("
+                                "INSERT INTO statobs (SELECT * FROM tmp_table "
+                                "ORDER BY tfrom, statid) "
+                                "ON CONFLICT DO NOTHING "
+                                "RETURNING 1) "
+                                "SELECT count(*) FROM rows_inserted;")
+                    n_inserted = cur.fetchone()[0]
+                    self.conn.commit()
+                    log.info(f'{n_inserted} rows inserted into statobs table')
+                    self.n_tiesaa_inserted += n_inserted
+                except:
+                    self.conn.rollback()
+                    self.warn_once('Statobs DB insertion error',
+                                   'Failed to insert statobs rows',
+                                   exc_info=True)
+
+    def insert_seobs(self, rows):
+        """
+        Format given sensor observation tuples ``rows``
+        and insert them into database table ``seobs``
+        (ignoring already existing rows).
+        """
+        copy_sql = (f"COPY tmp_table (id,obsid,seid,seval) "
+                    "FROM STDIN WITH DELIMITER ',';")
+        if rows is None or len(rows) == 0:
+            log.info('No seobs rows to insert')
+            return
+        rows = '\n'.join([f'{r[0]},{r[1]},{r[2]},{r[3]}' for r in rows])
+        with StringIO() as fobj:
+            fobj.write(rows)
+            fobj.seek(0)
+            with self.conn.cursor() as cur:
+                try:
+                    cur.execute("CREATE TEMP TABLE tmp_table ON COMMIT DROP AS "
+                                "SELECT * FROM seobs WITH NO DATA;")
+                    cur.copy_expert(sql=copy_sql, file=fobj)
+                    cur.execute(f"WITH rows_inserted AS ("
+                                "INSERT INTO seobs (SELECT * FROM tmp_table "
+                                "ORDER BY obsid, seid) "
+                                "ON CONFLICT DO NOTHING "
+                                "RETURNING 1) "
+                                "SELECT count(*) FROM rows_inserted;")
+                    n_inserted = cur.fetchone()[0]
+                    self.conn.commit()
+                    log.info(f'{n_inserted} rows inserted into seobs table')
+                    self.n_anturi_inserted += n_inserted
+                except:
+                    self.conn.rollback()
+                    self.warn_once('Seobs DB insertion error',
+                                   'Failed to insert seobs rows',
+                                   exc_info=True)
+
+    def parse_and_insert_anturi_arvo(self):
+        """
+        Parse raw ``anturi_arvo`` file,
+        pick rows where ``MITTATIETO_ID`` in ``self.statobs.keys()``,
+        possibly filter by (Lotju) sensor id if ``sensors_keep`` given.
+        Whenever ``chunk_size`` is achieved, insert the related
+        station observations and then the sensor observations into the database.
+        Exit if ``limit`` is achieved when parsing the file.
+        """
+        log.info(f'Parsing {self.anturi_file} ...')
+        check_seids = len(self.sensors_keep) > 0
+        i = 0
+        j = 0
+        rows = []
+        statobs_keys = set()
+        with open(self.anturi_file, 'r') as fobj:
+            reader = csv.DictReader((line.replace('\0','') for line in fobj), delimiter='|')
+            for l in reader:
+                if j == self.chunk_size:
+                    self.insert_statobs_by_keys(statobs_keys)
+                    statobs_keys = set()
+                    self.insert_seobs(rows)
+                    rows = []
+                    j = 0
+                if i >= self.limit > 0:
+                    log.info(f'Stopped anturi_arvo parsing after row limit {i}')
+                    break
+                i += 1
+                if i % 10000000 == 0:
+                    log.debug(f'{i}th line ...')
                 try:
                     mid = int(l['MITTATIETO_ID'])
                 except ValueError:
-                    log.warning(f'Int conversion of MITTATIETO_ID failed on line {i}, skipping')
-                if mid not in tsm_ids:
+                    self.warn_once('Skip anturi_arvo line because of int MITTATIETO_ID error',
+                                   f'Int conversion of MITTATIETEO_ID failed on line {i}, skipping')
+                    continue
+                if mid not in self.statobs.keys():
                     continue
                 try:
                     oid = int(l['ID'])
                 except ValueError:
-                    log.warning(f'Int conversion of ID failed on line {i}, skipping')
+                    self.warn_once('Skip anturi_arvo line because of int ID error',
+                                   f'Int conversion of ID failed on line {i}, skipping')
                     continue
                 try:
-                    aid = seid_conv[int(l['ANTURI_ID'])]
+                    aid_lotju = int(l['ANTURI_ID'])
                 except ValueError:
-                    log.warning(f'Int conversion of ANTURI_ID failed on line {i}, skipping')
+                    self.warn_once('Skip anturi_arvo line because of int ANTURI_ID error',
+                                   f'Int conversion of ANTURI_ID failed on line {i}, skipping')
                     continue
+                try:
+                    aid = self.anturi_mapping[aid_lotju]
                 except KeyError:
-                    log.warning(f'Conversion not found for ANTURI_ID on line {i}, skipping')
+                    self.warn_once('Skip anturi_arvo line because of VANHA_ID missing from mapping',
+                                   f'Lotju sensor id {aid_lotju} not in anturi mapping (line {i})')
+                    continue
+                if check_seids and aid not in self.sensors_keep: # This refers to VANHA_ID!
                     continue
                 try:
                     val = float(l['ARVO'])
                 except ValueError:
-                    log.warning(f'Float conversion of ARVO failed on line {i}, skipping')
+                    self.warn_once('Skip anturi_arvo line because of float ARVO error',
+                                   f'Float conversion of ARVO failed on line {i}, skipping')
                     continue
-                rows.append(f'{oid},{mid},{aid},{val}')
-            except:
-                log.error(f'Error on line {i}, skipping')
-    return rows
-
-
-def copy_to_table(conn, fields, rows, table, chunk_size=1000000):
-    """
-    Copy ``rows`` to comma-separated ``fields``
-    of database ``table`` over ``conn``
-    in chunks of ``chunk_size`` rows.
-
-    NOTE: We first copy data to temp table and then insert it
-    with the upsert functionality (ON CONFLICT DO NOTHING), since
-    ignoring duplicate primary key rows is not directly possible with COPY FROM.
-    """
-    copy_sql = (f"COPY tmp_table ({fields}) "
-           "FROM STDIN WITH DELIMITER ',';")
-    nrows = len(rows)
-    log.info(f'Copying {nrows} rows to table {table} in chunks of {chunk_size}')
-    try:
-        i = 0
-        j = min(chunk_size, nrows)
-        while j <= min(chunk_size, nrows) and i < j:
-            log.info(f'{i}/{nrows} ...')
-            debug_rows = '\n'.join(rows[i:(i+3)]) + '\n...\n' + '\n'.join(rows[(j-3):j])
-            log.debug('\n' + debug_rows)
-            with StringIO() as fobj:
-                fobj.write('\n'.join(rows[i:j]))
-                fobj.seek(0)
-                with conn.cursor() as cur:
-                    cur.execute("CREATE TEMP TABLE tmp_table ON COMMIT DROP AS "
-                                f"SELECT * FROM {table} WITH NO DATA;")
-                    cur.copy_expert(sql=copy_sql, file=fobj)
-                    cur.execute(f"INSERT INTO {table} SELECT * FROM tmp_table "
-                                "ON CONFLICT DO NOTHING;")
-                    conn.commit()
-            i = j
-            j = min(j + chunk_size, nrows)
-        log.info(f'All rows copied to table {table}')
-    except:
-        conn.rollback()
-        log.exception('Error copying to db, rolling back')
+                # id,obsid,seid,seval
+                rows.append((oid, mid, aid, val))
+                statobs_keys.add(mid)
+                j += 1
+        if len(statobs_keys) > 0:
+            self.insert_statobs_by_keys(statobs_keys)
+        if len(rows) > 0:
+            self.insert_seobs(rows)
 
 def main():
-    parser = argparse.ArgumentParser(description='Insert LOTJU dumps to tsa database.')
-    parser.add_argument('-t', '--tiesaa_mittatieto',
-                        type=str,
-                        help='Name of tiesaa_mittatieto file (under data/)',
-                        metavar='TIESAA_MITTATIETO_FILE',
-                        required=True)
-    parser.add_argument('-a', '--anturi_arvo',
-                        type=str,
-                        help='Name of anturi_arvo file (under data/)',
-                        metavar='ANTURI_ARVO_FILE',
-                        required=True)
-    parser.add_argument('-s', '--stations',
+    parser = argparse.ArgumentParser(description='Convert, filter and insert LOTJU dumps to tsa database.')
+    parser.add_argument('year',
+                        type=int,
+                        help='Dump file year identifier')
+    parser.add_argument('month',
+                        type=int,
+                        help='Dump file month identifier')
+    parser.add_argument('--stations',
                         type=int,
                         help='Station ids to insert data from, sep by space, or empty for all available',
                         default=[],
                         nargs='+')
-    parser.add_argument('-l', '--limit',
+    parser.add_argument('--sensors',
                         type=int,
-                        help='Max number of anturi_arvo lines to read, or empty/non-positive to read all',
+                        help='Sensor ids to insert data from, sep by space, or empty for all available',
+                        default=[],
+                        nargs='+')
+    parser.add_argument('--chunk',
+                        type=int,
+                        help='Max number of rows to insert into database at a time',
+                        default=1000000)
+    parser.add_argument('--limit',
+                        type=int,
+                        help='Max number of lines to read from a dump file, or empty/non-positive to read all',
                         default=0)
-    parser.add_argument('-c', '--conversions',
-                        type=str,
-                        help='ID conversion files 1) laskennallinen_anturi and 2) tiesaa_asema',
-                        default=[os.path.join('data', 'tiesaa_asema.csv'),
-                                 os.path.join('data', 'laskennallinen_anturi.csv')],
-                        nargs=2)
     args = parser.parse_args()
-
-    log.info('STARTING LOTJUDUMPS INSERTION')
     conn = None
     try:
-        # TODO: give password from environment var, for instance,
-        #       to enable non-interactive use? Now user has to type it in.
+        lotju_hdl = LotjuHandler(year=args.year,
+                                 month=args.month,
+                                 stations_keep=args.stations,
+                                 sensors_keep=args.sensors,
+                                 chunk_size=args.chunk,
+                                 limit=args.limit)
         conn = tsadb_connect()
-
-        # ID CONVERSIONS
-        statid_conv = convert_ids(csv_file=args.conversions[0],
-                                from_field='ID',
-                                to_field='VANHA_ID')
-        seid_conv = convert_ids(csv_file=args.conversions[1],
-                                from_field='ID',
-                                to_field='VANHA_ID')
-        log.info(f'{len(statid_conv)} station ids and {len(seid_conv)} sensor ids converted')
-
-        # TIESAA_MITTATIETO
-        # We use inverted station id conversion here
-        # so we can compare "short" station ids in raw data directly.
-        statid_conv_inv = {v:k for k, v in statid_conv.items()}
-        statid_short_selected = []
-        for sid in args.stations:
-            try:
-                statid_short_selected.append(statid_conv_inv[sid])
-            except KeyError:
-                log.warning(f'Statid {sid} omitted: no corresponding short id found')
-        tsm_file = os.path.join('data', args.tiesaa_mittatieto)
-        tsm_parsed = parse_tiesaa_mittatieto(csv_file=tsm_file,
-                                             conversion=statid_conv,
-                                             station_ids=statid_short_selected)
-        tsm_report_els = [(k, len(v)) for k, v in tsm_parsed.items()]
-        tsm_report_els = sorted(tsm_report_els, key=lambda el: el[0])
-        tsm_report_els = '\n'.join([f'{k}:\t{v}' for k, v in tsm_report_els])
-        log.info((f'Number of tiesaa_mittatieto elements parsed per station:\n'
-                  f'{tsm_report_els}'))
-
-        # ANTURI_ARVO
-        # tiesaa_mittatieto observation ids are combined
-        # so they can be used to filter only required anturi_arvo
-        # observations already when parsing the large raw data file.
-        # TODO: also filter sensor ids?
-        tsm_obsids = set()
-        for v in tsm_parsed.values():   # Dictionaries under station ids
-            for k in v.keys():          # Obs ids as keys
-                tsm_obsids.add(k)
-        aa_file = os.path.join('data', args.anturi_arvo)
-        log.info('Starting reading anturi_arvo file')
-        aa_parsed = parse_anturi_arvo(csv_file=aa_file,
-                                      tsm_ids=tsm_obsids,
-                                      seid_conv=seid_conv,
-                                      row_limit=args.limit)
-        log.info(f'{len(aa_parsed)} anturi_arvo rows')
-
-        # DATABASE INSERTIONS
-        # tiesaa_mittatieto data are flattened first
-        tsm_flat = flatten_tiesaa_mittatieto(tsm_parsed)
-        copy_to_table(conn,
-                      fields='id,tfrom,statid',
-                      rows=tsm_flat,
-                      table='statobs')
-        copy_to_table(conn,
-                      fields='id,obsid,seid,seval',
-                      rows=aa_parsed,
-                      table='seobs')
-
-        log.info('END OF SCRIPT')
+        lotju_hdl.conn = conn
+        lotju_hdl.log_init_summary()
+        lotju_hdl.parse_tiesaa_mittatieto()
+        lotju_hdl.parse_and_insert_anturi_arvo()
+        lotju_hdl.log_final_summary()
     except Exception as e:
         log.exception('Script interrupted')
     finally:
-        if conn:
+        if conn is not None:
             conn.close()
         for h in log.handlers:
             h.close()
