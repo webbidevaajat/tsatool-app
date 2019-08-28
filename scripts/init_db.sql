@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS sensors (
 CREATE TABLE IF NOT EXISTS statobs (
   id        bigserial   NOT NULL,
   tfrom     timestamptz NOT NULL,
-  statid    integer     NOT NULL REFERENCES stations (id),
+  statid    integer     NOT NULL,
   modified  timestamptz DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (tfrom, statid)
 );
