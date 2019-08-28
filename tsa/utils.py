@@ -41,10 +41,7 @@ def tsadb_connect(username=None, password=None, ask=False):
                                    connect_timeout=5)
         return pg_conn
     except psycopg2.OperationalError as e:
-        print('Could not connect to database:')
-        print(e)
-        print('Are you connected to the right network?')
-        print('Using correct and existing username and password?')
+        log.error('Could not connect to tsa database', exc_info=True)
         return None
 
 def eliminate_umlauts(x):
