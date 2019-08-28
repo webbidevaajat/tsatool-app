@@ -46,6 +46,83 @@ ch.setFormatter(logging.Formatter('%(asctime)s; %(message)s'))
 log.addHandler(ch)
 log.setLevel(logging.DEBUG)
 
+class LotjuHandler:
+    """
+    Parses the contents of LOTJU files of one month
+    and inserts them into database.
+
+    Following files MUST be available under project's
+    `data/` directory:
+
+    - `anturi_arvo-[year]_[month_with_leading_0].csv`
+    - `tiesaa_mittatieto-[year]_[month_with_leading_0].csv`
+    - `tiesaa_asema.csv` for station id mapping `ID` -> `VANHA_ID`
+    - `laskennallinen_anturi.csv` for sensor id mapping `ID` -> `VANHA_ID`
+
+    :param year:            full year of LOTJU files (int)
+    :param month:           month of LOTJU files (int), note that months < 10
+                            must appear in the file names as `01`, `02` etc.!
+    :param stations_keep:   list of station ids (int) to insert into db,
+                            according to `VANHA_ID`; if empty, all are inserted
+    :param sensors_keep:    like above but for sensor ids
+    :chunk_size:            max n of rows copied to db at a time
+    :limit:                 stop insertions after this amount of rows;
+                            if 0, all are inserted
+    """
+    def __init__(self, year, month,
+                 stations_keep=[], sensors_keep=[],
+                 chunk_size=1000000, limit=0):
+        self.anturi_file = self.check_file("anturi", year, month)
+        self.tiesaa_file = self.check_file("tiesaa", year, month)
+        self.stations = stations_keep
+        self.sensors = sensors_keep
+        self.chunk_size = chunk_size
+        self.limit = limit
+        self.conn = None
+        self.warnings = dict()
+        self.n_anturi_inserted = 0
+        self.n_tiesaa_inserted = 0
+
+    def check_file(self, srctype, y, m):
+        """
+        Check that file of `srctype` "anturi" or "tiesaa"
+        with given year and month exists under `data/`.
+        If yes, return the file path, if not, raise an error.
+        """
+        if srctype == "anturi":
+            candidate = os.path.join("data",
+                                     f"anturi_arvo-{year}_{str(month).zfill(2)}.csv")
+        elif srctype == "tiesaa":
+            candidate = os.path.join("data",
+                                     f"tiesaa_mittatieto-{year}_{str(month).zfill(2)}.csv")
+        else:
+            raise Exception("srctype must be anturi or tiesaa")
+        if not os.path.exists(candidate):
+            raise FileNotFoundError(candidate)
+        return candidate
+
+    def warn_once(self, logger, type, contents):
+        """
+        Handle warning logging to a `logger` object
+        such that repetitive warnings are not recorded.
+        Instead, first ones are logged, and the number of the rest
+        can be written in the end of the log.
+        """
+        if type not in self.issues.keys():
+            self.warnings[type] = 1
+            logger.warning(f"{type}: {contents} (subsequent warnings of same type are NOT recorded)")
+        else:
+            self.warnings[type] += 1
+
+    def get_n_of_warnings(self, logger):
+        """
+        List number of `warn_once` warnings issued
+        as one warning record per type.
+        To be called in the end of a script.
+        """
+        for k, v in self.warnings.items():
+            logger.warning(f"Total warnings of type '{k}': {v}")
+
 def convert_ids(csv_file, from_field, to_field):
     """
     Read ids from ``csv_file``,
