@@ -14,9 +14,9 @@ import logging.config
 from tsa import AnalysisCollection
 
 log = logging.getLogger('tsa')
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 fh = logging.handlers.TimedRotatingFileHandler(os.path.join('logs', 'tsabatchlog'))
-fh.setLevel(logging.DEBUG)
+fh.setLevel(logging.INFO)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s; %(name)s; %(levelname)s; %(message)s')
@@ -26,7 +26,6 @@ log.addHandler(fh)
 log.addHandler(ch)
 
 def main():
-    log.debug('START OF TSABATCH SESSION')
     parser = argparse.ArgumentParser(description='Run TSA analyses as batch job.')
     parser.add_argument('-i', '--input',
                         type=str,
@@ -44,13 +43,13 @@ def main():
                         metavar='DB_PASSWORD',
                         required=True)
     args = parser.parse_args()
-    log.debug(f'Started with input={args.input} name={args.name} password=***')
+    log.info(f'START OF TSABATCH with input={args.input} name={args.name} password=(not printed)')
 
     anls = AnalysisCollection(name=args.name)
     try:
         anls.set_input_xlsx(path=os.path.join(anls.data_dir, args.input))
     except:
-        log.exception('Could not set input Excel file name.')
+        log.exception('Could not set input Excel: quitting')
         sys.exit()
 
     # Read DB params from defaul config file, add password
@@ -58,55 +57,54 @@ def main():
         anls.db_params.read_config()
         anls.db_params.password = args.password
     except:
-        log.exception('Could not find DB config file.')
+        log.exception('Could not find DB config file: quitting')
         sys.exit()
 
     # Add all sheet names for analysis
     sheets = anls.workbook.sheetnames
-    log.info(f"Using all sheets: {', '.join(sheets)}")
+    log.info(f"Using all Excel sheets: {', '.join(sheets)}")
     anls.set_sheetnames(sheets=sheets)
 
     # Prepare and validate collections
     try:
-        log.info('Connecting to database ...')
+        log.debug('Connecting to database ...')
         with psycopg2.connect(**anls.db_params, connect_timeout=5) as conn:
-            log.info('Fetching available station ids ...')
+            log.debug('Fetching available station ids ...')
             anls.save_statids_in_statobs(conn)
-            log.info('Fetching sensor name-id pairs ...')
+            log.debug('Fetching sensor name-id pairs ...')
             anls.save_sensor_pairs(conn)
-        log.info(f'Fetched {len(anls.statids_in_db)} station ids and {len(anls.sensor_pairs)} sensor name-id pairs.')
+        log.info(f'Fetched {len(anls.statids_in_db)} station ids and {len(anls.sensor_pairs)} sensor name-id pairs')
     except:
-        log.exception('Error with database connection.')
+        log.exception('Error with DB when fetching station and sensor ids: quitting')
         sys.exit()
     for s in anls.sheetnames:
         try:
-            log.info(f'Adding collection "{s}" ...')
+            log.debug(f'Adding sheet {s} ...')
             anls.add_collection(s)
         except Exception as e:
-            log.exception(f'Error when adding collection {s}.')
+            log.error(f'Failed to add sheet {s} contents to analysis collection',
+                      exc_info=True)
             anls.add_error(e)
-    log.info(f'{len(anls.collections)} collections added from {len(anls.sheetnames)} sheets.')
+    log.info(f'{len(anls.collections)} collections added from {len(anls.sheetnames)} sheets')
     if anls.statids_in_db:
-        log.info('Validating collection station ids.')
+        log.debug('Validating collection station ids')
         n_errs = anls.check_statids()
         if n_errs:
             log.warning(f'There were {n_errs} errors.')
     else:
-        err = 'Could not check if station ids exist in database'
-        log.warning(err)
+        log.error('Could not check if station ids exist in database')
         anls.add_error(err)
     errs = anls.list_errors()
     if errs:
-        log.warning(f'{len(errs)} errors:\n' + '\n'.join(errs))
-        outpath = os.path.join(anls.get_outdir(), 'errors.txt')
-        with open(outpath, 'w') as fobj:
-            fobj.write('\n'.join(errs))
-        log.info(f'Errors saved to {outpath}.')
+        log.error(f'{len(errs)} errors with analysis collection {anls.name}')
+        log.debug('Listing errors:')
+        for e in errs:
+            log.debug(f'    {e}')
 
     # Analyze and save
     anls.run_analyses()
 
-    log.debug('END OF TSABATCH SESSION')
+    log.info('END OF TSABATCH')
 
 if __name__ == '__main__':
     main()

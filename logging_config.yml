@@ -9,7 +9,7 @@ handlers:
   console:
     class: logging.StreamHandler
     formatter: simple
-    level: INFO
+    level: DEBUG
     stream: ext://sys.stdout
   setup_file:
     class: logging.handlers.TimedRotatingFileHandler
@@ -28,14 +28,14 @@ handlers:
   tsapp_file:
     class: logging.handlers.TimedRotatingFileHandler
     formatter: precise
-    level: DEBUG
+    level: INFO
     filename: 'logs/tsapplog'
     when: D
     delay: True
   tsabatch_file:
     class: logging.handlers.TimedRotatingFileHandler
     formatter: precise
-    level: DEBUG
+    level: INFO
     filename: 'logs/tsabatchlog'
     when: D
     delay: True

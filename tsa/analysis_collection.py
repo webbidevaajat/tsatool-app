@@ -258,19 +258,19 @@ class AnalysisCollection:
         Returns number of errors occurred.
         """
         if not self.statids_in_db:
-            err = ('List of available station ids in db is empty.\n'
+            err = ('List of available station ids in db is empty. '
                    'Were they correctly requested from database?')
             raise Exception(err)
         n_errs = 0
         for coll in self.collections.values():
-            print(f'Checking station ids for "{coll.title}" ...')
+            log.debug(f'Checking station ids for {coll.title} ...')
             if coll.station_ids != self.statids_in_db.intersection(coll.station_ids):
                 n_errs += 1
                 missing_ids = list(coll.station_ids - self.statids_in_db).sort()
                 missing_ids = [str(el) for el in missing_ids]
-                err = ('WARNING: Following station ids are not available in db observations:\n'
+                err = (f'Following station ids in {coll.title} are NOT available in database: '
                        ', '.join(missing_ids))
-                print(err)
+                log.warning(err)
                 coll.add_error(err)
         return n_errs
 
@@ -281,7 +281,7 @@ class AnalysisCollection:
         and save results according to the selected formats and path names.
         Analyses are run against collection-specific db connections.
         """
-        log.info('Starting analyses')
+        log.info(f'START OF ANALYSES for analysis collection {self.name}')
         wb = None
         ws = None
         pptx_template_path = os.path.join(self.base_dir, 'data', 'report_template.pptx')
@@ -291,16 +291,16 @@ class AnalysisCollection:
             ws = wb.active
             ws.title = 'INFO'
             ws['A1'].value = f"Analysis started {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            log.info(f'Results will be saved as EXCEL sheets to {wb_outpath}')
+            log.info(f'Will save EXCEL results to {wb_outpath}')
         if 'pptx' in self.out_formats:
             if os.path.exists(pptx_template_path):
-                log.info(f'Results will be saved as POWERPOINT reports per input sheet')
+                log.info(f'Will save POWERPOINT results for each sheet')
             else:
-                log.warning(f'Could not find pptx report template file at {pptx_template_path},\
-                            ignoring Powerpoint reports!')
+                log.warning((f'Could not find pptx report template file at {pptx_template_path}, '
+                            'skipping Powerpoint reports!'))
                 pptx_template_path = None
         if 'xlsx' not in self.out_formats and 'pptx' not in self.out_formats:
-            log.warning('No results will be saved!')
+            log.warning('NO results will be saved')
         for k, coll in self.collections.items():
             try:
                 pptx_path = None
@@ -312,12 +312,12 @@ class AnalysisCollection:
                                       pptx_path=pptx_out_path,
                                       pptx_template=pptx_template_path)
             except:
-                log.exception(f'Fatal error with {coll.title}, passing')
+                log.critical(f'Skipping collection {coll.title} due to error', exc_info=True)
 
         if wb is not None:
             ws['A2'].value = f"Analysis ended {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             wb.save(wb_outpath)
-            log.info(f'EXCEL results saved to {wb_outpath}')
+            log.info(f'Excel results saved to {wb_outpath}')
         log.info(f'END OF ANALYSES for analysis collection {self.name}')
 
     def __getitem__(self):
