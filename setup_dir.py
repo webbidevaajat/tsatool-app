@@ -6,14 +6,16 @@ to create necessary directories and config files.
 """
 
 import os
+import sys
 import yaml
 import logging
 import logging.config
 
-with open('logging_config.yml', 'r') as f:
-    config = yaml.safe_load(f.read())
-    logging.config.dictConfig(config)
-    log = logging.getLogger('setuplogger')
+log = logging.getLogger(__name__)
+ch = logging.StreamHandler(sys.stdout)
+ch.setFormatter(logging.Formatter('%(asctime)s; %(message)s'))
+log.addHandler(ch)
+log.setLevel(logging.DEBUG)
 
 def main():
     cwd = os.getcwd()
