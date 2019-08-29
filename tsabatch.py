@@ -5,6 +5,7 @@ are assumed clean and valid, and there are no interactive
 wait / confirmation steps!
 """
 import os
+import re
 import sys
 import argparse
 import psycopg2
@@ -35,14 +36,18 @@ def main():
     parser.add_argument('-n', '--name',
                         type=str,
                         help='Base name for the outputs in analysis/',
-                        metavar='OUTPUT_NAME',
-                        required=True)
+                        metavar='OUTPUT_NAME')
     parser.add_argument('-p', '--password',
                         type=str,
                         help='Database password (of the user in db_config.yml file)',
-                        metavar='DB_PASSWORD',
-                        required=True)
+                        metavar='DB_PASSWORD')
     args = parser.parse_args()
+    if args.name is None:
+        # Use input excel name but replace file ending
+        args.name = re.sub("\.[^.]*$", "_OUT", args.input)
+    if args.password is None:
+        # Try picking the password from environment vars
+        args.password = os.getenv('POSTGRES_PASSWORD')
     log.info(f'START OF TSABATCH with input={args.input} name={args.name} password=(not printed)')
 
     anls = AnalysisCollection(name=args.name)
