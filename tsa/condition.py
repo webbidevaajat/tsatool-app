@@ -65,6 +65,8 @@ class Condition:
     :type raw_condition: string
     :param time_range: start (included) and end (included) timestamps
     :type time_range: list or tuple of datetime objects
+    :param excel_row: row index referring to the source of the condition in Excel file
+    :type excel_row: integer
     """
     def __init__(self, site, master_alias, raw_condition, time_range, excel_row=None):
         # Excel row for prompting, if made from Excel sheet
@@ -148,10 +150,10 @@ class Condition:
     def make_blocks(self):
         """
         Extract a list of Block instances (that is, subconditions)
-        into `self.blocks` based on `self.condition`,
-        define `self.alias_condition` based on the aliases of the Block instances
-        and detect condition type (`secondary == True` if any of the blocks has
-        `secondary == True`, `False` otherwise).
+        into ``self.blocks`` based on ``self.condition``,
+        define ``self.alias_condition`` based on the aliases of the Block instances
+        and detect condition type (``secondary == True`` if any of the blocks has
+        ``secondary == True``, ``False`` otherwise).
         """
         value = self.condition
 
@@ -232,20 +234,20 @@ class Condition:
 
         def validate_order(tuples):
             """
-            Validate order of the elements of a :py:class:`Block`.
+            Validate order of the elements of a :py:class:``Block``.
 
             :param tuples: list of tuples, each of which has
-                `open_par`, `close_par`, `andor`, `not` or `block`
+                ``open_par`, ``close_par``, ``andor``, ``not`` or ``block``
                 in the first index and the string element itself in the second.
             :type tuples: list or tuple
             :return: no return if element order is valid, otherwise
                 raise an error upon first invalid element
 
             Following element types may be in the first index:
-                `open_par`, `not`, `block`
+                ``open_par``, ``not``, ``block``
 
             Following elements may be in the last index:
-                `close_par`, `block`
+                ``close_par``, ``block``
 
             For elements other than the last one, see the table below
             to see what element can follow each element.
@@ -337,8 +339,8 @@ class Condition:
 
     def list_stations(self):
         """
-        Add unique station ids of primary `self.blocks`
-        to `self.station_ids` set
+        Add unique station ids of primary ``self.blocks``
+        to ``self.station_ids`` set
         """
         for bl in self.blocks:
             if not bl.secondary:
@@ -591,7 +593,7 @@ class Condition:
     def __getitem__(self, key):
         """
         Returns the Block instance on the corresponding index.
-        `key` can be integer or `.alias` string.
+        ``key`` can be integer or ``Block.alias`` string.
         """
         try:
             idx = int(key)

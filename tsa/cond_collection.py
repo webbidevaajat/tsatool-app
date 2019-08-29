@@ -197,7 +197,7 @@ class CondCollection:
 
     def set_sensor_ids(self, pairs=None):
         """
-        Get sensor name - id correspondence from the database,
+        Get sensor name - id pairs from the database,
         and set sensor ids for all Blocks in all Conditions.
         Optionally, the ``nameids`` can be fed from outside, in which case
         querying the database is omitted.

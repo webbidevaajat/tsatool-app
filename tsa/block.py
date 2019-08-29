@@ -12,16 +12,16 @@ class Block:
     """
     Represents a logical subcondition
     with information of site name and station id.
-    See :py:class:`Condition` that consists of blocks
+    See :py:class:``Condition`` that consists of blocks
     and operators and parentheses.
     A Block renders as boolean column in temporary db tables.
     For PostgreSQL compatibility, umlauts convert to a and o,
     and all strings are made lowercase.
 
-    For a *primary* block, the `raw_condition` must consist of
+    For a *primary* block, the ``raw_condition`` must consist of
     a station identifier, hashtag, sensor identifier,
     operator and a value.
-    For a *secondary* block, the `raw_condition` must consist of
+    For a *secondary* block, the ``raw_condition`` must consist of
     a site identifier, hashtag and alias identifier. Note that these should
     refer to an existing Condition instance.
 
