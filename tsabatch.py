@@ -66,6 +66,8 @@ def main():
     anls.set_sheetnames(sheets=sheets)
 
     # Prepare and validate collections
+    # TODO: possibly validate without database communication,
+    #       i.e. by using hard-coded list of ids and valid sensor names
     try:
         log.debug('Connecting to database ...')
         with psycopg2.connect(**anls.db_params, connect_timeout=5) as conn:
@@ -102,6 +104,7 @@ def main():
             log.debug(f'    {e}')
 
     # Analyze and save
+    # TODO: do NOT analyze if collection validation was not successful and clean!
     anls.run_analyses()
 
     log.info('END OF TSABATCH')
