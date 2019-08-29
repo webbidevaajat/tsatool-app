@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS statobs (
 
 SELECT create_hypertable('statobs', 'tfrom');
 
+CREATE INDEX statobs_statid_idx ON statobs(statid);
+
 CREATE TABLE IF NOT EXISTS seobs (
   id        bigserial   PRIMARY KEY,
   obsid     bigint      NOT NULL,
