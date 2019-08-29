@@ -59,6 +59,20 @@ def eliminate_umlauts(x):
 
     return x
 
+def with_errpointer(s, pos):
+    """
+    Print ``s`` + a new line with a pointer at ``pos``th index
+    (to show erroneous parts in strings)
+    """
+    try:
+        pos = int(pos)
+        s = str(s)
+    except ValueError:
+        return s
+    if pos < 0:
+        return s
+    return s + '\n' + '~'*pos + '^ HERE'
+
 def to_pg_identifier(x):
     """
     Converts x (string) such that it can be used as a table or column
@@ -87,20 +101,18 @@ def to_pg_identifier(x):
 
     if x[0].isdigit():
         errtext = 'String starts with digit:\n'
-        errtext += old_x + '\n'
-        errtext += '^'
+        errtext += with_errpointer(x, 0)
         raise ValueError(errtext)
 
     if len(x) > 40:
         errtext = 'String too long, maximum is 40 characters:\n'
-        errtext += old_x + '\n'
+        errtext += with_errpointer(x, 40-1)
         raise ValueError(errtext)
 
     for i, c in enumerate(x):
         if not (c.isalnum() or c == '_'):
             errtext = 'String contains an invalid character:\n'
-            errtext += old_x + '\n'
-            errtext += '~' * i + '^'
+            errtext += with_errpointer(x, i)
             raise ValueError(errtext)
 
     return x
