@@ -7,7 +7,6 @@ to create necessary directories and config files.
 
 import os
 import sys
-import yaml
 import logging
 import logging.config
 
@@ -29,15 +28,12 @@ def main():
         else:
             log.info(f'{dirpath} already exists')
 
-    cfpath = os.path.join(cwd, 'db_config.json')
+    cfpath = os.path.join(cwd, 'db_config.yml')
     if not os.path.exists(cfpath):
-        cf_str = '''{
-  "HOST": "localhost",
-  "PORT": 5432,
-  "DATABASE": "tsa",
-  "ADMIN_USER": "tsadash",
-  "ORDINARY_USERS": []
-}'''
+        cf_str = ('host: localhost\n'
+                  'port: 5432\n'
+                  'database: tsa\n'
+                  'admin_user: postgres\n')
         with open(cfpath, 'w') as outfile:
             outfile.write(cf_str)
         log.info(f'{cfpath} created with default values')
