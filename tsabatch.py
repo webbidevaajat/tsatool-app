@@ -13,6 +13,8 @@ import logging
 import logging.handlers
 import logging.config
 from tsa import AnalysisCollection
+from tsa.utils import list_local_statids
+from tsa.utils import list_local_sensors
 
 log = logging.getLogger('tsa')
 log.setLevel(logging.INFO)
@@ -70,9 +72,9 @@ def main():
     log.info(f"Using all Excel sheets: {', '.join(sheets)}")
     anls.set_sheetnames(sheets=sheets)
 
+    # TODO: ADD "DRY" ID VALIDATION HERE!
+
     # Prepare and validate collections
-    # TODO: possibly validate without database communication,
-    #       i.e. by using hard-coded list of ids and valid sensor names
     try:
         log.debug('Connecting to database ...')
         with psycopg2.connect(**anls.db_params, connect_timeout=5) as conn:
@@ -84,6 +86,7 @@ def main():
     except:
         log.exception('Error with DB when fetching station and sensor ids: quitting')
         sys.exit()
+
     for s in anls.sheetnames:
         try:
             log.debug(f'Adding sheet {s} ...')
