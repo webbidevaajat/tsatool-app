@@ -5,6 +5,7 @@
 
 import logging
 from .utils import to_pg_identifier
+from .utils import with_errpointer
 
 log = logging.getLogger(__name__)
 
