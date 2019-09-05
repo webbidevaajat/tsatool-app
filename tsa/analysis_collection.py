@@ -274,6 +274,15 @@ class AnalysisCollection:
                 coll.add_error(err)
         return n_errs
 
+    def dry_validate(self):
+        """
+        Validate input syntax, ids and sensor names without database,
+        using hard-coded station ids and sensor name-id pairs.
+        On complete success, return empty string;
+        on any error, return error log string.
+        """
+        # TODO
+        return ""
 
     def run_analyses(self):
         """

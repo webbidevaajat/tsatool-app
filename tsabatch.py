@@ -43,6 +43,9 @@ def main():
                         type=str,
                         help='Database password (of the user in db_config.yml file)',
                         metavar='DB_PASSWORD')
+    parser.add_argument('--dryvalidate',
+                        action='store_true',
+                        help='Only validate input Excel with hard-coded ids and names')
     args = parser.parse_args()
     if args.name is None:
         # Use input excel name but replace file ending
@@ -50,13 +53,36 @@ def main():
     if args.password is None:
         # Try picking the password from environment vars
         args.password = os.getenv('POSTGRES_PASSWORD')
-    log.info(f'START OF TSABATCH with input={args.input} name={args.name} password=(not printed)')
+    log.info((f'START OF TSABATCH with input={args.input} name={args.name} '
+              f'password=(not printed) dryvalidate={args.dryvalidate}'))
 
     anls = AnalysisCollection(name=args.name)
     try:
         anls.set_input_xlsx(path=os.path.join(anls.data_dir, args.input))
     except:
         log.exception('Could not set input Excel: quitting')
+        sys.exit()
+
+    # Add all sheet names for analysis
+    sheets = anls.workbook.sheetnames
+    log.debug(f"Using all Excel sheets: {', '.join(sheets)}")
+    anls.set_sheetnames(sheets=sheets)
+
+    if args.dryvalidate:
+        log.debug(f"Validating input Excel without database")
+        errs = anls.dry_validate()
+        if errs:
+            fname = os.path.join("logs", "excel_validation_report.txt")
+            log.warning(f'There were errors in input Excel: see {fname}')
+            with open(fname, "w") as fobj:
+                fobj.write(errs)
+            # Error raised -> things outside the Python process
+            # can determine further actions
+            raise Exception("Errors in input Excel file")
+        else:
+            log.info('No errors in input Excel')
+        # With dryvalidate, the script is exited anyway
+        # without proceeding to DB communication and analysis
         sys.exit()
 
     # Read DB params from defaul config file, add password
@@ -66,13 +92,6 @@ def main():
     except:
         log.exception('Could not find DB config file: quitting')
         sys.exit()
-
-    # Add all sheet names for analysis
-    sheets = anls.workbook.sheetnames
-    log.info(f"Using all Excel sheets: {', '.join(sheets)}")
-    anls.set_sheetnames(sheets=sheets)
-
-    # TODO: ADD "DRY" ID VALIDATION HERE!
 
     # Prepare and validate collections
     try:
