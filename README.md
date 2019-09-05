@@ -1,58 +1,48 @@
 # tsatool-app
 
-*Under construction!*
-
-**TODO:**
-
-- Using `POSTGRES_PASSWORD` env variable
-- `tsabatch.py ... --dryvalidate` info
-
 Tool for analyzing Finnish road weather station (TieSääAsema) data. Data will is located and handled in a PostgreSQL & [TimescaleDB](https://www.timescale.com/) database, and analyses are run through a Python API. See the [Wiki page](https://github.com/webbidevaajat/tsatool-app/wiki) for more details and examples.
 
 To get familiar with road weather station data models and properties, see the documentation for the [real time API](https://www.digitraffic.fi/tieliikenne/).
 
 You can get some kind of a clue about what this is about by reading our first [Wiki page](https://github.com/webbidevaajat/tsatool-app/wiki/Ehtosetin-muotoilu) about formatting the input data (in Finnish).
 
-**TODO:** database model (briefly)
+## Running an analysis
 
-## Installation
-
-**TODO:** Dockerize and update installation instructions?
-
-## Inserting data
-
-### Docker DB instance
-
-For now, we use a temporary Docker container to test the database functionalities.
-Since Postgres' port 5432 is likely to be reserved for your local Postgres server,
-bind your container to some other port, such as 7001 here. Example:
+Analyses are based on an input Excel file. Example:
 
 ```
-docker run -d --name tsdb -p 127.0.0.1:7001:5432 -e POSTGRES_PASSWORD=[pw_of_your_choice] timescale/timescaledb:latest-pg11
+#> First, validate input data without database connection:
+python tsabatch.py -i dataset.xlsx --dryvalidate
+#> If no errors occurred, run full analysis:
+python tsabatch.py -i dataset.xlsx -n results -p mydatabasepassword
 ```
 
-To successfully run the Python scripts that communicate with the database,
-make sure your `db_config.yml` file in the root directory
-is updated accordingly:
+Input file must be located in `analysis/` folder in the project root.
+Results are saved there as well, in a directory
+named after the `-n` (name) argument.
+
+Furthermore, you should have
+database connection parameters available in `db_congig.yml` file in the
+project root. Example:
 
 ```
-host: 127.0.0.1
-port: 7001
+host: localhost
+port: 5432
 database: tsa
 admin_user: postgres
 ```
 
-You can save the `postgres` password locally to env variable `POSTGRES_PASSWORD`,
-(e.g. `SET "POSTGRES_PASSWORD=[pw_of_your_choice]"` on Windows cmd line)
-so `tsa.utils.tsadb_connect()` is able to use it directly.
-If the env variable is not available, you will be asked to type the password.
+You can either pass the database user password with the `-p` argument
+or save it to environment variable `POSTGRES_PASSWORD`, in which case
+you can omit the argument.
 
-Now run the database initialization script on your local machine
-(assuming you have `psql` installed along with a local Postgres installation):
+## Installation
 
-```
-psql -U postgres -h 127.0.0.1 -p 7001 -f scripts\init_db.sql
-```
+- Make sure you have PostgreSQL (version 10 >) and TimescaleDB installed
+- Run `scripts/init_db.sql` SQL script to create the `tsa` database
+- Make sure you are using Python >= 3.6 and have installed the libraries in
+`requirements.txt` (e.g. `pip install -r requirements.txt`,
+it is recommended to use virtualenv)
 
 ### Station and sensor metadata
 
@@ -61,13 +51,8 @@ data into the corresponding tables.
 This will insert the **current** data from the Digitraffic API as it is.
 
 Alternatively, you can run an SQL file that inserts a snapshot
-of the metadata values (without JSON properties):
-
-```
-psql -U postgres -h 127.0.0.1 -p 7001 -f scripts\insert_stations_sensors.sql
-```
-
-**TODO:** Find a better way to insert metadata from a static source.
+of the metadata values (without JSON properties) with
+`scripts/insert_stations_sensors.sql`.
 
 ### Observations from LOTJU files
 
@@ -94,29 +79,66 @@ A particularly slow part of the insertion script is reading
 the `anturi_arvo` file. For debugging purposes, you may want to parse
 n first lines only. You can set this limit after the `-l` argument.
 
-**Example usage:**
+Example:
 
 ```
 python insert_lotjudumps.py -t tiesaa_mittatieto-2018_01.csv -a anturi_arvo-2018_01.csv -s 1019 1121 1132 -l 3000000
 ```
 
-**TODO: other data sources?**
+## Database
 
-Finally, you can get a summary of the data available
-in the database by running this SQL script:
+Essentially, the `tsa` database consists of the following tables:
 
-```
-psql -U postgres -h 127.0.0.1 -p 7001 -d tsa -f scripts\observations_summary.sql
-```
+- `stations` and `sensors` include the properties behind each road weather
+station id and sensor id, respectively
+- `statobs`: each row has a timestamp and station id, and a unique
+*observation id*
+- `seobs`: each row has a sensor id, value and reference to the *observation id*
+in `statobs`. This way the sensor readings can be joined to the timestamped
+station rows.
 
-## Running analyses
+`statobs` is partitioned by timestamp, using TimescaleDB hypertable functionality.
+Similarly, `seobs`, having the largest amount of data, is "hypertabled"
+by the primary key integer id.
+**Indexing of these tables has not been tested extensively
+and may require more attention in future.**
 
-**TODO:** Dockerize and update this doc?
+The `tsa` API runs the analyses in the database side by forming temporary
+tables with a time range column and value columns that refer to
+the corresponding `Condition` rows and their single logical parts,
+`Block`s. Each of these `Block` columns has a boolean value,
+indicating whether the specified sensor value condition was "on" or "off"
+during the time range.
 
-- Check that you have the correct Python version and required libraries installed (see below), and possibly start your virtual environment
-- Run the `tsapp.py` CLI. The CLI provides you with various steps of preparing and analyzing a set of sensor conditions.
-- Run the `tsabatch.py` scripts with required arguments: see `python tsabatch.py --help` first. This is a tool for batch analyses: all the sheets of an Excel file are analyzed, and the analysis procedure is started without stopping on any errors or warnings.
-- The command line tools will call the `tsa` API that can be found in its own directory here. The API in turn will communicate with the database.
+## tsa API
+
+The `tsa` Python data model can be described roughly as follows:
+
+- `AnalysisCollection` is based on an Excel input file,
+and it can hold multiple `Collection`s (Excel sheets).
+It stores general information related to the analysis session,
+such as result folder name and parameters for DB connection.
+- `Collection` is based on a single Excel sheet,
+it has start and end dates as analysis time range
+and as many `Condition`s as are specified in the Excel sheet rows.
+A `Collection` establishes a single database session, meaning that
+temporary tables, identifiers etc. are valid during handling the
+collection.
+- `Condition` is based on a row in an Excel sheet. It has a site name
+and a master alias name, and the combination of these two must be
+unique within the parent `Collection`. Most importantly,
+`Condition` is a combination of `Blocks`: these blocks
+are separated by logical operators, and the result is either TRUE or FALSE
+for a time range. A `Condition` is *primary* or *secondary* depending on its
+blocks. *Primary* conditions are evaluated first so *secondary* ones
+can depend on them.
+- `Block` is a part of its parent `Condition`. It tells whether the value of a
+sensor belonging to a station is inside the given limits or not
+(a *primary* block). Alternatively, it refers to an existing `Condition` by
+site and master alias names, in which case it is a *secondary* block.
+Secondary blocks can be used to build composite `Conditions`,
+e.g. "`NOT (Condition1 OR Condition2 OR ...)`". Any *secondary* `Block` in
+a `Condition` renders the whole `Condition` *secondary*.
 
 ## Authors
 
