@@ -229,15 +229,21 @@ class AnalysisCollection:
         self.collections[title] = CondCollection.from_xlsx_sheet(ws,
             sensor_pairs=self.sensor_pairs)
 
-    def save_sensor_pairs(self, pg_conn):
+    def save_sensor_pairs(self, pg_conn=None, pairs=None):
         """
-        Get sensor name-id pairs from database and save them as dict.
+        Get sensor name-id pairs from database or name:id ``pairs`` dict
+        and save them as dict.
         ``pg_conn`` must be a valid, online connection instance to TSA db.
         """
-        with pg_conn.cursor() as cur:
-            cur.execute("SELECT id, lower(name) AS name FROM sensors;")
-            tb = cur.fetchall()
-            self.sensor_pairs =  {k:v for v, k in tb}
+        if pg_conn is not None:
+            with pg_conn.cursor() as cur:
+                cur.execute("SELECT id, lower(name) AS name FROM sensors;")
+                tb = cur.fetchall()
+                self.sensor_pairs =  {k:v for v, k in tb}
+        elif pairs is not None:
+            self.sensor_pairs = pairs
+        else:
+            raise Exception("No pg_conn or pairs provided")
 
     def save_statids_in_statobs(self, pg_conn):
         """
