@@ -2,6 +2,11 @@
 
 *Under construction!*
 
+**TODO:**
+
+- Using `POSTGRES_PASSWORD` env variable
+- `tsabatch.py ... --dryvalidate` info
+
 Tool for analyzing Finnish road weather station (TieSääAsema) data. Data will is located and handled in a PostgreSQL & [TimescaleDB](https://www.timescale.com/) database, and analyses are run through a Python API. See the [Wiki page](https://github.com/webbidevaajat/tsatool-app/wiki) for more details and examples.
 
 To get familiar with road weather station data models and properties, see the documentation for the [real time API](https://www.digitraffic.fi/tieliikenne/).
