@@ -16,6 +16,7 @@ from .condition import Condition
 from .utils import strfdelta
 from .utils import list_local_statids
 from .utils import list_local_sensors
+from .tsaerror import TsaError
 from datetime import datetime
 from io import BytesIO
 from pptx.util import Pt

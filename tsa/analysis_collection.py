@@ -5,11 +5,15 @@
 
 import logging
 import os
+import re
 import yaml
 import psycopg2
 import openpyxl as xl
 from .cond_collection import CondCollection
 from .utils import trunc_str
+from .utils import list_local_statids()
+from .utils import list_local_sensors()
+from .tsaerror import TsaError
 from datetime import datetime
 from getpass import getpass
 from collections import OrderedDict
@@ -23,7 +27,7 @@ class DBParams:
     def __init__(self, dbname=None, user=None, host=None, port=5432):
         self.dbname = dbname
         self.user = user
-        self.password = None    # WARNING: stored as plain str
+        self.password = os.getenv('POSTGRES_PASSWORD')
         self.host = host
         self.port = port
 
@@ -96,8 +100,6 @@ class AnalysisCollection:
     Enables validating CondCollections separately
     and then analysing them.
 
-    Any input and output of an analysis is / must be located
-    in ``analysis`` directory of the project root.
     The collection is based on an Excel file,
     and each worksheet produces a CondCollection (unless valid).
     The results (common xlsx file, and a pptx file for each CondCollection)
@@ -108,49 +110,20 @@ class AnalysisCollection:
     .. note: Existing files with same filepath will be overwritten.
     """
 
-    def __init__(self, input_xlsx=None, name=None):
-        self.input_xlsx = None
-        self._name = name or self.autoname()
-        self.base_dir = os.getcwd()
-        self.data_dir = os.path.join(self.base_dir, 'analysis')
-        assert os.path.exists(self.data_dir)
-        self.workbook = None
-        if input_xlsx:
-            self.set_input_xlsx(path=input_xlsx)
-        self.sheetnames = []
-        self.collections = OrderedDict()
-        self.errmsgs = []
-        self.statids_in_db = set()
-        self.sensor_pairs = {}
-        self.out_formats = ['xlsx', 'pptx', 'log']
-        self.db_params = DBParams()
-
-    def set_input_xlsx(self, path):
-        """
-        Set the input excel file path,
-        **relative to** ``[project_root]/analysis/``,
-        and read the workbook contents.
-        Throws an error if it does not exist or is not an .xlsx file.
-        """
-        if not os.path.exists(path):
-            raise Exception(f'File {path} does not exist!')
-        if not path.endswith('.xlsx'):
-            raise Exception(f'File {path} is not an .xlsx file!')
-        self.input_xlsx = path
-        self.workbook = xl.load_workbook(filename=path,
+    def __init__(self, input_xlsx, name=None):
+        self.input_xlsx = input_xlsx
+        # If no name given, use input xlsx path buth without
+        # file ending and directories
+        self._name = name or re.match("[^\\\/.]+(?=\.[^_.]*$)", input_xlsx)[0]
+        self.workbook = xl.load_workbook(filename=input_xlsx,
                                          read_only=True)
-
-    def set_sheetnames(self, sheets):
-        """
-        Set Excel sheets to analyze.
-        """
-        if self.workbook is None:
-            raise Exception('No Excel workbook selected!')
-        self.sheetnames = []
-        for s in sheets:
-            if s not in self.workbook.sheetnames:
-                raise Exception(f'"{s}" is not in workbook sheets!')
-            self.sheetnames.append(s)
+        self.sheetnames = self.workbook.sheetnames
+        self.collections = OrderedDict()
+        self.errors = list()
+        # Hard-coded ids and name-id pairs as default
+        self.statids_available = set(list_local_statids())
+        self.sensors_available = dict(list_local_sensors())
+        self.db_params = DBParams()
 
     @property
     def name(self):
@@ -166,70 +139,39 @@ class AnalysisCollection:
         newname = newname.replace(' ', '_')
         self._name = ''.join([c for c in newname if c.isalnum()])
 
-    @staticmethod
-    def autoname():
-        """
-        Autogenerate a name by timestamp
-        """
-        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
-        return f'analysis_{ts}'
-
-    def get_outdir(self):
-        """
-        Return output directory path based on ``data_dir``
-        and ``name``. Make if it does not exist.
-        """
-        outpath = os.path.join(self.data_dir, self.name)
-        if not os.path.exists(outpath):
-            os.mkdir(outpath)
-        return outpath
-
-    def add_error(self, e):
+    def add_error(self, msg, lvl='Error'):
         """
         Add error message to error message list.
         Only unique errors are collected, in order to avoid
         piling up repetitive messages from loops, for example.
         """
-        if e not in self.errmsgs:
-            self.errmsgs.append(e)
+        err = TsaError(lvl=lvl, cxt=f'Analysis {self.name}', msg=msg)
+        if err not in self.errors:
+            self.errors.append(err)
 
-    def list_errors(self):
+    def list_all_errors(self):
         """
         Collect together all error and warning messages
-        of condition collections and their child items,
-        return as list of strings.
+        of condition collections and their conditions,
+        return as list of TsaError objects.
         """
-        errs = [f'SESSION: {m}' for m in self.errmsgs]
-        for condcoll in self.collections.values():
-            msgs = [f'COLLECTION: {m}' for m in condcoll.errmsgs]
-            errs.extend(msgs)
-            for cond in condcoll.conditions:
-                msgs = [f'CONDITION: {m}' for m in cond.errmsgs]
-                errs.extend(msgs)
+        errs = [e for e in self.errors]
+        for coll in self.collections.values():
+            suberrs = [e for e in coll.errors]
+            errs.extend(suberrs)
+            for cond in coll.conditions:
+                suberrs = [e for e in cond.errors]
+                errs.extend(suberrs)
         return errs
 
     def add_collection(self, title):
         """
-        Add a CondCollection from worksheet by title.
-        This does *not* account for ``.sheetnames``: that is only a container
-        for further tools that add pre-selected worksheets
-        Duplicate titles are not allowed.
-        If sensor name-id pair dictionary is available,
-        it can be given here for successful construction of Blocks.
-
-        .. note: Adding by an existing title overwrites the old collection.
+        Add a CondCollection from Excel sheet by its title.
         """
-        if self.workbook is None:
-            raise Exception('No workbook loaded, cannot add collection')
-        if title not in self.workbook.sheetnames:
-            raise Exception(f'"{title}" not in workbook sheets')
-
-        ws = self.workbook[title]
-        # NOTE: sensor pairs input is a bit weird here, could be fixed
         self.collections[title] = CondCollection.from_xlsx_sheet(
-            ws,
-            station_ids=self.statids_in_db,
-            sensor_pairs=self.sensor_pairs)
+            ws=self.workbook[title],
+            station_ids=self.statids_available,
+            sensor_pairs=self.sensors_available)
 
     def save_sensor_pairs(self, pg_conn=None, pairs=None):
         """
@@ -342,11 +284,3 @@ class AnalysisCollection:
             wb.save(wb_outpath)
             log.info(f'Excel results saved to {wb_outpath}')
         log.info(f'END OF ANALYSES for analysis collection {self.name}')
-
-    def __getitem__(self):
-        """
-        Return a CondCollection by list-style int index
-        or by dict-style index based on its title.
-        """
-        # TODO
-        pass

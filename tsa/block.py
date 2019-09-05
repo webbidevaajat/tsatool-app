@@ -6,6 +6,7 @@
 import logging
 from .utils import to_pg_identifier
 from .utils import with_errpointer
+from .tsaerror import TsaError
 
 log = logging.getLogger(__name__)
 

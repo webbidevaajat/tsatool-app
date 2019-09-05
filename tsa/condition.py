@@ -13,6 +13,7 @@ from .block import Block
 from .utils import to_pg_identifier
 from .utils import eliminate_umlauts
 from .utils import trunc_str
+from .tsaerror import TsaError
 from matplotlib import rcParams
 from datetime import timedelta
 
