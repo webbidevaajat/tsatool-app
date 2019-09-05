@@ -259,7 +259,7 @@ class AnalysisCollection:
                 statids = [el[0] for el in statids]
                 self.statids_in_db = set(statids)
         elif ids is not None:
-            self.statids_in_db = ids
+            self.statids_in_db = set(ids)
         else:
             raise Exception("No pg_conn or station ids provided")
 
