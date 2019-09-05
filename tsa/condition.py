@@ -142,9 +142,9 @@ class Condition:
         s = before + '\n'
         s += f'ERROR with condition {self.id_string}'
         if self.excel_row:
-            s += f'\n(row {self.excel_row} in Excel sheet):\n'
+            s += f' (row {self.excel_row} in Excel sheet): '
         else:
-            s += ':\n' + after
+            s += '\n' + after
         return s
 
     def make_blocks(self):
@@ -162,10 +162,10 @@ class Condition:
         n_close = value.count(')')
         if n_open != n_close:
             errtext = self.error_context()
-            errtext += 'Unequal number of opening and closing parentheses:\n'
+            errtext += 'Unequal number of opening and closing parentheses: '
             errtext += '{:d} opening and {:d} closing'.format(n_open, n_close)
             self.add_error(errtext)
-            raise ValueError(errtext)
+            # raise ValueError(errtext)
 
         # Eliminate multiple whitespaces
         # and leading and trailing whitespaces
@@ -214,23 +214,26 @@ class Condition:
             elif el == 'not':
                 idfied.append(('not', el))
             else:
-                bl = Block(master_alias=self.master_alias,
-                    parent_site=self.site,
-                    order_nr=i,
-                    raw_logic=el)
-                # If a block with same contents already exists,
-                # do not add a new one with another order number i,
-                # but add the existing block with its order number.
-                # The .index() method raises an error in case the tuple with
-                # Block element is NOT contained in the list.
-                existing_blocks = [t for t in idfied if t[0] == 'block']
-                for eb in existing_blocks:
-                    if eb[1].raw_logic == bl.raw_logic:
-                        idfied.append(eb)
-                        break
-                else:
-                    idfied.append(('block', bl))
-                    i += 1
+                try:
+                    bl = Block(master_alias=self.master_alias,
+                        parent_site=self.site,
+                        order_nr=i,
+                        raw_logic=el)
+                    # If a block with same contents already exists,
+                    # do not add a new one with another order number i,
+                    # but add the existing block with its order number.
+                    # The .index() method raises an error in case the tuple with
+                    # Block element is NOT contained in the list.
+                    existing_blocks = [t for t in idfied if t[0] == 'block']
+                    for eb in existing_blocks:
+                        if eb[1].raw_logic == bl.raw_logic:
+                            idfied.append(eb)
+                            break
+                    else:
+                        idfied.append(('block', bl))
+                        i += 1
+                except Exception as e:
+                    self.add_error(e)
 
         def validate_order(tuples):
             """
@@ -281,19 +284,19 @@ class Condition:
             for i, el in enumerate(tuples):
                 if i == 0:
                     if el[0] not in allowed_first:
-                        errtext = '{"{:s}" not allowed as first element:\n'.format(el[1])
+                        errtext = '{"{:s}" not allowed as first element: '.format(el[1])
                         errtext = self.error_context(after=errtext)
                         self.add_error(errtext)
                         raise ValueError(errtext)
                 elif i == last_i:
                     if el[0] not in allowed_last:
-                        errtext = '"{:s}" not allowed as last element:\n'.format(el[1])
+                        errtext = '"{:s}" not allowed as last element: '.format(el[1])
                         errtext = self.error_context(after=errtext)
                         self.add_error(errtext)
                         raise ValueError(errtext)
                 if i < last_i:
                     if (el[0], tuples[i+1][0]) not in allowed_pairs:
-                        errtext = '"{:s}" not allowed right before "{:s}":\n'.format(el[1], tuples[i+1][1])
+                        errtext = '"{:s}" not allowed right before "{:s}": '.format(el[1], tuples[i+1][1])
                         errtext = self.error_context(after=errtext)
                         self.add_error(errtext)
                         raise ValueError(errtext)

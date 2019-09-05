@@ -226,7 +226,9 @@ class AnalysisCollection:
 
         ws = self.workbook[title]
         # NOTE: sensor pairs input is a bit weird here, could be fixed
-        self.collections[title] = CondCollection.from_xlsx_sheet(ws,
+        self.collections[title] = CondCollection.from_xlsx_sheet(
+            ws,
+            station_ids=self.statids_in_db,
             sensor_pairs=self.sensor_pairs)
 
     def save_sensor_pairs(self, pg_conn=None, pairs=None):
@@ -294,8 +296,7 @@ class AnalysisCollection:
         On complete success, return empty string;
         on any error, return error log string.
         """
-        # TODO
-        return ""
+        pass
 
     def run_analyses(self):
         """

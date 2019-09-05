@@ -195,7 +195,7 @@ class Block:
             try:
                 self.sensor_id = nameids[self.sensor]
             except KeyError:
-                errtext = f"Sensor '{self.sensor}' not found in database."
+                errtext = f"Sensor '{self.sensor}' not available."
                 raise KeyError(self.error_context(after=errtext))
 
     def get_sql_def(self):

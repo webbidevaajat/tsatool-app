@@ -70,12 +70,16 @@ def main():
 
     if args.dryvalidate:
         log.debug(f"Validating input Excel without database")
-        errs = anls.dry_validate()
+        anls.statids_in_db = set(list_local_statids())
+        anls.sensor_pairs = list_local_sensors()
+        for s in anls.sheetnames:
+            anls.add_collection(title=s)
+        errs = anls.list_errors()
         if errs:
             fname = os.path.join("logs", "excel_validation_report.txt")
             log.warning(f'There were errors in input Excel: see {fname}')
             with open(fname, "w") as fobj:
-                fobj.write(errs)
+                fobj.write('\n'.join(errs))
             # Error raised -> things outside the Python process
             # can determine further actions
             raise Exception("Errors in input Excel file")
@@ -131,7 +135,6 @@ def main():
             log.debug(f'    {e}')
 
     # Analyze and save
-    # TODO: do NOT analyze if collection validation was not successful and clean!
     anls.run_analyses()
 
     log.info('END OF TSABATCH')

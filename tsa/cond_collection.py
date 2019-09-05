@@ -14,6 +14,8 @@ import pptx
 import openpyxl as xl
 from .condition import Condition
 from .utils import strfdelta
+from .utils import list_local_statids
+from .utils import list_local_sensors
 from datetime import datetime
 from io import BytesIO
 from pptx.util import Pt
@@ -30,8 +32,6 @@ class CondCollection:
     and their HH:MM:SS are overridden to default values,
     see ``set_default_times(self)``.
 
-    # TODO CondCollection init parameters and results
-
     :param time_from: start time (inclusive) of the analysis period
     :type time_from: Python ``datetime()`` object
     :param time_until: end time (exclusive) of the analysis period
@@ -43,7 +43,7 @@ class CondCollection:
         # Times must be datetime objects and in correct order
         assert isinstance(time_from, datetime)
         assert isinstance(time_until, datetime)
-        assert time_from < time_until
+        assert time_from <= time_until
         self.time_from = time_from
         self.time_until = time_until
         self.set_default_times()
@@ -185,7 +185,7 @@ class CondCollection:
         try:
             candidate = Condition(site, master_alias, raw_condition, self.time_range, excel_row)
             if candidate.id_string in self.id_strings:
-                errtext = f'Identifier {candidate.id_string} is already reserved, cannot add it twice'
+                errtext = f'Site-master_alias combo {candidate.id_string} is already reserved, cannot add it twice'
                 raise ValueError(errtext)
             else:
                 self.conditions.append(candidate)
@@ -193,6 +193,9 @@ class CondCollection:
                 for stid in candidate.station_ids:
                     self.add_station(stid)
         except Exception as e:
+            e = str(e)
+            if excel_row is not None:
+                e += f' (row {excel_row} in Excel)'
             self.add_error(e)
 
     def set_sensor_ids(self, pairs=None):
@@ -212,7 +215,10 @@ class CondCollection:
                 pairs = {k:v for v, k in tb}
         for cnd in self.conditions:
             for bl in cnd.blocks:
-                bl.set_sensor_id(pairs)
+                try:
+                    bl.set_sensor_id(pairs)
+                except Exception as e:
+                    cnd.add_error(e)
 
     def get_temporary_relations(self):
         """
@@ -522,7 +528,9 @@ class CondCollection:
 
     @classmethod
     def from_xlsx_sheet(cls, ws,
-                        pg_conn=None, sensor_pairs=None):
+                        pg_conn=None,
+                        station_ids=None,
+                        sensor_pairs=None):
         """
         Create a condition collection for analysis
         based on an ``openpyxl`` ``worksheet`` object ``ws``.
@@ -538,43 +546,74 @@ class CondCollection:
                   Any columns outside A:C are ignored,
                   so additional data can be placed outside them.
         """
-        # Handle start and end dates;
-        # method is interrupted if either one
-        # is text BUT is not a valid date
+        # Validate start and end dates.
+        # These must be d.m.Y dates, start in cell A2
+        # and end in cell B2. On error, record error but
+        # use today as default date so constructing the
+        # collection can go further.
         dateformat = '%d.%m.%Y'
+        time_errs = [] # Supply this to the instance after it is created
         time_from = ws['A2'].value
+        if time_from is None:
+            time_from = datetime.now()
+            time_errs.append(("Start date in cell A2 is empty: "
+                              "must be a d.m.YYYY date"))
         if not isinstance(time_from, datetime):
-            time_from = datetime.strptime(ws['A2'].value, dateformat)
+            try:
+                time_from = datetime.strptime(ws['A2'].value, dateformat)
+            except:
+                time_from = datetime.now()
+                time_errs.append(("Could not read start date in cell A2: "
+                                  "must be a d.m.YYYY date"))
         time_until = ws['B2'].value
+        if time_until is None:
+            time_until = datetime.now()
+            time_errs.append(("End date in cell B2 is empty: "
+                              "must be a d.m.YYYY date"))
         if not isinstance(time_until, datetime):
-            time_until = datetime.strptime(ws['B2'].value, dateformat)
+            try:
+                time_until = datetime.strptime(ws['B2'].value, dateformat)
+            except:
+                time_from = datetime.now()
+                time_errs.append(("Could not read end date in cell B2: ",
+                                  "must be a d.m.YYYY date"))
+        if time_from > time_until:
+            time_errs.append("Start date (A2) must be BEFORE end date (B2)")
+            # Set time_from so that further validation is possible
+            time_from = time_until
 
-        # Collect condition rows into a list of dictionaries,
-        # make sure the cells have no None values
-        dl = []
+        # With the start & end times prepared, initialize the instance
+        # and request available station ids / set them from argument.
+        # Then add conditions row by row, possibly adding any errors related.
+        # Having made the conditions, set the sensor ids from database
+        # or argument provided here; error is raised for each Block
+        # if no sensor id is found.
+        cc = cls(time_from=time_from, time_until=time_until,
+                 pg_conn=pg_conn, title=ws.title)
+        for terr in time_errs:
+            cc.add_error(terr)
+        if station_ids is not None:
+            cc.statids_available = set(station_ids)
+        empty_cells = []
         for row in ws.iter_rows(min_row=4, max_col=3):
             cells = [c for c in row]
-            # Exit upon an empty row
-            if not any(cells):
-                break
-            # TODO: raise an error upon empty cell
-            #       or empty row followed by non-empty rows
-            dl.append(dict(
-                site=cells[0].value,
-                master_alias=cells[1].value,
-                raw_condition=cells[2].value,
-                excel_row=cells[0].row
-            ))
-
-        # Now the dictlist method can be used to
-        # construct the CondCollection
-        cc = cls.from_dictlist(
-            dictlist=dl,
-            time_from=time_from,
-            time_until=time_until,
-            pg_conn=pg_conn,
-            title=ws.title,
-            sensor_pairs=sensor_pairs
-        )
+            cells_ok = True
+            for c in cells:
+                if c.value is None:
+                    empty_cells.append(c)
+                    cells_ok = False
+            if not cells_ok:
+                continue
+            cc.add_condition(site=cells[0].value, master_alias=cells[1].value,
+                             raw_condition=cells[2].value, excel_row=cells[0].row)
+        last_row = cells[0].row
+        empty_cells = [c for c in empty_cells if c.row < last_row]
+        for ec in empty_cells:
+            cc.add_error(f"Cell {c.coordinate} should not be empty: row ignored")
+        if len(cc.statids_available) == 0:
+            cc.get_stations_in_view() # This requires valid pg_conn
+        # If pairs is not given above as argument,
+        # this will require valid pg_conn:
+        cc.set_sensor_ids(pairs=sensor_pairs)
 
         return cc
