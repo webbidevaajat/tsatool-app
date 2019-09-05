@@ -245,17 +245,23 @@ class AnalysisCollection:
         else:
             raise Exception("No pg_conn or pairs provided")
 
-    def save_statids_in_statobs(self, pg_conn):
+    def save_statids_in_statobs(self, pg_conn=None, ids=None):
         """
-        Get all station ids that are generally available in observation data.
+        Get all station ids that are generally available in observation data,
+        or give id list from outside.
         ``pg_conn`` must be a valid, online connection instance to TSA db.
         """
-        with pg_conn.cursor() as cur:
-            sql = "SELECT DISTINCT statid FROM statobs ORDER BY statid;"
-            cur.execute(sql)
-            statids = cur.fetchall()
-            statids = [el[0] for el in statids]
-            self.statids_in_db = set(statids)
+        if pg_conn is not None:
+            with pg_conn.cursor() as cur:
+                sql = "SELECT DISTINCT statid FROM statobs ORDER BY statid;"
+                cur.execute(sql)
+                statids = cur.fetchall()
+                statids = [el[0] for el in statids]
+                self.statids_in_db = set(statids)
+        elif ids is not None:
+            self.statids_in_db = ids
+        else:
+            raise Exception("No pg_conn or station ids provided")
 
     def check_statids(self):
         """
