@@ -270,8 +270,8 @@ class AnalysisCollection:
         Returns number of errors occurred.
         """
         if not self.statids_in_db:
-            err = ('List of available station ids in db is empty. '
-                   'Were they correctly requested from database?')
+            err = ('List of available station ids is empty. '
+                   'Were they correctly requested from database or set otherwise?')
             raise Exception(err)
         n_errs = 0
         for coll in self.collections.values():
@@ -280,7 +280,8 @@ class AnalysisCollection:
                 n_errs += 1
                 missing_ids = list(coll.station_ids - self.statids_in_db).sort()
                 missing_ids = [str(el) for el in missing_ids]
-                err = (f'Following station ids in {coll.title} are NOT available in database: '
+                err = (f'Following station ids appear in sheet {coll.title} '
+                       'but they are NOT available: '
                        ', '.join(missing_ids))
                 log.warning(err)
                 coll.add_error(err)
