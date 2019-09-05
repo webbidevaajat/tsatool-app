@@ -166,70 +166,49 @@ class AnalysisCollection:
 
     def add_collection(self, title):
         """
-        Add a CondCollection from Excel sheet by its title.
+        Add a CondCollection from Excel sheet by its title,
+        without db connection.
         """
         self.collections[title] = CondCollection.from_xlsx_sheet(
             ws=self.workbook[title],
+            pg_conn=None,
             station_ids=self.statids_available,
             sensor_pairs=self.sensors_available)
 
-    def save_sensor_pairs(self, pg_conn=None, pairs=None):
-        """
-        Get sensor name-id pairs from database or name:id ``pairs`` dict
-        and save them as dict.
-        ``pg_conn`` must be a valid, online connection instance to TSA db.
-        """
-        if pg_conn is not None:
-            with pg_conn.cursor() as cur:
-                cur.execute("SELECT id, lower(name) AS name FROM sensors;")
-                tb = cur.fetchall()
-                self.sensor_pairs =  {k:v for v, k in tb}
-        elif pairs is not None:
-            self.sensor_pairs = pairs
-        else:
-            raise Exception("No pg_conn or pairs provided")
+    # TODO: Do we need sensor checking from database?
+    # def set_sensors_available_from_db(self, pg_conn):
+    #     """
+    #     Get and set available sensor name-id pairs from database.
+    #     ``pg_conn`` must be a valid connection object to TSA db.
+    #     """
+    #     try:
+    #         with pg_conn.cursor() as cur:
+    #             cur.execute("SELECT lower(name) AS name, id FROM sensors;")
+    #             tb = cur.fetchall()
+    #             self.sensors_available = {k:v for k, v in tb}
+    #     except:
+    #         msg = 'Could not get sensors from database'
+    #         self.add_error(msg=msg)
+    #         log.error(msg, exc_info=True)
 
-    def save_statids_in_statobs(self, pg_conn=None, ids=None):
-        """
-        Get all station ids that are generally available in observation data,
-        or give id list from outside.
-        ``pg_conn`` must be a valid, online connection instance to TSA db.
-        """
-        if pg_conn is not None:
-            with pg_conn.cursor() as cur:
-                sql = "SELECT DISTINCT statid FROM statobs ORDER BY statid;"
-                cur.execute(sql)
-                statids = cur.fetchall()
-                statids = [el[0] for el in statids]
-                self.statids_in_db = set(statids)
-        elif ids is not None:
-            self.statids_in_db = set(ids)
-        else:
-            raise Exception("No pg_conn or station ids provided")
-
-    def check_statids(self):
-        """
-        For each CondCollection, check if its station ids
-        are available in the ids from the database.
-        Returns number of errors occurred.
-        """
-        if not self.statids_in_db:
-            err = ('List of available station ids is empty. '
-                   'Were they correctly requested from database or set otherwise?')
-            raise Exception(err)
-        n_errs = 0
-        for coll in self.collections.values():
-            log.debug(f'Checking station ids for {coll.title} ...')
-            if coll.station_ids != self.statids_in_db.intersection(coll.station_ids):
-                n_errs += 1
-                missing_ids = list(coll.station_ids - self.statids_in_db).sort()
-                missing_ids = [str(el) for el in missing_ids]
-                err = (f'Following station ids appear in sheet {coll.title} '
-                       'but they are NOT available: '
-                       ', '.join(missing_ids))
-                log.warning(err)
-                coll.add_error(err)
-        return n_errs
+    # TODO: do we need station id checking from database?
+    # def save_statids_in_statobs(self, pg_conn=None, ids=None):
+    #     """
+    #     Get all station ids that are generally available in observation data,
+    #     or give id list from outside.
+    #     ``pg_conn`` must be a valid, online connection instance to TSA db.
+    #     """
+    #     if pg_conn is not None:
+    #         with pg_conn.cursor() as cur:
+    #             sql = "SELECT DISTINCT statid FROM statobs ORDER BY statid;"
+    #             cur.execute(sql)
+    #             statids = cur.fetchall()
+    #             statids = [el[0] for el in statids]
+    #             self.statids_in_db = set(statids)
+    #     elif ids is not None:
+    #         self.statids_in_db = set(ids)
+    #     else:
+    #         raise Exception("No pg_conn or station ids provided")
 
     def dry_validate(self):
         """
@@ -242,45 +221,53 @@ class AnalysisCollection:
 
     def run_analyses(self):
         """
-        Run analyses for CondCollections that were made from the selected Excel sheets,
-        and save results according to the selected formats and path names.
+        Run analyses for all collections and save results.
         Analyses are run against collection-specific db connections.
         """
         log.info(f'START OF ANALYSES for analysis collection {self.name}')
-        wb = None
-        ws = None
-        pptx_template_path = os.path.join(self.base_dir, 'data', 'report_template.pptx')
-        if 'xlsx' in self.out_formats:
-            wb_outpath = os.path.join(self.get_outdir(), f'{self.name}_report.xlsx')
-            wb = xl.Workbook()
-            ws = wb.active
-            ws.title = 'INFO'
-            ws['A1'].value = f"Analysis started {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            log.info(f'Will save EXCEL results to {wb_outpath}')
-        if 'pptx' in self.out_formats:
-            if os.path.exists(pptx_template_path):
-                log.info(f'Will save POWERPOINT results for each sheet')
-            else:
-                log.warning((f'Could not find pptx report template file at {pptx_template_path}, '
-                            'skipping Powerpoint reports!'))
-                pptx_template_path = None
-        if 'xlsx' not in self.out_formats and 'pptx' not in self.out_formats:
-            log.warning('NO results will be saved')
+
+        if len(self.collections) == 0:
+            log.critical('No collections to analyze, quitting')
+            sys.exit()
+
+        pptx_template_path = os.path.join('data', 'report_template.pptx')
+        if not os.path.exists(pptx_template_path):
+            log.critical(f'PowerPoint report template {pptx_template_path} does not exist, quitting')
+            sys.exit()
+
+        out_dir = os.path.join('analysis', self.name)
+        if os.path.exists(out_dir):
+            old = out_dir
+            out_dir += 'N'
+            msg = f'Output dir {old} already exists, making it to {out_dir}'
+            self.add_error(msg=msg, lvl='Warning')
+            log.warning(msg)
+
+        xlsx_outpath = os.path.join(out_dir, f'{self.name}_report.xlsx')
+        log.debug(f'Saving EXCEL results to {xlsx_outpath}')
+        wb = xl.Workbook()
+        ws = wb.active
+        ws.title = 'INFO'
+        ws['A1'].value = "Analysis started:"
+        ws['A2'].value = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         for k, coll in self.collections.items():
             try:
-                pptx_path = None
-                if pptx_template_path is not None:
-                    pptx_out_path = os.path.join(self.get_outdir(), f'{coll.title}_report.pptx')
+                pptx_outpath = os.path.join(out_dir, f'{coll.title}_report.pptx')
                 with psycopg2.connect(**self.db_params) as con:
                     coll.run_analysis(pg_conn=con,
                                       wb=wb,
-                                      pptx_path=pptx_out_path,
+                                      pptx_path=pptx_outpath,
                                       pptx_template=pptx_template_path)
-            except:
-                log.critical(f'Skipping collection {coll.title} due to error', exc_info=True)
+            except Exception as e:
+                msg = f'Skipped collection {coll.title}: {str(e)}'
+                self.add_error(msg=msg)
+                log.critical(msg, exc_info=True)
+            wb.save(xlsx_outpath)
 
-        if wb is not None:
-            ws['A2'].value = f"Analysis ended {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            wb.save(wb_outpath)
-            log.info(f'Excel results saved to {wb_outpath}')
+        wb['INFO']['B2'].value = "Analysis ended:"
+        wb['INFO']['B2'].value = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        wb.save(xlsx_outpath)
+
         log.info(f'END OF ANALYSES for analysis collection {self.name}')
