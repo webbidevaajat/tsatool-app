@@ -48,7 +48,9 @@ it is recommended to use virtualenv)
 
 Run `python fetch_from_digitraffic.py` to insert stations and sensors
 data into the corresponding tables.
-This will insert the **current** data from the Digitraffic API as it is.
+This will insert the **current** data from the Digitraffic API as it is
+and will contain additional attributes (such as station coordinates)
+for JSONB fields in both tables `stations` and `sensors`.
 
 Alternatively, you can run an SQL file that inserts a snapshot
 of the metadata values (without JSON properties) with
@@ -56,33 +58,32 @@ of the metadata values (without JSON properties) with
 
 ### Observations from LOTJU files
 
-For inserting raw time series data to sensor and station observation tables
-from LOTJU dump files, there is a script called `insert_lotjudumps.py`.
-This must be run with some arguments, and there must be some data available
-to it under the `data/` directory:
-
-- Monthly LOTJU csv files that are usually named
-`tiesaa_mittatieto-[YYYY]_[MM].csv` and `anturi_arvo-[YYYY]_[MM].csv`.
-These must be given after arguments `-t` and `-a` *without* the `data/`
-directory (will be used as default).
-- Conversion csv files for "short" and "long" ids of stations and sensors.
-LOTJU uses "short" integer ids (`ID` in the files),
-and we use "long" ids (`VANHA_ID`) in the analyses.
-These should available as
-`data/tiesaa_asema.csv` and `data/laskennallinen_anturi.csv`.
-
-**Do not insert all the data of a month without filtering**.
-The amount of raw data is huge. Instead, provide the station ids (long ones)
-you want to insert data from after argument `-s`, separated by whitespace.
-
-A particularly slow part of the insertion script is reading
-the `anturi_arvo` file. For debugging purposes, you may want to parse
-n first lines only. You can set this limit after the `-l` argument.
-
-Example:
+R script `prepare_dumps.py` reads monthly raw LOTJU dump files,
+converts their sensor and station ID space to the one we use
+in the database (that is, to LOTJU's `VANHA_ID`) and saves the results
+as csv files that can be copied to the database tables. The script
+uses `data/` directory relative to the project root (or wherever
+script is run), and you MUST have metadata LOTJU files `tiesaa_asema.csv`
+and `laskennallinen_anturi.csv` available in `data/`. Example usage:
 
 ```
-python insert_lotjudumps.py -t tiesaa_mittatieto-2018_01.csv -a anturi_arvo-2018_01.csv -s 1019 1121 1132 -l 3000000
+Rscript --vanilla convert_dumps.R data/anturi_arvo-2018_01.csv data/tiesaa_mittatieto-2018_01.csv
+```
+
+You can also use resources from an URL:
+
+```
+Rscript --vanilla convert_dumps.R https://my_s3_buck.et/anturi_arvo-2018_01.csv https://my_s3_buck.et/tiesaa_mittatieto-2018_01.csv
+```
+
+This will probably be much slower, though.
+
+The R script outputs files `data/seobs.csv` and `data/statobs.csv`.
+*Any existing files with same names, e.g. from a previous run, are overwritten.*
+You can then copy the contents to the respective database tables:
+
+```
+psql [your connection params here] -f scripts/copy_dumps.sql
 ```
 
 ## Database
