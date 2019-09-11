@@ -19,6 +19,7 @@ from .utils import list_local_sensors
 from .tsaerror import TsaError
 from datetime import datetime
 from io import BytesIO
+from collections import OrderedDict
 from pptx.util import Pt
 from pptx.util import Cm
 from pptx.dml.color import RGBColor
@@ -56,14 +57,13 @@ class CondCollection:
         # not on when the analysis has been run
         self.created_timestamp = datetime.now()
 
-        self.conditions = []
+        self.conditions = OrderedDict()
         self.station_ids = set()
-        self.id_strings = set()
 
         self.errors = []
 
         self.pg_conn = pg_conn
-        self.statids_available = None
+        self.statids_available = set()
         self.temptables = []
 
     def setup_views(self):
@@ -171,19 +171,26 @@ class CondCollection:
 
     def add_condition(self, site, master_alias, raw_condition, excel_row=None):
         """
-        Add new Condition instance, raise error if one exists already
+        Add new Condition instance, add error and skip if one exists already
         with same site-master_alias identifier.
         """
         try:
             candidate = Condition(site, master_alias, raw_condition, self.time_range, excel_row)
-            if candidate.id_string in self.id_strings:
-                errtext = f'Site-master_alias combo {candidate.id_string} is already reserved, cannot add it twice'
-                raise ValueError(errtext)
+            if candidate.id_string in self.condtitions.keys():
+                msg = (f'Site-master_alias combo {candidate.id_string} already reserved, '
+                       'cannot add it twice')
+                if excel_row is not None:
+                    msg += f' (row {excel_row} in Excel)'
+                log.error(f'Collection {self.title}: {msg}', exc_info=True)
+                self.add_error(msg)
             else:
-                self.conditions.append(candidate)
-                self.id_strings.add(candidate.id_string)
                 for stid in candidate.station_ids:
-                    self.add_station(stid)
+                    self.station_ids.add(stid)
+                    if stid not in self.statids_available:
+                        msg = f'Station id {stid} of condition {candidate.id_string} not in available station ids'
+                        log.warning(msg)
+                        candidate.add_error(msg=msg, lvl='Warning')
+                self.conditions[candidate.id_string] = candidate
         except:
             msg = 'Could not add condition'
             if excel_row is not None:
