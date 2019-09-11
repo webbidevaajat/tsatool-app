@@ -11,8 +11,8 @@ import psycopg2
 import openpyxl as xl
 from .cond_collection import CondCollection
 from .utils import trunc_str
-from .utils import list_local_statids()
-from .utils import list_local_sensors()
+from .utils import list_local_statids
+from .utils import list_local_sensors
 from .tsaerror import TsaError
 from datetime import datetime
 from getpass import getpass

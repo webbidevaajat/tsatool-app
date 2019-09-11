@@ -507,7 +507,7 @@ class CondCollection:
 
     def __str__(self):
         t = self.title or '(no title)'
-        s = f'Collection {t} with {len(self.conditions) conditions}'
+        s = f'Collection {t} with {len(self.conditions)} conditions'
         return s
 
     @classmethod
