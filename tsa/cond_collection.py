@@ -79,7 +79,7 @@ class CondCollection:
         Only unique errors are collected, in order to avoid
         piling up repetitive messages from loops, for example.
         """
-        err = TsaError(lvl=lvl, cxt=f'Sheet {self.name}', msg=msg)
+        err = TsaError(lvl=lvl, cxt=f'Sheet {self.title}', msg=msg)
         if err not in self.errors:
             self.errors.append(err)
 
