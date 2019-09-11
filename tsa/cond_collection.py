@@ -198,20 +198,30 @@ class CondCollection:
             log.error(f'Collection {self.title}: {msg}', exc_info=True)
             self.add_error(msg)
 
-    def set_sensor_ids(self, pairs=None):
+    def set_sensor_ids(self, pairs=dict()):
         """
         Get sensor name - id pairs from the database,
         and set sensor ids for all Blocks in all Conditions.
         Optionally, the ``nameids`` can be fed from outside, in which case
         querying the database is omitted.
         """
-        if pairs is None or len(pairs) == 0:
-            if not self.pg_conn:
-                self.add_error('WARNING: No db connection, cannot get sensor ids from database')
-                return
-            with self.pg_conn.cursor() as cur:
-                cur.execute("SELECT lower(name) AS name, id FROM sensors;")
-                pairs = {k:v for k, v in cur.fetchall()}
+        if not (self.pg_conn or pairs):
+            msg = ('Neither db connection nor pairs dict provided, '
+                   'cannot set sensor name-id pairs for blocks')
+            log.error(f'Collection {self.title}: {msg}')
+            self.add_error(msg)
+            return
+        else:
+            if self.pg_conn is not None:
+                try:
+                    with self.pg_conn.cursor() as cur:
+                        cur.execute("SELECT lower(name) AS name, id FROM sensors;")
+                        pairs = {k:v for k, v in cur.fetchall()}
+                except:
+                    msg = 'Could not fetch sensor name-id pairs from database'
+                    log.error(f'Collection {self.title}: {msg}', exc_info=True)
+                    self.add_error(msg)
+                    return
         for cndk in self.conditions.keys():
             for i in range(len(self.conditions[cndk].blocks)):
                 try:
