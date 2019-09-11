@@ -281,7 +281,7 @@ class Condition:
             last_i = len(tuples) - 1
 
             errors_in_els = False
-            
+
             for i, el in enumerate(tuples):
                 if i == 0:
                     if el[0] not in allowed_first:
@@ -366,12 +366,18 @@ class Condition:
         """
         log.debug(f'Creating temp table {self.id_string}')
         if len(self.blocks) == 0:
-            raise Exception(f'{self.id_string}: no Blocks to construct database query')
+            msg = 'No Blocks to make a database table from, skipping'
+            log.error(f'Condition {self.id_string}: {msg}')
+            self.add_error(msg)
+            return
         # Any relation with the same name is dropped first.
         # An idiot-proof step to prevent base tables from being dropped here
-        # (TODO: could be included at the class init level already)
         if self.id_string in ['stations', 'statobs', 'sensors', 'seobs', 'laskennallinen_anturi', 'tiesaa_asema']:
-            raise Exception(f'Do not use {self.id_string} as Condition identifier as it is a db table name!')
+            msg = (f'Cannot use "{self.id_string}" as Condition identifier'
+                   'since it is an existing db relation name, skipping')
+            log.error(f'Condition {self.id_string}: {msg}')
+            self.add_error(msg)
+            return
         drop_sql = f"DROP TABLE IF EXISTS {self.id_string};\n"
 
         # Block-related data structures in the db are defined as temp tables
