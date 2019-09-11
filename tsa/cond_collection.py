@@ -64,7 +64,7 @@ class CondCollection:
 
         self.pg_conn = pg_conn
         self.statids_available = set()
-        self.temptables = []
+        self.temptables = set()
 
     def setup_views(self):
         """
@@ -227,19 +227,22 @@ class CondCollection:
         Set str list of temporary tables and views currently available in db.
         """
         if not self.pg_conn:
-            self.add_error('WARNING: No db connection, cannot get temporary relations list')
+            msg = 'No db connection, cannot get temporary relations list'
+            log.warning(f'Collection {self.title}: {msg}')
+            self.add_error(msg, lvl='Warning')
             return
         with self.pg_conn.cursor() as cur:
             try:
                 sql = ("SELECT table_name FROM information_schema.tables "
                        "WHERE table_schema LIKE '%pg_temp%';")
                 cur.execute(sql)
-                res = cur.fetchall()
-            except Exception as e:
+                tablenames = set([el[0] for el in cur.fetchall()])
+                self.temptables = self.temptables.union(tablenames)
+            except:
                 self.pg_conn.rollback()
-                self.add_error(e)
-                return
-        self.temptables = [el[0] for el in res]
+                msg = 'Could not get list of temporary relations in database'
+                log.error(msg, exc_info=True)
+                self.add_error(msg)
 
     def create_condition_temptables(self, verbose=False):
         """

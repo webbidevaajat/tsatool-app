@@ -350,7 +350,7 @@ class Condition:
             if not bl.secondary:
                 self.station_ids.add(bl.station_id)
 
-    def create_db_temptable(self, pg_conn=None, verbose=False, src_tables=[], execute=True):
+    def create_db_temptable(self, pg_conn=None, verbose=False, src_tables=set(), execute=True):
         """
         Create temporary table corresponding to the condition.
         Existence of secondary block source tables is checked against ``src_tables``.
