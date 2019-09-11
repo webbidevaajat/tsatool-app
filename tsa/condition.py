@@ -97,9 +97,9 @@ class Condition:
         self.data_until = None
 
         # make_blocks() sets .condition_elements, .blocks, .alias_condition and .secondary
-        self.condition_elements = None
-        self.blocks = None
-        self.alias_condition = None
+        self.condition_elements = []
+        self.blocks = []
+        self.alias_condition = ''
         self.secondary = None
         self.make_blocks()
 
