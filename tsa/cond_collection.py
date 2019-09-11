@@ -134,7 +134,7 @@ class CondCollection:
             except:
                 self.pg_conn.rollback()
                 msg = 'Could not get station ids from db view "statobs_time"'
-                log.error(msg, exc_info=True)
+                log.error(f'Collection {self.title}: {msg}', exc_info=True)
                 self.add_error(msg=msg)
         else:
             msg = 'No db connection, cannot get station ids from db view "statobs_time'
@@ -166,21 +166,8 @@ class CondCollection:
         except:
             self.pg_conn.rollback()
             msg = 'Could not create db view "obs_main"'
-            log.error(msg, exc_info=True)
+            log.error(f'Collection {self.title}: {msg}', exc_info=True)
             self.add_error(msg=msg)
-
-    def add_station(self, stid):
-        """
-        Add ``stid`` to ``self.station_ids`` if not already there.
-        If station ids in the db main view have been fetched,
-        check if the main view contains that station id.
-        """
-        if stid not in self.station_ids:
-            if self.statids_available:
-                if stid not in self.statids_available:
-                    errtext = f'WARNING: no observations for station {stid} in database view!'
-                    self.add_error(errtext)
-            self.station_ids.add(stid)
 
     def add_condition(self, site, master_alias, raw_condition, excel_row=None):
         """
@@ -197,11 +184,12 @@ class CondCollection:
                 self.id_strings.add(candidate.id_string)
                 for stid in candidate.station_ids:
                     self.add_station(stid)
-        except Exception as e:
-            e = str(e)
+        except:
+            msg = 'Could not add condition'
             if excel_row is not None:
-                e += f' (row {excel_row} in Excel)'
-            self.add_error(e)
+                msg += f' (row {excel_row} in Excel)'
+            log.error(f'Collection {self.title}: {msg}', exc_info=True)
+            self.add_error(msg)
 
     def set_sensor_ids(self, pairs=None):
         """
