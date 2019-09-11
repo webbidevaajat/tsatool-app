@@ -60,7 +60,7 @@ class CondCollection:
         self.station_ids = set()
         self.id_strings = set()
 
-        self.errmsgs = []
+        self.errors = []
 
         self.pg_conn = pg_conn
         self.statids_available = None
@@ -73,23 +73,15 @@ class CondCollection:
         self.setup_statobs_view()
         self.setup_obs_view()
 
-    def add_error(self, e):
+    def add_error(self, msg, lvl='Error'):
         """
         Add error message to error message list.
         Only unique errors are collected, in order to avoid
         piling up repetitive messages from loops, for example.
         """
-        if e not in self.errmsgs:
-            self.errmsgs.append(e)
-
-    def list_errors(self):
-        """
-        List error messages as string if there are any.
-        """
-        if self.errmsgs:
-            out = f'There were {len(self.errmsgs)} warnings or errors:\n'
-            out += '\n'.join(self.errmsgs)
-            return out
+        err = TsaError(lvl=lvl, cxt=f'Sheet {self.name}', msg=msg)
+        if err not in self.errors:
+            self.errors.append(err)
 
     def set_default_times(self):
         """
