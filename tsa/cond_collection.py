@@ -213,12 +213,15 @@ class CondCollection:
                 cur.execute("SELECT id, lower(name) AS name FROM sensors;")
                 tb = cur.fetchall()
                 pairs = {k:v for v, k in tb}
-        for cnd in self.conditions:
-            for bl in cnd.blocks:
+        for cndk in self.conditions.keys():
+            for i in range(len(self.conditions[cndk].blocks)):
                 try:
-                    bl.set_sensor_id(pairs)
-                except Exception as e:
-                    cnd.add_error(e)
+                    self.conditions[cndk].blocks[i].set_sensor_id(pairs)
+                except:
+                    bl = self.conditions[cndk].blocks[i].alias
+                    msg = f'Could not set sensor name-id pairs for block {f}'
+                    log.error(msg, exc_info=True)
+                    self.conditions[cndk].add_error(msg)
 
     def get_temporary_relations(self):
         """
