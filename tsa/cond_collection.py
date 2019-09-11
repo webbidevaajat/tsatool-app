@@ -210,9 +210,8 @@ class CondCollection:
                 self.add_error('WARNING: No db connection, cannot get sensor ids from database')
                 return
             with self.pg_conn.cursor() as cur:
-                cur.execute("SELECT id, lower(name) AS name FROM sensors;")
-                tb = cur.fetchall()
-                pairs = {k:v for v, k in tb}
+                cur.execute("SELECT lower(name) AS name, id FROM sensors;")
+                pairs = {k:v for k, v in cur.fetchall()}
         for cndk in self.conditions.keys():
             for i in range(len(self.conditions[cndk].blocks)):
                 try:
