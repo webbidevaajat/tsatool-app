@@ -441,8 +441,9 @@ class Condition:
             log.info(create_sql)
 
         if not pg_conn:
-            errtext = 'WARNING: no database connection'
-            self.add_error(errtext)
+            msg = 'No db connection, cannot create db temp table'
+            log.error(f'Condition {self.id_string}: {msg}')
+            self.add_error(msg)
 
         if execute and pg_conn:
             with pg_conn.cursor() as cur:
@@ -452,11 +453,11 @@ class Condition:
                     cur.execute(create_sql)
                     pg_conn.commit()
                     self.has_view = True
-                except psycopg2.DatabaseError as e:
-                    log.exception(e)
+                except:
                     pg_conn.rollback()
-                    errtext = self.error_context(after=e)
-                    self.add_error(errtext)
+                    msg = 'Could not create db temp table'
+                    log.error(f'Condition {self.id_string}: {msg}')
+                    self.add_error(msg)
 
     def set_summary_attrs(self):
         """
