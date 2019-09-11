@@ -499,22 +499,6 @@ class CondCollection:
         return s
 
     @classmethod
-    def from_dictlist(cls, dictlist, time_from, time_until,
-                      pg_conn=None, title=None, sensor_pairs=None):
-        """
-        Create instance and add conditions from list of dicts.
-        Dicts must have corresponding keys
-        ``'site', 'master_alias', 'raw_condition'``.
-        Times must be ``datetime`` objects.
-        """
-        cc = cls(time_from, time_until, pg_conn, title)
-        for d in dictlist:
-            cc.add_condition(**d)
-        # TODO: detach database specific stuff
-        cc.set_sensor_ids(pairs=sensor_pairs)
-        return cc
-
-    @classmethod
     def from_xlsx_sheet(cls, ws,
                         pg_conn=None,
                         station_ids=None,
