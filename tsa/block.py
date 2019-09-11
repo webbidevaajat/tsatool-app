@@ -3,6 +3,8 @@
 
 # Block class, called by Condition
 
+# TODO: REFACTOR ERROR HANDLING HERE TOO
+
 import logging
 from .utils import to_pg_identifier
 from .utils import with_errpointer
