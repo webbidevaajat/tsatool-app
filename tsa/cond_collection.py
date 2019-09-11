@@ -251,8 +251,8 @@ class CondCollection:
         """
 
         # First round for primary ones only
-        for cnd in self.conditions:
-            if cnd.secondary:
+        for cndk in self.conditions.keys():
+            if self.conditions[cndk].secondary:
                 continue
             try:
                 cnd.create_db_temptable(pg_conn=self.pg_conn,
@@ -264,15 +264,13 @@ class CondCollection:
 
         # Second round for secondary ones,
         # viewnames list is now updated every time
-        for cnd in self.conditions:
-            if cnd.secondary:
-                try:
-                    cnd.create_db_temptable(pg_conn=self.pg_conn,
-                                            verbose=verbose,
-                                            src_tables=self.temptables)
-                    self.get_temporary_relations()
-                except Exception as e:
-                    log.exception(e)
+        for cndk in self.conditions.keys():
+            if self.conditions[cndk].secondary:
+                self.conditions[cndk].create_db_temptable(
+                    pg_conn=self.pg_conn,
+                    verbose=verbose,
+                    src_tables=self.temptables)
+                self.get_temporary_relations()
 
     def fetch_all_results(self):
         """
@@ -280,12 +278,9 @@ class CondCollection:
         for all Conditions that have a corresponding view in the database.
         """
         cnd_len = len(self.conditions)
-        for i, cnd in enumerate(self.conditions):
-            log.info(f'Fetching {i+1}/{cnd_len} {cnd.id_string} ...')
-            try:
-                cnd.fetch_results_from_db(pg_conn=self.pg_conn)
-            except Exception as e:
-                log.exception(f'Could not fetch results for {cnd.id_string}')
+        for i, cndk in enumerate(self.conditions.keys()):
+            log.debug(f'Fetching {i+1}/{cnd_len} {self.conditions[cndk].id_string} ...')
+            self.conditions[cndk].fetch_results_from_db(pg_conn=self.pg_conn)
 
     def to_worksheet(self, wb):
         """
@@ -321,7 +316,7 @@ class CondCollection:
 
         # Condition rows
         r = 4
-        for cnd in self.conditions:
+        for cnd in self.conditions.values():
             ws[f'A{r}'] = cnd.site
             ws[f'B{r}'] = cnd.master_alias
             ws[f'C{r}'] = cnd.condition
@@ -371,7 +366,7 @@ class CondCollection:
                 raise Exception(f'{k} {v} not in default layout placeholders')
 
         # Add slides and fill in contents for each condition.
-        for c in self.conditions:
+        for c in self.conditions.values():
             s = pres.slides.add_slide(layout)
 
             # Slide header
