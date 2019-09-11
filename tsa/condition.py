@@ -86,10 +86,7 @@ class Condition:
         self.master_alias = to_pg_identifier(master_alias)
         self.id_string = '{:s}_{:s}'.format(self.site, self.master_alias)
 
-        # TODO: wrap condition str handling to function or property/setter??
-        raw_condition = raw_condition.strip().lower()
-        raw_condition = eliminate_umlauts(raw_condition)
-        self.condition = raw_condition
+        self._condition = eliminate_umlauts(raw_condition.strip().lower())
 
         # Times must be datetime objects
         self.time_from = time_range[0]
@@ -125,6 +122,15 @@ class Condition:
         self.percentage_valid = 0
         self.percentage_notvalid = 0
         self.percentage_nodata = 1
+
+    @property
+    def condition(self):
+        return self._condition
+
+    @condition.setter
+    def condition(self, raw_condition):
+        raw_condition = raw_condition.strip().lower()
+        self._condition = eliminate_umlauts(raw_condition)
 
     def add_error(self, e):
         """
