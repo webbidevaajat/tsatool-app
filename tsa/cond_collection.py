@@ -99,38 +99,47 @@ class CondCollection:
         containing the station observations within the ``time_range``.
         """
         if self.pg_conn:
-            with self.pg_conn.cursor() as cur:
-                sql = ("CREATE OR REPLACE TEMP VIEW statobs_time AS "
-                       "SELECT id, tfrom, statid "
-                       "FROM statobs "
-                       "WHERE tfrom BETWEEN %s AND %s;")
-                if verbose:
-                    log.debug(cur.mogrify(sql, (self.time_from, self.time_until)))
-                try:
+            try:
+                with self.pg_conn.cursor() as cur:
+                    sql = ("CREATE OR REPLACE TEMP VIEW statobs_time AS "
+                           "SELECT id, tfrom, statid "
+                           "FROM statobs "
+                           "WHERE tfrom BETWEEN %s AND %s;")
+                    if verbose:
+                        log.debug(cur.mogrify(sql, (self.time_from, self.time_until)))
                     cur.execute(sql, (self.time_from, self.time_until))
                     self.pg_conn.commit()
-                except Exception as e:
-                    self.pg_conn.rollback()
-                    print(traceback.print_exc())
-                    self.add_error(e)
+            except:
+                self.pg_conn.rollback()
+                msg = 'Could not create db view "statobs_time"'
+                log.error(msg, exc_info=True)
+                self.add_error(msg=msg)
         else:
-            errtext = 'WARNING: No db connection, cannot create view "statobs_time"'
-            self.add_error(errtext)
-            if verbose: print(errtext)
+            msg = 'No db connection, cannot create view "statobs_time"'
+            log.warning(msg)
+            self.add_error(msg)
 
     def get_stations_in_view(self):
         """
         Get stations available in ``statobs_time`` view.
         """
         if self.pg_conn:
-            with self.pg_conn.cursor() as cur:
-                sql = "SELECT DISTINCT statid FROM statobs_time ORDER BY statid;"
-                cur.execute(sql)
-                statids = cur.fetchall()
-                statids = [el[0] for el in statids]
-                self.statids_available = set(statids)
+            try:
+                with self.pg_conn.cursor() as cur:
+                    sql = "SELECT DISTINCT statid FROM statobs_time ORDER BY statid;"
+                    cur.execute(sql)
+                    statids = cur.fetchall()
+                    statids = [el[0] for el in statids]
+                    self.statids_available = set(statids)
+            except:
+                self.pg_conn.rollback()
+                msg = 'Could not get station ids from db view "statobs_time"'
+                log.error(msg, exc_info=True)
+                self.add_error(msg=msg)
         else:
-            self.add_error('WARNING: No db connection, cannot get stations from database')
+            msg = 'No db connection, cannot get station ids from db view "statobs_time'
+            log.error(f'Collection {self.title}: {msg}')
+            self.add_error(msg)
 
     def setup_obs_view(self, verbose=False):
         """
@@ -139,23 +148,26 @@ class CondCollection:
         that works as the main source for Block queries.
         """
         if not self.pg_conn:
-            self.add_error('WARNING: No db connection, cannot set up view "obs_main"')
+            msg = 'No db connection, cannot set up view "obs_main"'
+            log.error(f'Collection {self.title}: {msg}')
+            self.add_error(msg)
             return
-        with self.pg_conn.cursor() as cur:
-            sql = ("CREATE OR REPLACE TEMP VIEW obs_main AS "
-                   "SELECT tfrom, statid, seid, seval "
-                   "FROM statobs_time "
-                   "INNER JOIN seobs "
-                   "ON statobs_time.id = seobs.obsid;")
-            if verbose:
-                log.debug(sql)
-            try:
+        try:
+            with self.pg_conn.cursor() as cur:
+                sql = ("CREATE OR REPLACE TEMP VIEW obs_main AS "
+                       "SELECT tfrom, statid, seid, seval "
+                       "FROM statobs_time "
+                       "INNER JOIN seobs "
+                       "ON statobs_time.id = seobs.obsid;")
+                if verbose:
+                    log.debug(sql)
                 cur.execute(sql)
                 self.pg_conn.commit()
-            except Exception as e:
-                self.pg_conn.rollback()
-                print(traceback.print_exc())
-                self.add_error(e)
+        except:
+            self.pg_conn.rollback()
+            msg = 'Could not create db view "obs_main"'
+            log.error(msg, exc_info=True)
+            self.add_error(msg=msg)
 
     def add_station(self, stid):
         """
@@ -428,7 +440,7 @@ class CondCollection:
                 row.height = Cm(0.64)
 
             # Condition errors and warnings
-            txt = '; '.join(c.errmsgs) or ' '
+            txt = '; '.join([str(msg) for msg in c.errmsgs]) or ' '
             s.placeholders[phi['ERRORS_IDX']].text = txt
 
             # Condition main timeline plot; ignored if no data to viz
