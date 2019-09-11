@@ -155,13 +155,11 @@ class AnalysisCollection:
         of condition collections and their conditions,
         return as list of TsaError objects.
         """
-        errs = [e for e in self.errors]
+        errs = self.errors
         for coll in self.collections.values():
-            suberrs = [e for e in coll.errors]
-            errs.extend(suberrs)
+            errs.extend(coll.errors)
             for cond in coll.conditions:
-                suberrs = [e for e in cond.errors]
-                errs.extend(suberrs)
+                errs.extend(cond.errors)
         return errs
 
     def add_collection(self, title):
