@@ -73,8 +73,8 @@ class Condition:
         # Excel row for prompting, if made from Excel sheet
         self.excel_row = excel_row
 
-        # List for saving error strings
-        self.errmsgs = []
+        # List for saving errors as they occur
+        self.errors = []
 
         # Original formattings are kept for printing purposes
         self.orig_site = site
@@ -132,27 +132,18 @@ class Condition:
         raw_condition = raw_condition.strip().lower()
         self._condition = eliminate_umlauts(raw_condition)
 
-    def add_error(self, e):
+    def add_error(self, msg, lvl='Error'):
         """
         Add error message to error message list.
         Only unique errors are collected, in order to avoid
         piling up repetitive messages from loops, for example.
         """
-        if e not in self.errmsgs:
-            self.errmsgs.append(e)
-
-    def error_context(self, before='', after=''):
-        """
-        Return information on condition and its Excel row if available,
-        to be used with error messages.
-        """
-        s = before + '\n'
-        s += f'ERROR with condition {self.id_string}'
-        if self.excel_row:
-            s += f' (row {self.excel_row} in Excel sheet): '
-        else:
-            s += '\n' + after
-        return s
+        cxt = f'Condition {self.id_string}'
+        if self.excel_row is not None:
+            cxt += f' (row {self.excel_row} in Excel)'
+        err = TsaError(lvl=lvl, cxt=cxt, msg=msg)
+        if err not in self.errors:
+            self.errors.append(err)
 
     def make_blocks(self):
         """
@@ -168,11 +159,10 @@ class Condition:
         n_open = value.count('(')
         n_close = value.count(')')
         if n_open != n_close:
-            errtext = self.error_context()
-            errtext += 'Unequal number of opening and closing parentheses: '
-            errtext += '{:d} opening and {:d} closing'.format(n_open, n_close)
-            self.add_error(errtext)
-            # raise ValueError(errtext)
+            msg = ('Should be as many "(" as ")" characters in the condition, now '
+                   f'{n_open} "(" and {n_close} ")"')
+            log.error(f'Condition {self.id_string}: {msg}')
+            self.add_error(msg)
 
         # Eliminate multiple whitespaces
         # and leading and trailing whitespaces
@@ -239,8 +229,10 @@ class Condition:
                     else:
                         idfied.append(('block', bl))
                         i += 1
-                except Exception as e:
-                    self.add_error(e)
+                except:
+                    msg = f'Could not add block on index {i} to condition'
+                    log.error(f'Condition {self.id_string}: {msg}', exc_info=True)
+                    self.add_error(msg)
 
         def validate_order(tuples):
             """
@@ -288,30 +280,38 @@ class Condition:
             allowed_last = ('close_par', 'block')
             last_i = len(tuples) - 1
 
+            errors_in_els = False
+            
             for i, el in enumerate(tuples):
                 if i == 0:
                     if el[0] not in allowed_first:
-                        errtext = '{"{:s}" not allowed as first element: '.format(el[1])
-                        errtext = self.error_context(after=errtext)
-                        self.add_error(errtext)
-                        raise ValueError(errtext)
+                        msg = f'"{el[1]}" cannot be first element in condition'
+                        log.error(f'Condition {self.id_string}: {msg}')
+                        self.add_error(msg)
+                        errors_in_els = True
                 elif i == last_i:
                     if el[0] not in allowed_last:
-                        errtext = '"{:s}" not allowed as last element: '.format(el[1])
-                        errtext = self.error_context(after=errtext)
-                        self.add_error(errtext)
-                        raise ValueError(errtext)
+                        msg = f'"{el[1]}" cannot be last element in condition'
+                        log.error(f'Condition {self.id_string}: {msg}')
+                        self.add_error(msg)
+                        errors_in_els = True
                 if i < last_i:
                     if (el[0], tuples[i+1][0]) not in allowed_pairs:
-                        errtext = '"{:s}" not allowed right before "{:s}": '.format(el[1], tuples[i+1][1])
-                        errtext = self.error_context(after=errtext)
-                        self.add_error(errtext)
-                        raise ValueError(errtext)
+                        msg = f'Cannot have "{el[1]}" before "{tuples[i+1][1]}"'
+                        log.error(f'Condition {self.id_string}: {msg}')
+                        self.add_error(msg)
+                        errors_in_els = True
+
+            return errors_in_els
 
         # Check the correct order of the tuples.
-        # This should raise and error and thus exit the method
-        # if there is an illegal combination of elements next to each other.
-        validate_order(idfied)
+        # If there are errors, constructing blocks is skipped.
+        has_errors = validate_order(idfied)
+        if has errors:
+            msg = 'There were errors with condition elements, cannot create condition blocks'
+            log.error(f'Condition {self.id_string}: {msg}')
+            self.add_error(msg)
+            return
 
         # If validation was successful, attributes can be set
 
