@@ -483,11 +483,15 @@ class Condition:
         based on the DataFrame.
         """
         if not pg_conn:
+            msg = 'No database connection, cannot fetch results'
+            log.error(f'Condition {self.id_string}: {msg}')
+            self.add_error(msg)
             return
         if not self.has_view:
-            print('Could not fetch results for')
-            print(f'{str(self)}:\n')
-            print('since it does not have a corresponding database view.')
+            msg = ('No temp table for this condition in database, '
+                   'cannot fetch results')
+            log.error(f'Condition {self.id_string}: {msg}')
+            self.add_error(msg)
             return
         sql = f"SELECT * FROM {self.id_string};"
         self.main_df = pandas.read_sql(sql, con=pg_conn)
@@ -498,6 +502,7 @@ class Condition:
             self.tottime = self.data_until - self.data_from
 
         self.set_summary_attrs()
+        log.debug(f'Results fetched and summary attributes set for Condition {self.id_string}')
 
     def get_timelineplot(self):
         """
@@ -506,7 +511,9 @@ class Condition:
         and its blocks on a timeline.
         """
         if self.main_df is None:
-            self.add_error('Could not create a plot since there is no data to visualize.')
+            msg = 'Cannot create a plot with no data'
+            log.error(f'Condition {self.id_string}: {msg}')
+            self.add_error(msg)
             return
 
         def getfacecolor(val):
