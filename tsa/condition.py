@@ -625,12 +625,12 @@ class Condition:
 
     def __str__(self):
         if self.secondary:
-            s = '  Secondary '
+            s = 'Secondary '
         else:
-            s = '  Primary '
-        s += (f'Condition {self.id_string}:\n'
-              f'    {trunc_str(self.condition, n=76)}\n'
-              f'    ALIAS: {trunc_str(self.alias_condition, n=76)}')
+            s = 'Primary '
+        s += f'Condition {self.id_string} with {len(self.blocks) Blocks}'
+        if self.excel_row is not None:
+            s += f' (row {self.excel_row} in Excel)'
         return s
 
     def __repr__(self):
