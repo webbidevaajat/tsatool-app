@@ -11,39 +11,6 @@ from getpass import getpass
 
 log = logging.getLogger(__name__)
 
-def tsadb_connect(username=None, password=None, ask=False):
-    """
-    Using ``db_config.yml`` file in the root directory,
-    connect to the TSA database.
-    :param username: database username as string; defaults to
-                     'ADMIN_USER' of the config file
-    :param password: database user password, only for debugging!
-                     Defaults to None -> will be asked
-    :param ask:      if ``True``, use interactive input for username;
-                     defaults to ``False``
-    :return:         connection instance, or None on error
-    """
-    with open('db_config.yml', 'r') as f:
-        cf = yaml.safe_load(f.read())
-    if username is None:
-        if ask:
-            username = input('Database username: ')
-        else:
-            username = cf['admin_user']
-    if password is None:
-        password = os.getenv('POSTGRES_PASSWORD') or getpass('Password for user "{:s}": '.format(username))
-    try:
-        pg_conn = psycopg2.connect(dbname=cf['database'],
-                                   user=username,
-                                   password=password,
-                                   host=cf['host'],
-                                   port=cf['port'],
-                                   connect_timeout=5)
-        return pg_conn
-    except psycopg2.OperationalError as e:
-        log.error('Could not connect to tsa database', exc_info=True)
-        return None
-
 def eliminate_umlauts(x):
     """
     Converts ä and ö into a and o.
