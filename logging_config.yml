@@ -25,13 +25,6 @@ handlers:
     filename: 'logs/opslog'
     when: D
     delay: True
-  tsapp_file:
-    class: logging.handlers.TimedRotatingFileHandler
-    formatter: precise
-    level: INFO
-    filename: 'logs/tsapplog'
-    when: D
-    delay: True
   tsabatch_file:
     class: logging.handlers.TimedRotatingFileHandler
     formatter: precise
