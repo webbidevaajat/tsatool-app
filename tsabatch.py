@@ -16,19 +16,21 @@ from tsa import AnalysisCollection
 from tsa.utils import list_local_statids
 from tsa.utils import list_local_sensors
 
-log = logging.getLogger('tsa')
-log.setLevel(logging.INFO)
-fh = logging.handlers.TimedRotatingFileHandler(os.path.join('logs', 'tsabatchlog'))
-fh.setLevel(logging.INFO)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s; %(name)s; %(levelname)s; %(message)s')
-fh.setFormatter(formatter)
-ch.setFormatter(formatter)
-log.addHandler(fh)
-log.addHandler(ch)
-
 def main():
+    # ---- LOGGING ----
+    log = logging.getLogger('tsa')
+    log.setLevel(logging.INFO)
+    fh = logging.handlers.TimedRotatingFileHandler(os.path.join('logs', 'tsabatchlog'))
+    fh.setLevel(logging.INFO)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s; %(name)s; %(levelname)s; %(message)s')
+    fh.setFormatter(formatter)
+    ch.setFormatter(formatter)
+    log.addHandler(fh)
+    log.addHandler(ch)
+
+    # ---- COMMAND LINE ARGUMENTS ----
     parser = argparse.ArgumentParser(description='Run TSA analyses as batch job.')
     parser.add_argument('-i', '--input',
                         type=str,
@@ -50,8 +52,9 @@ def main():
         # Try picking the password from environment vars
         args.password = os.getenv('POSTGRES_PASSWORD')
     log.info((f'START OF TSABATCH with input={args.input} name={args.name} '
-              f'password=(not printed) dryvalidate={args.dryvalidate}'))
+              f'dryvalidate={args.dryvalidate}'))
 
+    # ---- APP LOGIC ----
     anls = AnalysisCollection(name=args.name)
     try:
         anls.set_input_xlsx(path=os.path.join(anls.data_dir, args.input))
