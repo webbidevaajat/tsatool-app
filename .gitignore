@@ -18,6 +18,7 @@ analysis/
 *.csv
 lotju*
 *.xlsx
+database/data/
 
 # Logs
 logs/
