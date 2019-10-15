@@ -18,6 +18,7 @@ from tsa.utils import list_local_sensors
 
 def main():
     # ---- LOGGING ----
+    os.makedirs('logs', exist_ok=True)
     log = logging.getLogger('tsa')
     log.setLevel(logging.INFO)
     fh = logging.handlers.TimedRotatingFileHandler(os.path.join('logs', 'tsabatchlog'))

@@ -70,7 +70,7 @@ class AnalysisCollection:
         self._name = name or self.autoname()
         self.base_dir = os.getcwd()
         self.data_dir = os.path.join(self.base_dir, 'analysis')
-        assert os.path.exists(self.data_dir)
+        os.makedirs(self.data_dir, exist_ok=True)
         self.workbook = None
         if input_xlsx:
             self.set_input_xlsx(path=input_xlsx)
