@@ -1,7 +1,3 @@
-# Configuration files meant to be user-defined
-db_config.json
-db_config.yml
-
 # External documentation / temp sketch files
 *.docx
 *.pptx
@@ -15,9 +11,7 @@ TEMP*
 
 # Data files
 analysis/
-*.csv
 lotju*
-*.xlsx
 database/data/
 
 # Logs
