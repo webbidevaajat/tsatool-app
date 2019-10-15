@@ -6,6 +6,12 @@
 
 - Using `POSTGRES_PASSWORD` env variable
 - `tsabatch.py ... --dryvalidate` info
+- Info on following environment variables in Python env:
+  - `PG_HOST`
+  - `PG_PORT`
+  - `PG_DBNAME`
+  - `PG_USER`
+  - `PG_PASSWORD`
 
 Tool for analyzing Finnish road weather station (TieSääAsema) data. Data will is located and handled in a PostgreSQL & [TimescaleDB](https://www.timescale.com/) database, and analyses are run through a Python API. See the [Wiki page](https://github.com/webbidevaajat/tsatool-app/wiki) for more details and examples.
 
