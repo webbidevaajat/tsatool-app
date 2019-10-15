@@ -14,67 +14,24 @@ from datetime import datetime
 from getpass import getpass
 from collections import OrderedDict
 
+DEFAULT_PG_HOST = 'localhost'
+DEFAULT_PG_PORT = 5432
+DEFAULT_PG_DBNAME = 'tsa'
+DEFAULT_PG_USER = 'postgres'
+DEFAULT_PG_PASSWORD = 'postgres'
+
 log = logging.getLogger(__name__)
 
 class DBParams:
     """
     Stores parameters for database connection.
     """
-    def __init__(self, dbname=None, user=None, host=None, port=5432):
-        self.dbname = dbname
-        self.user = user
-        self.password = None    # WARNING: stored as plain str
-        self.host = host
-        self.port = port
-
-    def read_config(self, path='db_config.yml'):
-        """
-        Read and set params from file (except password)
-        """
-        with open(path, 'r') as f:
-            cf = yaml.safe_load(f.read())
-        self.dbname = cf['database']
-        self.user = cf['admin_user']
-        self.host = cf['host']
-        self.port = cf['port']
-
-    def set_value_interactively(self, par):
-        if par == 'dbname':
-            self.dbname = input('Database name: ')
-        elif par == 'user':
-            self.user = input('Database user: ')
-        elif par == 'password':
-            self.password = getpass('Database password: ')
-        elif par == 'host':
-            self.host = input('Database host: ')
-        elif par == 'port':
-            self.port = int(input('Database port number: '))
-        else:
-            raise Exception(f'Unknown DB parameter {par}')
-
-    def keys(self):
-        return ['dbname', 'user', 'password', 'host', 'port']
-
-    def as_tuples(self):
-        placeholder = 'no password set'
-        if self.password is not None:
-            placeholder = '*' * len(self.password)
-        d = [('dbname', self.dbname),
-             ('user', self.user),
-             ('password', placeholder),
-             ('host', self.host),
-             ('port', str(self.port))]
-        return d
-
-    def get_status(self):
-        missing = []
-        for k in self.keys():
-            if self.__dict__[k] is None:
-                missing.append(k)
-        if not missing:
-            return 'DB params ready'
-        else:
-            return 'Missing {}'.format(', '.join(missing))
+    def __init__(self):
+        self.dbname = os.getenv('PG_DBNAME', DEFAULT_PG_DBNAME)
+        self.user = os.getenv('PG_USER', DEFAULT_PG_USER)
+        self.password = os.getenv('PG_PASSWORD', DEFAULT_PG_PASSWORD)
+        self.host = os.getenv('PG_HOST', DEFAULT_PG_HOST)
+        self.port = os.getenv('PG_PORT', DEFAULT_PG_PORT)
 
     def __getitem__(self, key):
         return self.__dict__[key]
@@ -82,11 +39,11 @@ class DBParams:
     def __str__(self):
         s = 'DBParams\n'
         for k in self.keys():
-            if k == 'password' and self.password is not None:
-                v = '*'*len(self.password)
+            if k == 'password':
+                v = '(not shown)'
             else:
                 v = self.__dict__[k]
-            s += f'{k:8}: {v}\n'
+            s += f'{k:8}: {v}, '
         return s
 
 class AnalysisCollection:

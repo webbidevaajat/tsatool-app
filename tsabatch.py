@@ -39,10 +39,6 @@ def main():
                         type=str,
                         help='Base name for the outputs in analysis/',
                         metavar='OUTPUT_NAME')
-    parser.add_argument('-p', '--password',
-                        type=str,
-                        help='Database password (of the user in db_config.yml file)',
-                        metavar='DB_PASSWORD')
     parser.add_argument('--dryvalidate',
                         action='store_true',
                         help='Only validate input Excel with hard-coded ids and names')
@@ -87,14 +83,6 @@ def main():
             log.info('No errors in input Excel')
         # With dryvalidate, the script is exited anyway
         # without proceeding to DB communication and analysis
-        sys.exit()
-
-    # Read DB params from defaul config file, add password
-    try:
-        anls.db_params.read_config()
-        anls.db_params.password = args.password
-    except:
-        log.exception('Could not find DB config file: quitting')
         sys.exit()
 
     # Prepare and validate collections
