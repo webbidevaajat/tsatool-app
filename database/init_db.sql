@@ -19,6 +19,7 @@ CREATE EXTENSION IF NOT EXISTS btree_gist CASCADE;
 
 CREATE TABLE IF NOT EXISTS stations (
   id        integer     PRIMARY KEY,
+  lotjuid   integer     NOT NULL,
   geom      jsonb,
   prop      jsonb,
   modified  timestamptz DEFAULT CURRENT_TIMESTAMP
@@ -26,6 +27,7 @@ CREATE TABLE IF NOT EXISTS stations (
 
 CREATE TABLE IF NOT EXISTS sensors (
   id                integer     PRIMARY KEY,
+  lotjuid           integer     NOT NULL,
   name              text        NOT NULL,
   shortname         text,
   unit              text,
