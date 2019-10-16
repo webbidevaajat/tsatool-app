@@ -48,12 +48,15 @@ WITH
   tiesaa_mittatieto_converted AS (
     SELECT
       tiesaa_mittatieto.id,
-      -- Eliminate everything from and including comma:
-      substring(tiesaa_mittatieto.aika FROM '^.*(?=,)')::timestamptz AS tfrom,
+      -- Eliminate the fraction part delimited with comma,
+      -- and use explicit datetime notation.
+      -- The time zone setting above should make sure the timestamps
+      -- are at the correct timezone.
+      to_timestamp(
+        substring(tiesaa_mittatieto.aika FROM '^.*(?=,)'),
+        'DD.MM.YYYY HH24:MI:SS') AS tfrom,
       stations.id AS statid
     FROM tiesaa_mittatieto
-    -- TODO: Add LOTJU id to stations table & insertion data
-    -- Inner join drops any records having no match in non-Lotju ids!
     INNER JOIN stations
       ON tiesaa_mittatieto.asema_id = stations.lotjuid
     WHERE
@@ -67,7 +70,7 @@ WITH
     -- Conflicting records are ignored!
     -- Compare COPY FROM result and the result below to check if records were omitted.
     ON CONFLICT DO NOTHING
-    RETURNING 1;
+    RETURNING 1
   )
 SELECT count(*) || ' rows inserted into statobs' AS i
 FROM insertion_batch;
@@ -96,7 +99,7 @@ WITH
     INSERT INTO seobs (id, obsid, seid, seval)
     SELECT * FROM anturi_arvo_converted
     ON CONFLICT DO NOTHING
-    RETURNING 1;
+    RETURNING 1
   )
 SELECT count(*) || ' rows inserted into seobs' AS i
 FROM insertion_batch;
