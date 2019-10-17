@@ -4,13 +4,17 @@
 You can deploy the database directly from the `.sql` files on your machine,
 given that you have Postgres and Timescale installed,
 or use Docker.
-The following example starts up the database with an empty `tsa` schema and makes it available on port `7001` on the host machine.
-Note that the data does *not* persist here (volume `-v` flag not used).
+The following example starts up the database with an empty `tsa` schema,
+populates `stations` and `sensors` metadata tables from the respective csv files,
+and makes the database server available on port `7001` on the host machine.
+`data/` directory is mounted to the container's `/rawdata/` directory,
+so you can put (large) raw LOTJU data files to `data/` on host side
+and use server side `COPY FROM` to read the data to the database relatively quickly.
 
 ```
 cd ~/tsatool-app/database
 docker build -t tsadb .
-docker run --rm -d -p 7001:5432 -e POSTGRES_PASSWORD=postgres tsadb
+docker run --rm -d -p 7001:5432 -e POSTGRES_PASSWORD=postgres -v data/:/rawdata/ tsadb
 ```
 
 Now you can access the database container from your host machine.
@@ -28,7 +32,52 @@ Use the same user and password as environment variables for the analysis tool.
 ## Inserting raw data
 
 Raw data is inserted from LOTJU dump files located in `database/data/`.
-*TODO: raw data file structure, shell script etc.*
+It should look like this, decomposed to monthly files:
+
+```
+├── anturi_arvo-2018_01.csv
+├── anturi_arvo-2018_02.csv
+├── anturi_arvo-2018_03.csv
+├── tiesaa_mittatieto-2018_01.csv
+├── tiesaa_mittatieto-2018_02.csv
+└── tiesaa_mittatieto-2018_03.csv
+```
+
+When you mount the `data/` directory as instructed above,
+these files should be available to the database server,
+so you can populate the LOTJU raw data "staging" tables.
+
+Then run the stored procedures (defined in `02_rawdata_schema.sql`)
+that convert the LOTJU data to `statobs` and `seobs` tables.
+When you're (successfully) done, remember to truncate the staging tables
+so they are empty for the next month's data.
+Doing this inside a transaction (`BEGIN ... COMMIT`) ensures
+the process is aborted on an error.
+
+```
+BEGIN;
+COPY tiesaa_mittatieto FROM '/rawdata/tiesaa_mittatieto-2018_01.csv' CSV HEADER DELIMITER '|';
+CALL populate_statobs();
+TRUNCATE TABLE tiesaa_mittatieto;
+COPY anturi_arvo FROM '/rawdata/anturi_arvo-2018_01.csv' CSV HEADER DELIMITER '|';
+CALL populate_seobs();
+TRUNCATE TABLE anturi_arvo;
+COMMIT;
+```
+
+**Reading the raw data takes time**.
+Some statistics on reading and converting `2018-03` files,
+tested on an X1 Carbon (2013) with 4 GB of RAM:
+
+| Command                           	| Time   	|
+|-----------------------------------	|--------	|
+| `COPY tiesaa_mittatieto FROM ...` 	| 20 s   	|
+| `COPY anturi_arvo FROM ...`       	| 16 min 	|
+| `CALL populate_statobs();`        	| 2 min  	|
+| `CALL populate_seobs();`          	| 1 hour 	|
+
+To batch run the above commands, see `10_batch_populate_statobs_seobs.sh`
+and adjust the script to your needs.
 
 See `database/example_data` to get familiar with the structure of the LOTJU dumps.
 
@@ -37,8 +86,8 @@ See `database/example_data` to get familiar with the structure of the LOTJU dump
 Shortly:
 
 `stations` and `sensors` contain the available station and sensor ids, respectively,
-as well as their names. These id-name pairs are provided by the `insert_stations_sensors.sql`
-script (situation as of 8/2019). There are also JSONB fields to store additional metadata
+as well as their names and LOTJU ids. These id-name pairs are provided by the `03_insert_stations_sensors.sql`
+script (based on the 2018 LOTJU dump). There are also JSONB fields to store additional metadata
 which could be used in future (see Digitraffic real-time weather station and sensor schemas).
 
 `statobs` contains timestamped observation records for each station.
@@ -59,3 +108,8 @@ Actual usage of the database relies strongly on joins between `statobs` and `seo
 In future, it may be interesting to test if a "wide" schema is more efficient:
 timestamped station observations would have all sensor values in columns
 instead of a separate lookup table.
+
+`tiesaa_mittatieto` and `anturi_arvo` are "staging" tables meant for conversion
+from LOTJU raw data to `statobs` and `seobs`, respectively.
+Since they only serve moving and converting data,
+they should be emptied when intermediate raw data is no longer needed.
