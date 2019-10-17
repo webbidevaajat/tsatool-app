@@ -5,13 +5,11 @@
 
 import logging
 import os
-import yaml
 import psycopg2
 import openpyxl as xl
 from .cond_collection import CondCollection
 from .utils import trunc_str
 from datetime import datetime
-from getpass import getpass
 from collections import OrderedDict
 
 DEFAULT_PG_HOST = 'localhost'
