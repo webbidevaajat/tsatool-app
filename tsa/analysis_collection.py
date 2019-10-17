@@ -136,7 +136,7 @@ class AnalysisCollection:
         """
         outpath = os.path.join(self.data_dir, self.name)
         if not os.path.exists(outpath):
-            os.mkdir(outpath)
+            os.makedirs(outpath, exist_ok=True)
         return outpath
 
     def add_error(self, e):
@@ -200,7 +200,7 @@ class AnalysisCollection:
         elif pairs is not None:
             self.sensor_pairs = pairs
         else:
-            raise Exception("No pg_conn or pairs provided")
+            raise Exception("No pg_conn or sensor name-id pairs provided")
 
     def save_statids_in_statobs(self, pg_conn=None, ids=None):
         """
@@ -210,15 +210,14 @@ class AnalysisCollection:
         """
         if pg_conn is not None:
             with pg_conn.cursor() as cur:
-                sql = "SELECT DISTINCT statid FROM statobs ORDER BY statid;"
-                cur.execute(sql)
+                cur.execute("SELECT DISTINCT statid FROM statobs ORDER BY statid;")
                 statids = cur.fetchall()
                 statids = [el[0] for el in statids]
                 self.statids_in_db = set(statids)
         elif ids is not None:
             self.statids_in_db = set(ids)
         else:
-            raise Exception("No pg_conn or station ids provided")
+            raise Exception("No pg_conn or station ids provided to save available station ids")
 
     def check_statids(self):
         """
@@ -251,6 +250,7 @@ class AnalysisCollection:
         On complete success, return empty string;
         on any error, return error log string.
         """
+        # TODO: do this
         pass
 
     def run_analyses(self):
