@@ -7,15 +7,24 @@ or use Docker.
 The following example starts up the database with an empty `tsa` schema,
 populates `stations` and `sensors` metadata tables from the respective csv files,
 and makes the database server available on port `7001` on the host machine.
-`data/` directory is mounted to the container's `/rawdata/` directory,
-so you can put (large) raw LOTJU data files to `data/` on host side
-and use server side `COPY FROM` to read the data to the database relatively quickly.
 
 ```
 cd ~/tsatool-app/database
 docker build -t tsadb .
-docker run --rm -d -p 7001:5432 -e POSTGRES_PASSWORD=postgres -v data/:/rawdata/ tsadb
+docker run --rm -d --name tsadb -p 7001:5432 -e POSTGRES_PASSWORD=postgres \
+  -v [absolute_path_to_database_dir]/data:/rawdata -v \
+  [absolute_path_to_database_dir]/pgvolume:/var/lib/postgresql/data \
+  tsadb
 ```
+
+Inside the `database` directory on the host machine,
+
+- `data/` directory is mounted to the container's `/rawdata/` directory,
+so you can put (large) raw LOTJU data files to `data/` on host side
+and use server side `COPY FROM` to read the data to the database relatively quickly;
+- `pgvolume/` directory is mounted to the container's Postgres data directory,
+so it will store the database contents and enable stopping and restarting the container
+while preserving the data.
 
 Now you can access the database container from your host machine.
 You must have Postgres or at least `psql` installed.
@@ -30,6 +39,18 @@ This should be enough for simple cases where the database is only deployed tempo
 Use the same user and password as environment variables for the analysis tool.
 
 ## Inserting raw data
+
+**NOTE: building the database contents from LOTJU files takes time,
+because ids must be converted from one system to another etc.
+Therefore you may not want to do it again every time you start up a database instance.
+It could make more sense to build a whole database once,
+export it using `pg_dump`,
+and then call `pg_restore` to deploy a working database instance.**
+There are some issues to consider when using `pg_dump` and `pg_restore` with a TimescaleDB database.
+See [TimescaleDB documentation](https://docs.timescale.com/latest/using-timescaledb/backup).
+
+This is how you can fill the database from scratch, using LOTJU raw data.
+The metadata tables `stations` and `sensors` are readily filled if using the Docker image as shown above.
 
 Raw data is inserted from LOTJU dump files located in `database/data/`.
 It should look like this, decomposed to monthly files:
