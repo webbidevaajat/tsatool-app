@@ -67,8 +67,11 @@ class TsaErrCollection:
         errs = [e.msg for e in sorted(self.errors)]
         return '; '.join(errs)
 
+    def __len__(self):
+        return len(self.errors)
+
     def __str__(self):
         return '\n'.join([str(e) for e in sorted(self.errors)])
 
     def __repr__(self):
-        return f'<TsaErrCollection> with {len(self.errors)} errors'
+        return f'<TsaErrCollection> with {len(self)} errors'
