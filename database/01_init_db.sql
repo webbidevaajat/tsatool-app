@@ -52,16 +52,17 @@ SELECT create_hypertable('statobs', 'tfrom');
 CREATE INDEX statobs_statid_idx ON statobs(statid);
 
 CREATE TABLE IF NOT EXISTS seobs (
-  id        bigserial   PRIMARY KEY,
+  id        bigserial   NOT NULL,
   obsid     bigint      NOT NULL,
   seid      integer     NOT NULL,
   seval     real        NOT NULL,
-  modified  timestamptz DEFAULT CURRENT_TIMESTAMP
+  modified  timestamptz DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (obsid, seid)
 );
 
-SELECT create_hypertable('seobs', 'id', chunk_time_interval => 10000000);
+SELECT create_hypertable('seobs', 'obsid', chunk_time_interval => 1000000);
 
-CREATE INDEX seobs_obsid_idx ON seobs(obsid);
+--CREATE INDEX seobs_obsid_idx ON seobs(obsid);
 CREATE INDEX seobs_seid_seval_idx ON seobs(seid, seval);
 
 DROP FUNCTION IF EXISTS update_modified_column() CASCADE;
