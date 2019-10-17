@@ -13,6 +13,7 @@ TEMP*
 analysis/
 lotju*
 database/data/
+database/pgvolume/
 
 # Logs
 logs/
