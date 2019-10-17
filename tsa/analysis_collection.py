@@ -297,11 +297,3 @@ class AnalysisCollection:
             wb.save(wb_outpath)
             log.info(f'Excel results saved to {wb_outpath}')
         log.info(f'END OF ANALYSES for analysis collection {self.name}')
-
-    def __getitem__(self):
-        """
-        Return a CondCollection by list-style int index
-        or by dict-style index based on its title.
-        """
-        # TODO
-        pass
