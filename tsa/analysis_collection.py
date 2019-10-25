@@ -62,7 +62,7 @@ class AnalysisCollection:
 
     .. note: Existing files with same filepath will be overwritten.
     """
-
+    # TODO: Separate dry and db methods.
     def __init__(self, input_xlsx=None, name=None):
         self.input_xlsx = None
         self._name = name or self.autoname()
@@ -138,6 +138,8 @@ class AnalysisCollection:
 
         .. note: Adding by an existing title overwrites the old collection.
         """
+        # TODO: Change this to .add_collections(self) that adds all the sheets
+        #       except metadata INFO sheet.
         if self.workbook is None:
             raise Exception('No workbook loaded, cannot add collection')
         if title not in self.workbook.sheetnames:
@@ -156,6 +158,7 @@ class AnalysisCollection:
         and save them as dict.
         ``pg_conn`` must be a valid, online connection instance to TSA db.
         """
+        # TODO: Separate dry and db methods.
         if pg_conn is not None:
             with pg_conn.cursor() as cur:
                 cur.execute("SELECT id, lower(name) AS name FROM sensors;")
@@ -172,6 +175,7 @@ class AnalysisCollection:
         or give id list from outside.
         ``pg_conn`` must be a valid, online connection instance to TSA db.
         """
+        # TODO: Separate dry and db methods.
         if pg_conn is not None:
             with pg_conn.cursor() as cur:
                 cur.execute("SELECT DISTINCT statid FROM statobs ORDER BY statid;")
@@ -189,6 +193,7 @@ class AnalysisCollection:
         are available in the ids from the database.
         Returns number of errors occurred.
         """
+        # TODO: Separate dry and db methods.
         if not self.statids_in_db:
             err = ('List of available station ids is empty. '
                    'Were they correctly requested from database or set otherwise?')
