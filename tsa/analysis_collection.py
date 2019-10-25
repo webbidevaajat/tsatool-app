@@ -74,7 +74,7 @@ class AnalysisCollection:
             self.set_input_xlsx(path=input_xlsx)
         self.sheetnames = []
         self.collections = OrderedDict()
-        self.errmsgs = []
+        self.errs = TsaErrCollection('ANALYSIS / EXCEL FILE')
         self.statids_in_db = set()
         self.sensor_pairs = {}
         self.out_formats = ['xlsx', 'pptx', 'log']
@@ -85,15 +85,15 @@ class AnalysisCollection:
         Set the input excel file path,
         **relative to** ``[project_root]/analysis/``,
         and read the workbook contents.
-        Throws an error if it does not exist or is not an .xlsx file.
+        Source excel is obligatory, so an error is raised if not possible to read it.
         """
-        if not os.path.exists(path):
-            raise Exception(f'File {path} does not exist!')
-        if not path.endswith('.xlsx'):
-            raise Exception(f'File {path} is not an .xlsx file!')
-        self.input_xlsx = path
-        self.workbook = xl.load_workbook(filename=path,
-                                         read_only=True)
+        try:
+            self.workbook = xl.load_workbook(filename=path, read_only=True)
+            self.input_xlsx = path
+        except:
+            self.errs.add(f'Could not read input data from {path}',
+                          'exception')
+            raise Exception('Quitting due to fatal error')
 
     def set_sheetnames(self, sheets):
         """
@@ -138,30 +138,6 @@ class AnalysisCollection:
         if not os.path.exists(outpath):
             os.makedirs(outpath, exist_ok=True)
         return outpath
-
-    def add_error(self, e):
-        """
-        Add error message to error message list.
-        Only unique errors are collected, in order to avoid
-        piling up repetitive messages from loops, for example.
-        """
-        if e not in self.errmsgs:
-            self.errmsgs.append(e)
-
-    def list_errors(self):
-        """
-        Collect together all error and warning messages
-        of condition collections and their child items,
-        return as list of strings.
-        """
-        errs = [f'SESSION: {m}' for m in self.errmsgs]
-        for condcoll in self.collections.values():
-            msgs = [f'COLLECTION: {m}' for m in condcoll.errmsgs]
-            errs.extend(msgs)
-            for cond in condcoll.conditions:
-                msgs = [f'CONDITION: {m}' for m in cond.errmsgs]
-                errs.extend(msgs)
-        return errs
 
     def add_collection(self, title):
         """
