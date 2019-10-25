@@ -22,6 +22,8 @@ class TsaError:
             log.warning(msg)
         elif log_add == 'exception':
             log.exception(msg)
+        elif log_add == 'fatal':
+            log.fatal(msg)
         else:
             log.error(msg)
 
@@ -44,6 +46,11 @@ class TsaErrCollection:
     """
     Container for errors of a tsa object.
     Provides methods for sorting and printing errors.
+
+    :example::
+
+        >>> errs = TsaErrCollection('ANALYSIS / EXCEL FILE')
+        >>> errs.add('Could not find Excel file, quitting', log_add='fatal')
     """
     def __init__(self, context):
         self.context = context
