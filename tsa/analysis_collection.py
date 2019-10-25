@@ -95,18 +95,6 @@ class AnalysisCollection:
                           'exception')
             raise Exception('Quitting due to fatal error')
 
-    def set_sheetnames(self, sheets):
-        """
-        Set Excel sheets to analyze.
-        """
-        if self.workbook is None:
-            raise Exception('No Excel workbook selected!')
-        self.sheetnames = []
-        for s in sheets:
-            if s not in self.workbook.sheetnames:
-                raise Exception(f'"{s}" is not in workbook sheets!')
-            self.sheetnames.append(s)
-
     @property
     def name(self):
         return self._name
