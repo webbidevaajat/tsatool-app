@@ -556,6 +556,7 @@ class CondCollection:
             cells_ok = True
             for c in cells:
                 if c.value is None:
+                    # TODO: add error here, not afterwards
                     empty_cells.append(c)
                     cells_ok = False
             if not cells_ok:
