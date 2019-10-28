@@ -69,6 +69,12 @@ class AnalysisCollection:
         self.input_xlsx = input_xlsx
         self.name = name
         self.workbook = xl.load_workbook(filename=input_xlsx, read_only=True)
+
+        # Results are saved as `results/[name][_sheetname].pptx`
+        # and `results/[name].xlsx`.
+        os.makedirs('results', exist_ok=True)
+        self.out_base_path = f'results/{self.name}'
+        
         self.collections = OrderedDict()
         self.errs = TsaErrCollection('ANALYSIS / EXCEL FILE')
         self.statids_in_db = set()
