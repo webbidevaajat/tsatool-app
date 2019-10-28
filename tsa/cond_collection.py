@@ -514,9 +514,7 @@ class CondCollection:
         return out
 
     @classmethod
-    def from_xlsx_sheet(cls, ws,
-                        station_ids=None,
-                        sensor_pairs=None):
+    def from_xlsx_sheet(cls, ws):
         """
         Create a condition collection for analysis
         based on an ``openpyxl`` ``worksheet`` object ``ws``.
@@ -551,17 +549,7 @@ class CondCollection:
         if time_from > time_until:
             raise Exception('Start date in cell A2 must not be greater than end date in cell B2')
 
-        # With the start & end times prepared, initialize the instance
-        # and request available station ids / set them from argument.
-        # Then add conditions row by row, possibly adding any errors related.
-        # Having made the conditions, set the sensor ids from database
-        # or argument provided here; error is raised for each Block
-        # if no sensor id is found.
         cc = cls(time_from=time_from, time_until=time_until, title=ws.title)
-        for terr in time_errs:
-            cc.add_error(terr)
-        if station_ids is not None:
-            cc.statids_available = set(station_ids)
         empty_cells = []
         for row in ws.iter_rows(min_row=4, max_col=3):
             cells = [c for c in row]
@@ -578,10 +566,5 @@ class CondCollection:
         empty_cells = [c for c in empty_cells if c.row < last_row]
         for ec in empty_cells:
             cc.add_error(f"Cell {c.coordinate} should not be empty: row ignored")
-        if len(cc.statids_available) == 0:
-            cc.get_stations_in_view() # This requires valid pg_conn
-        # If pairs is not given above as argument,
-        # this will require valid pg_conn:
-        cc.set_sensor_ids(pairs=sensor_pairs)
 
         return cc
