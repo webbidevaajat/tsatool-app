@@ -61,6 +61,7 @@ class AnalysisCollection:
     """
     # TODO: Separate dry and db methods.
     def __init__(self, input_xlsx, name):
+        self.created_at = datetime.now()
         self.input_xlsx = input_xlsx
         self.name = name
         self.workbook = xl.load_workbook(filename=input_xlsx, read_only=True)
