@@ -6,9 +6,11 @@
 import logging
 import os
 import psycopg2
+import string
 import openpyxl as xl
 from .cond_collection import CondCollection
 from .utils import trunc_str
+from .utils import safefilename
 from datetime import datetime
 from collections import OrderedDict
 
@@ -63,37 +65,15 @@ class AnalysisCollection:
     .. note: Existing files with same filepath will be overwritten.
     """
     # TODO: Separate dry and db methods.
-    def __init__(self, input_xlsx, name=None):
+    def __init__(self, input_xlsx, name):
         self.input_xlsx = input_xlsx
-        self._name = name or self.autoname()
+        self.name = name
         self.workbook = xl.load_workbook(filename=input_xlsx, read_only=True)
         self.collections = OrderedDict()
         self.errs = TsaErrCollection('ANALYSIS / EXCEL FILE')
         self.statids_in_db = set()
         self.sensor_pairs = {}
         self.db_params = DBParams()
-
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, newname):
-        """
-        Ensure the name can be used as file and dir name.
-        """
-        newname = str(newname)
-        newname = newname.strip()
-        newname = newname.replace(' ', '_')
-        self._name = ''.join([c for c in newname if c.isalnum()])
-
-    @staticmethod
-    def autoname():
-        """
-        Autogenerate a name by timestamp
-        """
-        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
-        return f'analysis_{ts}'
 
     def get_outdir(self):
         """
