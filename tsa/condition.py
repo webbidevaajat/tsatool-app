@@ -214,15 +214,14 @@ class Condition:
         # Block() raises error if this does not succeed.
         idfied = []
         i = 0
+        tokens = {'(': 'open_par',
+                  ')': 'close_par',
+                  'and': 'andor',
+                  'or': 'andor',
+                  'not': 'not'}
         for el in new_sp:
-            if el == '(':
-                idfied.append(('open_par', el))
-            elif el == ')':
-                idfied.append(('close_par', el))
-            elif el in ['and', 'or']:
-                idfied.append(('andor', el))
-            elif el == 'not':
-                idfied.append(('not', el))
+            if el in tokens.keys():
+                idfied.append( (tokens[el], el) )
             else:
                 try:
                     bl = Block(master_alias=self.master_alias,
@@ -242,8 +241,11 @@ class Condition:
                     else:
                         idfied.append(('block', bl))
                         i += 1
-                except Exception as e:
-                    self.add_error(e)
+                except:
+                    self.errors.add(
+                        msg=f'Cannot create Block from "{el}"',
+                        log_add='exception'
+                    )
 
         # Check the correct order of the tuples.
         # This should raise and error and thus exit the method
