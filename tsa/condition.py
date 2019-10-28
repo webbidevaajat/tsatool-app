@@ -10,6 +10,7 @@ import psycopg2
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from .block import Block
+from .error import TsaErrCollection
 from .utils import to_pg_identifier
 from .utils import eliminate_umlauts
 from .utils import trunc_str
@@ -24,38 +25,8 @@ rcParams['font.sans-serif'] = ['Arial', 'Tahoma']
 
 class Condition:
     """
-    Single condition, its aliases, query handling and results.
-
-    :example::
-
-        # Making a primary condition:
-        >>> Condition('Ylöjärvi_etelään_1',
-        ... 'E4',
-        ... '(s1122#TIENPINNAN_TILA3 = 8 OR (s1122#KITKA3_LUKU >= 0.30
-        ... AND s1122#KITKA3_LUKU < 0.4)) AND s1115#TIE_1 < 2',
-        ... ('2018-01-01 00:00', '2018-04-30 23:59'))
-        Primary Condition ylojarvi_etelaan_1_e4:
-        (s1122#tienpinnan_tila3 = 8 or (s1122#kitka3_luku >= 0.30 and
-        s1122#kitka3_luku < 0.4)) and s1115#tie_1 < 2
-        ALIAS: (e4_0 or (e4_1 and e4_2)) and e4_3
-        >>>
-        # Making a secondary condition:
-        >>> Condition('Ylöjärvi_pohjoiseen_2',
-        ... 'B1',
-        ... 'D2 AND D3',
-        ... ('2018-01-01 00:00', '2018-04-30 23:59'))
-        Secondary Condition ylojarvi_pohjoiseen_2_b1:
-        d2 and d3
-        ALIAS: b1_0 and b1_1
-        >>>
-        # Making a secondary condition containing primary blocks:
-        >>> Condition('Ylöjärvi_etelään_2',
-        ... 'C3',
-        ... 'Ylöjärvi_pohjoiseen_2#B1 AND s1011#TIE_1 > 0',
-        ... ('2018-01-01 0:00', '2018-04-30 23:59'))
-        Secondary Condition ylojarvi_etelaan_2_c3:
-        ylojarvi_pohjoiseen_2#b1 and s1011#tie_1 > 0
-        ALIAS: c3_0 and c3_1
+    Logical combination of Blocks.
+    Represented by one Excel row.
 
     :param site: site / location / area identifier
     :type site: string
@@ -69,12 +40,6 @@ class Condition:
     :type excel_row: integer
     """
     def __init__(self, site, master_alias, raw_condition, time_range, excel_row=None):
-        # Excel row for prompting, if made from Excel sheet
-        self.excel_row = excel_row
-
-        # List for saving error strings
-        self.errmsgs = []
-
         # Original formattings are kept for printing purposes
         self.orig_site = site
         self.orig_master_alias = master_alias
@@ -83,12 +48,9 @@ class Condition:
         # Attrs for further use must be PostgreSQL compatible
         self.site = to_pg_identifier(site)
         self.master_alias = to_pg_identifier(master_alias)
-        self.id_string = '{:s}_{:s}'.format(self.site, self.master_alias)
+        self.id_string = f'{self.site}_{self.master_alias}'
 
-        # TODO: wrap condition str handling to function or property/setter??
-        raw_condition = raw_condition.strip().lower()
-        raw_condition = eliminate_umlauts(raw_condition)
-        self.condition = raw_condition
+        self.condition = eliminate_umlauts(raw_condition).strip.lower()
 
         # Times must be datetime objects
         self.time_from = time_range[0]
@@ -98,6 +60,9 @@ class Condition:
         self.data_from = None
         self.data_until = None
 
+        # Excel row for prompting, if made from Excel sheet
+        self.excel_row = excel_row
+
         # make_blocks() sets .condition_elements, .blocks, .alias_condition and .secondary
         self.condition_elements = None
         self.blocks = None
@@ -105,10 +70,7 @@ class Condition:
         self.secondary = None
         self.make_blocks()
 
-        self.station_ids = set()
-        self.list_stations()
-
-        self.has_view = False
+        self.has_db_view = False
 
         # pandas DataFrames for results
         self.main_df = None
@@ -125,27 +87,7 @@ class Condition:
         self.percentage_notvalid = 0
         self.percentage_nodata = 1
 
-    def add_error(self, e):
-        """
-        Add error message to error message list.
-        Only unique errors are collected, in order to avoid
-        piling up repetitive messages from loops, for example.
-        """
-        if e not in self.errmsgs:
-            self.errmsgs.append(e)
-
-    def error_context(self, before='', after=''):
-        """
-        Return information on condition and its Excel row if available,
-        to be used with error messages.
-        """
-        s = before + '\n'
-        s += f'ERROR with condition {self.id_string}'
-        if self.excel_row:
-            s += f' (row {self.excel_row} in Excel sheet): '
-        else:
-            s += '\n' + after
-        return s
+        self.errors = TsaErrCollection(f'Condition {self.id_string}')
 
     def make_blocks(self):
         """
