@@ -87,7 +87,7 @@ class AnalysisCollection:
         self.db_sensor_pairs = dict()
 
         # Errors are reported on the fly AND collected too
-        self.errs = TsaErrCollection('ANALYSIS / EXCEL FILE')
+        self.errors = TsaErrCollection('ANALYSIS / EXCEL FILE')
 
     def add_collection(self, title):
         """
