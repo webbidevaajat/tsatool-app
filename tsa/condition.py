@@ -555,11 +555,15 @@ class Condition:
 
 
     def __str__(self):
-        if self.secondary:
-            s = '  Secondary '
+        if self.secondary is None:
+            s = 'Unknown'
+        elif self.secondary is True:
+            s = 'Secondary '
         else:
-            s = '  Primary '
-        s += (f'Condition {self.id_string}:\n'
-              f'    {trunc_str(self.condition, n=76)}\n'
-              f'    ALIAS: {trunc_str(self.alias_condition, n=76)}')
+            s = 'Primary '
+        if self.blocks is None:
+            blen = 0
+        else:
+            blen = len(self.blocks)
+        s += f'Condition <{self.id_string}> with {blen} Blocks'
         return s
