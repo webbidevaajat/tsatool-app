@@ -64,6 +64,7 @@ class CondCollection:
 
         # Database-specific stuff
         self.has_main_db_view = False
+        self.station_ids_in_db_view = set()
 
         self.errors = TsaErrCollection(f'COLLECTION <{self.title}>')
 
@@ -77,20 +78,20 @@ class CondCollection:
         self.time_until = self.time_until.replace(
             hour=23, minute=59, second=59)
 
-    def get_stations_in_view(self, pg_conn):
+    def set_station_ids_in_db_view(self, pg_conn):
         """
-        Get stations available in ``statobs_time`` view.
+        Fetch unique station ids from main obs db view for validation.
         """
-        # TODO: refactor
-        if pg_conn:
-            with pg_conn.cursor() as cur:
-                sql = "SELECT DISTINCT statid FROM statobs_time ORDER BY statid;"
+        sql = "SELECT DISTINCT statid FROM obs_main ORDER BY statid;"
+        with pg_conn.cursor() as cur:
+            try:
                 cur.execute(sql)
                 statids = cur.fetchall()
                 statids = [el[0] for el in statids]
-                self.statids_available = set(statids)
-        else:
-            self.add_error('WARNING: No db connection, cannot get stations from database')
+                self.station_ids_in_db_view = set(statids)
+            except:
+                self.errors.add(msg='Cannot fetch station ids from db view obs_main',
+                                log_add='exception')
 
     def setup_obs_view(self, pg_conn, verbose=False):
         """
