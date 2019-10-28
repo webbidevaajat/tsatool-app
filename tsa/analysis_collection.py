@@ -90,30 +90,26 @@ class AnalysisCollection:
         # Errors are reported on the fly AND collected too
         self.errors = TsaErrCollection('ANALYSIS / EXCEL FILE')
 
-    def add_collection(self, title):
+    def add_collections(self, drop=['info']):
         """
-        Add a CondCollection from worksheet by title.
-        This does *not* account for ``.sheetnames``: that is only a container
-        for further tools that add pre-selected worksheets
-        Duplicate titles are not allowed.
-        If sensor name-id pair dictionary is available,
-        it can be given here for successful construction of Blocks.
-
-        .. note: Adding by an existing title overwrites the old collection.
+        Add CondCollections from worksheets.
+        :param drop: list of sheets to exclude by title
+        :type drop: list of strings
         """
         # TODO: Change this to .add_collections(self) that adds all the sheets
         #       except metadata INFO sheet.
-        if self.workbook is None:
-            raise Exception('No workbook loaded, cannot add collection')
-        if title not in self.workbook.sheetnames:
-            raise Exception(f'"{title}" not in workbook sheets')
-
-        ws = self.workbook[title]
-        # NOTE: sensor pairs input is a bit weird here, could be fixed
-        self.collections[title] = CondCollection.from_xlsx_sheet(
-            ws,
-            station_ids=self.statids_in_db,
-            sensor_pairs=self.sensor_pairs)
+        sheetnames = [s for s in self.workbook.sheetnames if s.lower().strip() not in drop]
+        for title in sheetnames:
+            try:
+                self.collections[title] = CondCollection.from_xlsx_sheet(
+                    ws=self.workbook[title],
+                    station_ids=self.local_statids,
+                    sensor_pairs=self.local_sensor_pairs
+                )
+                log.info(f'Successfully added CondCollection <{title}>')
+            except:
+                self.errors.add(msg=f'Could not add CondCollection <{title}>: skipping',
+                                log_add='exception')
 
     def save_sensor_pairs(self, pg_conn=None, pairs=None):
         """
