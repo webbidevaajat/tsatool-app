@@ -22,7 +22,7 @@ def main():
     # ---- LOGGING ----
     os.makedirs('logs', exist_ok=True)
     log = logging.getLogger('tsa')
-    log.setLevel(logging.INFO)
+    log.setLevel(logging.DEBUG)
     fh = logging.handlers.TimedRotatingFileHandler(os.path.join('logs', 'tsabatchlog'))
     fh.setLevel(logging.INFO)
     ch = logging.StreamHandler()
