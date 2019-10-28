@@ -63,15 +63,13 @@ class AnalysisCollection:
     .. note: Existing files with same filepath will be overwritten.
     """
     # TODO: Separate dry and db methods.
-    def __init__(self, input_xlsx=None, name=None):
-        self.input_xlsx = None
+    def __init__(self, input_xlsx, name=None):
+        self.input_xlsx = input_xlsx
         self._name = name or self.autoname()
         self.base_dir = os.getcwd()
         self.data_dir = os.path.join(self.base_dir, 'analysis')
         os.makedirs(self.data_dir, exist_ok=True)
-        self.workbook = None
-        if input_xlsx:
-            self.set_input_xlsx(path=input_xlsx)
+        self.workbook = xl.load_workbook(filename=input_xlsx, read_only=True)
         self.sheetnames = []
         self.collections = OrderedDict()
         self.errs = TsaErrCollection('ANALYSIS / EXCEL FILE')
@@ -79,21 +77,6 @@ class AnalysisCollection:
         self.sensor_pairs = {}
         self.out_formats = ['xlsx', 'pptx', 'log']
         self.db_params = DBParams()
-
-    def set_input_xlsx(self, path):
-        """
-        Set the input excel file path,
-        **relative to** ``[project_root]/analysis/``,
-        and read the workbook contents.
-        Source excel is obligatory, so an error is raised if not possible to read it.
-        """
-        try:
-            self.workbook = xl.load_workbook(filename=path, read_only=True)
-            self.input_xlsx = path
-        except:
-            self.errs.add(f'Could not read input data from {path}',
-                          'exception')
-            raise Exception('Quitting due to fatal error')
 
     @property
     def name(self):

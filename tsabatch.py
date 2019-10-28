@@ -53,12 +53,7 @@ def main():
               f'dryvalidate={args.dryvalidate}'))
 
     # ---- APP LOGIC ----
-    anls = AnalysisCollection(name=args.name)
-    try:
-        anls.set_input_xlsx(path=os.path.join(anls.data_dir, args.input))
-    except:
-        log.exception('Could not set input Excel: quitting')
-        sys.exit()
+    anls = AnalysisCollection(input_xlsx=args.input, name=args.name)
 
     # Add all sheet names for analysis
     sheets = anls.workbook.sheetnames
