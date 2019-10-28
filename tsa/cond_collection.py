@@ -13,6 +13,7 @@ import traceback
 import pptx
 import openpyxl as xl
 from .condition import Condition
+from .error import TsaErrCollection
 from .utils import strfdelta
 from .utils import list_local_statids
 from .utils import list_local_sensors
@@ -532,22 +533,18 @@ class CondCollection:
             raise Exception('Start date in cell A2 must not be greater than end date in cell B2')
 
         cc = cls(time_from=time_from, time_until=time_until, title=ws.title)
-        empty_cells = []
         for row in ws.iter_rows(min_row=4, max_col=3):
+            log.debug(f'Row {row} ...')
             cells = [c for c in row]
             cells_ok = True
             for c in cells:
                 if c.value is None:
-                    # TODO: add error here, not afterwards
-                    empty_cells.append(c)
+                    cc.errors.add(f'Cell {c.coordinate} is empty: condition row ignored')
                     cells_ok = False
+            # Row is ignored if any of the three cells is empty
             if not cells_ok:
                 continue
             cc.add_condition(site=cells[0].value, master_alias=cells[1].value,
                              raw_condition=cells[2].value, excel_row=cells[0].row)
-        last_row = cells[0].row
-        empty_cells = [c for c in empty_cells if c.row < last_row]
-        for ec in empty_cells:
-            cc.add_error(f"Cell {c.coordinate} should not be empty: row ignored")
 
         return cc
