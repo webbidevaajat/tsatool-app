@@ -66,16 +66,11 @@ class AnalysisCollection:
     def __init__(self, input_xlsx, name=None):
         self.input_xlsx = input_xlsx
         self._name = name or self.autoname()
-        self.base_dir = os.getcwd()
-        self.data_dir = os.path.join(self.base_dir, 'analysis')
-        os.makedirs(self.data_dir, exist_ok=True)
         self.workbook = xl.load_workbook(filename=input_xlsx, read_only=True)
-        self.sheetnames = []
         self.collections = OrderedDict()
         self.errs = TsaErrCollection('ANALYSIS / EXCEL FILE')
         self.statids_in_db = set()
         self.sensor_pairs = {}
-        self.out_formats = ['xlsx', 'pptx', 'log']
         self.db_params = DBParams()
 
     @property
