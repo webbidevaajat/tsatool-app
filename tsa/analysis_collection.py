@@ -60,7 +60,6 @@ class AnalysisCollection:
     and Excel files ``results/[name].xlsx``.
     Existing output files with same filepath will be overwritten.
     """
-    # TODO: Separate dry and db methods.
     def __init__(self, input_xlsx, name):
         self.created_at = datetime.now()
         self.input_xlsx = input_xlsx
@@ -95,8 +94,6 @@ class AnalysisCollection:
         :param drop: list of sheets to exclude by title
         :type drop: list of strings
         """
-        # TODO: Change this to .add_collections(self) that adds all the sheets
-        #       except metadata INFO sheet.
         sheetnames = [s for s in self.workbook.sheetnames if s.lower().strip() not in drop]
         for title in sheetnames:
             try:
