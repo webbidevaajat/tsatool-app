@@ -54,6 +54,7 @@ def main():
 
     # ---- APP LOGIC ----
     anls = AnalysisCollection(input_xlsx=args.input, name=args.name)
+    log.info(f'Created {str(anls)}')
 
     # Add all sheet names for analysis
     sheets = anls.workbook.sheetnames
