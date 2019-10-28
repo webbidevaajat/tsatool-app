@@ -73,16 +73,6 @@ class AnalysisCollection:
         self.sensor_pairs = {}
         self.db_params = DBParams()
 
-    def get_outdir(self):
-        """
-        Return output directory path based on ``data_dir``
-        and ``name``. Make if it does not exist.
-        """
-        outpath = os.path.join(self.data_dir, self.name)
-        if not os.path.exists(outpath):
-            os.makedirs(outpath, exist_ok=True)
-        return outpath
-
     def add_collection(self, title):
         """
         Add a CondCollection from worksheet by title.
