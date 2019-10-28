@@ -282,14 +282,15 @@ class Condition:
                 self.secondary = True
                 break
 
-    def list_stations(self):
+    def get_station_ids(self):
         """
-        Add unique station ids of primary ``self.blocks``
-        to ``self.station_ids`` set
+        Return unique station ids contained by primary Blocks
         """
+        stids = set()
         for bl in self.blocks:
             if not bl.secondary:
-                self.station_ids.add(bl.station_id)
+                stids.add(bl.station_id)
+        return stids
 
     def create_db_temptable(self, pg_conn=None, verbose=False, src_tables=[], execute=True):
         """
