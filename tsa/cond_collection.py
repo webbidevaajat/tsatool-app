@@ -60,7 +60,6 @@ class CondCollection:
         # Combinations of site and master_alias are used as unique
         # identifiers among the conditions.
         self.conditions = OrderedDict()
-        self.station_ids = set()
 
         # Database-specific stuff
         self.has_main_db_view = False
