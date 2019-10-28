@@ -530,41 +530,26 @@ class CondCollection:
                   Any columns outside A:C are ignored,
                   so additional data can be placed outside them.
         """
-        # Validate start and end dates.
-        # These must be d.m.Y dates, start in cell A2
-        # and end in cell B2. On error, record error but
-        # use today as default date so constructing the
-        # collection can go further.
+        # Start and end dates must be d.m.Y dates, start in cell A2
+        # and end in cell B2.
         dateformat = '%d.%m.%Y'
-        time_errs = [] # Supply this to the instance after it is created
-        time_from = ws['A2'].value
+        time_from, time_until = ws['A2'].value, ws['B2'].value
         if time_from is None:
-            time_from = datetime.now()
-            time_errs.append(("Start date in cell A2 is empty: "
-                              "must be a d.m.YYYY date"))
+            raise Exception('Start date in cell A2 is empty')
         if not isinstance(time_from, datetime):
             try:
-                time_from = datetime.strptime(ws['A2'].value, dateformat)
+                time_from = datetime.strptime(time_from, dateformat)
             except:
-                time_from = datetime.now()
-                time_errs.append(("Could not read start date in cell A2: "
-                                  "must be a d.m.YYYY date"))
-        time_until = ws['B2'].value
+                raise Exception('Cannot parse start date in cell A2')
         if time_until is None:
-            time_until = datetime.now()
-            time_errs.append(("End date in cell B2 is empty: "
-                              "must be a d.m.YYYY date"))
+            raise Exception('End date in cell B2 is empty')
         if not isinstance(time_until, datetime):
             try:
-                time_until = datetime.strptime(ws['B2'].value, dateformat)
+                time_until = datetime.strptime(time_until, dateformat)
             except:
-                time_from = datetime.now()
-                time_errs.append(("Could not read end date in cell B2: ",
-                                  "must be a d.m.YYYY date"))
+                raise Exception('Cannot parse end date in cell B2')
         if time_from > time_until:
-            time_errs.append("Start date (A2) must be BEFORE end date (B2)")
-            # Set time_from so that further validation is possible
-            time_from = time_until
+            raise Exception('Start date in cell A2 must not be greater than end date in cell B2')
 
         # With the start & end times prepared, initialize the instance
         # and request available station ids / set them from argument.
