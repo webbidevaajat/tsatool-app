@@ -10,7 +10,8 @@ import string
 import openpyxl as xl
 from .cond_collection import CondCollection
 from .utils import trunc_str
-from .utils import safefilename
+from .utils import list_local_statids
+from .utils import list_local_sensors
 from datetime import datetime
 from collections import OrderedDict
 
@@ -67,11 +68,25 @@ class AnalysisCollection:
         os.makedirs('results', exist_ok=True)
         self.out_base_path = f'results/{self.name}'
 
+        # This will contain condition rows by Excel sheet,
+        # read by a separate method
         self.collections = OrderedDict()
-        self.errs = TsaErrCollection('ANALYSIS / EXCEL FILE')
-        self.statids_in_db = set()
-        self.sensor_pairs = {}
+
+        # Station ids and sensor name-id pairs for dryvalidate checking.
+        # These represent the situation as of 8/2019.
+        # Updates must be made to corresponding functions in tsa.utils.
+        self.local_statids = list_local_statids()
+        self.local_sensor_pairs = list_local_sensors()
+
+        # DB connection is made by a separate method only if needed;
+        # dryvalidate methods are available also without it.
         self.db_params = DBParams()
+        self.pg_conn = None
+        self.db_statids = set()
+        self.db_sensor_pairs = dict()
+
+        # Errors are reported on the fly AND collected too
+        self.errs = TsaErrCollection('ANALYSIS / EXCEL FILE')
 
     def add_collection(self, title):
         """
