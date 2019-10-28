@@ -481,19 +481,11 @@ class CondCollection:
         return self.conditions[key]
 
     def __str__(self):
-        t = self.title
-        if t is None:
-            t = ', no title'
-        out = (f'CondCollection {t}\n'
-               '  Time range:\n'
-               f"    from {self.time_from.strftime('%Y-%m-%d %H:%M:%S')}\n"
-               f"    to   {self.time_until.strftime('%Y-%m-%d %H:%M:%S')}\n"
-               f'  {len(self.station_ids)} stations:\n'
-               f'    {", ".join([str(stid) for stid in self.station_ids])}\n'
-               f'  {len(self.conditions)} conditions:\n')
-        for c in self.conditions:
-            out += f'{str(c)}\n'
-        return out
+        s = (f'CondCollection <{self.title}>: '
+             f'{self.time_from.strftime("%Y-%m-%d")}-'
+             f'{self.time_until.strftime("%Y-%m-%d")}, '
+             f'{len(self.conditions)} conditions')
+        return s
 
     @classmethod
     def from_xlsx_sheet(cls, ws):
