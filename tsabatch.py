@@ -27,9 +27,8 @@ def main():
     fh.setLevel(logging.INFO)
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s; %(name)s; %(levelname)s; %(message)s')
-    fh.setFormatter(formatter)
-    ch.setFormatter(formatter)
+    fh.setFormatter(logging.Formatter('%(asctime)s; %(name)s; %(levelname)s; %(message)s'))
+    ch.setFormatter(logging.Formatter('%(levelname)s; %(message)s'))
     log.addHandler(fh)
     log.addHandler(ch)
 
