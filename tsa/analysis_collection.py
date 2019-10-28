@@ -83,7 +83,6 @@ class AnalysisCollection:
         # DB connection is made by a separate method only if needed;
         # dryvalidate methods are available also without it.
         self.db_params = DBParams()
-        self.pg_conn = None
         self.db_statids = set()
         self.db_sensor_pairs = dict()
 

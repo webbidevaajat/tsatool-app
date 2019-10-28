@@ -36,10 +36,8 @@ class CondCollection:
     :type time_from: Python ``datetime()`` object
     :param time_until: end time (exclusive) of the analysis period
     :type time_until: Python ``datetime()`` object
-    :param pg_conn: database connection
-    :type pg_conn: ``psycopg2.connect()`` object
     """
-    def __init__(self, time_from, time_until, pg_conn=None, title=None):
+    def __init__(self, time_from, time_until, title=None):
         # Times must be datetime objects and in correct order
         assert isinstance(time_from, datetime)
         assert isinstance(time_until, datetime)
@@ -61,7 +59,6 @@ class CondCollection:
 
         self.errmsgs = []
 
-        self.pg_conn = pg_conn
         self.statids_available = None
         self.temptables = []
 
@@ -100,13 +97,14 @@ class CondCollection:
         self.time_until = self.time_until.replace(
             hour=23, minute=59, second=59)
 
-    def setup_statobs_view(self, verbose=False):
+    def setup_statobs_view(self, pg_conn, verbose=False):
         """
         In the database, create or replace a temporary view ``statobs_time``
         containing the station observations within the ``time_range``.
         """
-        if self.pg_conn:
-            with self.pg_conn.cursor() as cur:
+        # TODO: refactor
+        if pg_conn:
+            with pg_conn.cursor() as cur:
                 sql = ("CREATE OR REPLACE TEMP VIEW statobs_time AS "
                        "SELECT id, tfrom, statid "
                        "FROM statobs "
@@ -115,9 +113,9 @@ class CondCollection:
                     log.debug(cur.mogrify(sql, (self.time_from, self.time_until)))
                 try:
                     cur.execute(sql, (self.time_from, self.time_until))
-                    self.pg_conn.commit()
+                    pg_conn.commit()
                 except Exception as e:
-                    self.pg_conn.rollback()
+                    pg_conn.rollback()
                     print(traceback.print_exc())
                     self.add_error(e)
         else:
@@ -125,12 +123,13 @@ class CondCollection:
             self.add_error(errtext)
             if verbose: print(errtext)
 
-    def get_stations_in_view(self):
+    def get_stations_in_view(self, pg_conn):
         """
         Get stations available in ``statobs_time`` view.
         """
-        if self.pg_conn:
-            with self.pg_conn.cursor() as cur:
+        # TODO: refactor
+        if pg_conn:
+            with pg_conn.cursor() as cur:
                 sql = "SELECT DISTINCT statid FROM statobs_time ORDER BY statid;"
                 cur.execute(sql)
                 statids = cur.fetchall()
@@ -139,16 +138,17 @@ class CondCollection:
         else:
             self.add_error('WARNING: No db connection, cannot get stations from database')
 
-    def setup_obs_view(self, verbose=False):
+    def setup_obs_view(self, pg_conn, verbose=False):
         """
         After creating the ``statobs_time`` view,
         create a joint temporary view ``obs_main``
         that works as the main source for Block queries.
         """
-        if not self.pg_conn:
+        # TODO: refactor
+        if pg_conn:
             self.add_error('WARNING: No db connection, cannot set up view "obs_main"')
             return
-        with self.pg_conn.cursor() as cur:
+        with pg_conn.cursor() as cur:
             sql = ("CREATE OR REPLACE TEMP VIEW obs_main AS "
                    "SELECT tfrom, statid, seid, seval "
                    "FROM statobs_time "
@@ -158,9 +158,9 @@ class CondCollection:
                 log.debug(sql)
             try:
                 cur.execute(sql)
-                self.pg_conn.commit()
+                pg_conn.commit()
             except Exception as e:
-                self.pg_conn.rollback()
+                pg_conn.rollback()
                 print(traceback.print_exc())
                 self.add_error(e)
 
@@ -198,18 +198,19 @@ class CondCollection:
                 e += f' (row {excel_row} in Excel)'
             self.add_error(e)
 
-    def set_sensor_ids(self, pairs=None):
+    def set_sensor_ids(self, pg_conn, pairs=None):
         """
         Get sensor name - id pairs from the database,
         and set sensor ids for all Blocks in all Conditions.
         Optionally, the ``nameids`` can be fed from outside, in which case
         querying the database is omitted.
         """
+        # TODO: pg_conn
         if pairs is None or len(pairs) == 0:
-            if not self.pg_conn:
+            if not pg_conn:
                 self.add_error('WARNING: No db connection, cannot get sensor ids from database')
                 return
-            with self.pg_conn.cursor() as cur:
+            with pg_conn.cursor() as cur:
                 cur.execute("SELECT id, lower(name) AS name FROM sensors;")
                 tb = cur.fetchall()
                 pairs = {k:v for v, k in tb}
@@ -220,26 +221,27 @@ class CondCollection:
                 except Exception as e:
                     cnd.add_error(e)
 
-    def get_temporary_relations(self):
+    def get_temporary_relations(self, pg_conn):
         """
         Set str list of temporary tables and views currently available in db.
         """
-        if not self.pg_conn:
+        # TODO: refactor
+        if not pg_conn:
             self.add_error('WARNING: No db connection, cannot get temporary relations list')
             return
-        with self.pg_conn.cursor() as cur:
+        with pg_conn.cursor() as cur:
             try:
                 sql = ("SELECT table_name FROM information_schema.tables "
                        "WHERE table_schema LIKE '%pg_temp%';")
                 cur.execute(sql)
                 res = cur.fetchall()
             except Exception as e:
-                self.pg_conn.rollback()
+                pg_conn.rollback()
                 self.add_error(e)
                 return
         self.temptables = [el[0] for el in res]
 
-    def create_condition_temptables(self, verbose=False):
+    def create_condition_temptables(self, pg_conn, verbose=False):
         """
         For each Condition, create the corresponding temporary table in db.
         Primary conditions are handled first, only then secondary ones;
@@ -252,7 +254,7 @@ class CondCollection:
             if cnd.secondary:
                 continue
             try:
-                cnd.create_db_temptable(pg_conn=self.pg_conn,
+                cnd.create_db_temptable(pg_conn=pg_conn,
                                         verbose=verbose,
                                         src_tables=self.temptables)
             except Exception as e:
@@ -264,14 +266,14 @@ class CondCollection:
         for cnd in self.conditions:
             if cnd.secondary:
                 try:
-                    cnd.create_db_temptable(pg_conn=self.pg_conn,
+                    cnd.create_db_temptable(pg_conn=pg_conn,
                                             verbose=verbose,
                                             src_tables=self.temptables)
                     self.get_temporary_relations()
                 except Exception as e:
                     log.exception(e)
 
-    def fetch_all_results(self):
+    def fetch_all_results(self, pg_conn):
         """
         Fetch results
         for all Conditions that have a corresponding view in the database.
@@ -280,7 +282,7 @@ class CondCollection:
         for i, cnd in enumerate(self.conditions):
             log.info(f'Fetching {i+1}/{cnd_len} {cnd.id_string} ...')
             try:
-                cnd.fetch_results_from_db(pg_conn=self.pg_conn)
+                cnd.fetch_results_from_db(pg_conn=pg_conn)
             except Exception as e:
                 log.exception(f'Could not fetch results for {cnd.id_string}')
 
@@ -467,7 +469,6 @@ class CondCollection:
         If an output is ``None``, it is not created.
         """
         log.info(f'Started analysis for collection {self.title}')
-        self.pg_conn = pg_conn
         log.info('Setting up DB views')
         self.setup_views()
         log.info('Creating condition views')
@@ -528,14 +529,11 @@ class CondCollection:
 
     @classmethod
     def from_xlsx_sheet(cls, ws,
-                        pg_conn=None,
                         station_ids=None,
                         sensor_pairs=None):
         """
         Create a condition collection for analysis
         based on an ``openpyxl`` ``worksheet`` object ``ws``.
-        Database connection instance ``pg_conn`` should be prepared
-        in advance and passed to this method.
 
         .. note:: Start and end dates must be in cells A2 and B2, respectively,
                   and conditions must be listed starting from row 4,
@@ -588,8 +586,7 @@ class CondCollection:
         # Having made the conditions, set the sensor ids from database
         # or argument provided here; error is raised for each Block
         # if no sensor id is found.
-        cc = cls(time_from=time_from, time_until=time_until,
-                 pg_conn=pg_conn, title=ws.title)
+        cc = cls(time_from=time_from, time_until=time_until, title=ws.title)
         for terr in time_errs:
             cc.add_error(terr)
         if station_ids is not None:
