@@ -563,7 +563,3 @@ class Condition:
               f'    {trunc_str(self.condition, n=76)}\n'
               f'    ALIAS: {trunc_str(self.alias_condition, n=76)}')
         return s
-
-    def __repr__(self):
-        # TODO unambiguous representation?
-        return str(self)
