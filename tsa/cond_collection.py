@@ -17,6 +17,7 @@ from .error import TsaErrCollection
 from .utils import strfdelta
 from .utils import list_local_statids
 from .utils import list_local_sensors
+from collections import OrderedDict
 from datetime import datetime
 from io import BytesIO
 from pptx.util import Pt
@@ -40,7 +41,7 @@ class CondCollection:
     :param title: name of the collection
     :type title: str
     """
-    def __init__(self, time_from, time_until, title=None):
+    def __init__(self, time_from, time_until, title):
         # Times must be datetime objects and in correct order
         assert isinstance(time_from, datetime)
         assert isinstance(time_until, datetime)
@@ -51,19 +52,17 @@ class CondCollection:
         self.time_range = (self.time_from, self.time_until)
 
         self.title = title
-
         # Timestamp is based on instance creation time,
-        # not on when the analysis has been run
-        self.created_timestamp = datetime.now()
+        # not when the analysis has been run
+        self.created_at = datetime.now()
 
-        self.conditions = []
+        # Containers for conditions and unique stations in them.
+        # Combinations of site and master_alias are used as unique
+        # identifiers among the conditions.
+        self.conditions = OrderedDict()
         self.station_ids = set()
-        self.id_strings = set()
 
-        self.statids_available = None
-        self.temptables = []
-
-        self.errors = TsaErrCollection(f'COLLECTION {self.title}')
+        self.errors = TsaErrCollection(f'COLLECTION <{self.title}>')
 
     def setup_views(self):
         """
