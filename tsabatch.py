@@ -35,13 +35,13 @@ def main():
     parser = argparse.ArgumentParser(description='Run TSA analyses as batch job.')
     parser.add_argument('-i', '--input',
                         type=str,
-                        help='File name of the input Excel file in analysis/',
-                        metavar='INPUT_XLSX_NAME',
+                        help='Input Excel path relative to script directory',
+                        metavar='INPUT_XLSX_PATH',
                         required=True)
     parser.add_argument('-n', '--name',
                         type=str,
-                        help='Base name for the outputs in analysis/',
-                        metavar='OUTPUT_NAME')
+                        help='Base name for output files saved under results/',
+                        metavar='OUTPUT_BASENAME')
     parser.add_argument('--dryvalidate',
                         action='store_true',
                         help='Only validate input Excel with hard-coded ids and names')
@@ -49,9 +49,6 @@ def main():
     if args.name is None:
         # Use input excel name but replace file ending
         args.name = re.sub("\.[^.]*$", "_OUT", args.input)
-    if args.password is None:
-        # Try picking the password from environment vars
-        args.password = os.getenv('POSTGRES_PASSWORD')
     log.info((f'START OF TSABATCH with input={args.input} name={args.name} '
               f'dryvalidate={args.dryvalidate}'))
 
