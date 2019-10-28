@@ -62,14 +62,10 @@ class CondCollection:
         self.conditions = OrderedDict()
         self.station_ids = set()
 
-        self.errors = TsaErrCollection(f'COLLECTION <{self.title}>')
+        # Database-specific stuff
+        self.has_main_db_view = False
 
-    def setup_views(self):
-        """
-        Set up time-limited statobs view and joint main observation view.
-        """
-        self.setup_statobs_view()
-        self.setup_obs_view()
+        self.errors = TsaErrCollection(f'COLLECTION <{self.title}>')
 
     def set_default_times(self):
         """
@@ -124,29 +120,29 @@ class CondCollection:
 
     def setup_obs_view(self, pg_conn, verbose=False):
         """
-        After creating the ``statobs_time`` view,
-        create a joint temporary view ``obs_main``
+        Create temporary view ``obs_main``
         that works as the main source for Block queries.
+
+        :param pg_conn: valid psycopg2 connection object
+        :param verbose: boolean; log SQL query sent to db?
         """
-        # TODO: refactor
-        if pg_conn:
-            self.add_error('WARNING: No db connection, cannot set up view "obs_main"')
-            return
+        sql = ("CREATE OR REPLACE TEMP VIEW obs_main AS "
+               "SELECT tfrom, statid, seid, seval "
+               "FROM statobs "
+               "INNER JOIN seobs "
+               "ON statobs_time.id = seobs.obsid;"
+               "WHERE tfrom BETWEEN %s AND %s;")
+        if verbose:
+            log.debug(cur.mogrify(sql, (self.time_from, self.time_until)))
         with pg_conn.cursor() as cur:
-            sql = ("CREATE OR REPLACE TEMP VIEW obs_main AS "
-                   "SELECT tfrom, statid, seid, seval "
-                   "FROM statobs_time "
-                   "INNER JOIN seobs "
-                   "ON statobs_time.id = seobs.obsid;")
-            if verbose:
-                log.debug(sql)
             try:
-                cur.execute(sql)
+                cur.execute(sql, (self.time_from, self.time_until))
                 pg_conn.commit()
-            except Exception as e:
+                self.has_main_db_view = True
+            except:
                 pg_conn.rollback()
-                print(traceback.print_exc())
-                self.add_error(e)
+                self.errors.add(msg='Cannot create obs_main db view',
+                                log_add='exception')
 
     def add_station(self, stid):
         """
