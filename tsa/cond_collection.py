@@ -534,7 +534,6 @@ class CondCollection:
 
         cc = cls(time_from=time_from, time_until=time_until, title=ws.title)
         for row in ws.iter_rows(min_row=4, max_col=3):
-            log.debug(f'Row {row} ...')
             cells = [c for c in row]
             cells_ok = True
             for c in cells:
