@@ -9,6 +9,7 @@ import psycopg2
 import string
 import openpyxl as xl
 from .cond_collection import CondCollection
+from .error import TsaErrCollection
 from .utils import trunc_str
 from .utils import list_local_statids
 from .utils import list_local_sensors
