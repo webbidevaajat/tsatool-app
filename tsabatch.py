@@ -1,3 +1,5 @@
+#!env/bin/python
+
 """
 Script for running TSA analyses as batch job.
 Meant for background use: all input and output parameters
@@ -41,7 +43,8 @@ def main():
     parser.add_argument('-n', '--name',
                         type=str,
                         help='Base name for output files saved under results/',
-                        metavar='OUTPUT_BASENAME')
+                        metavar='OUTPUT_BASENAME',
+                        required=True)
     parser.add_argument('--dryvalidate',
                         action='store_true',
                         help='Only validate input Excel with hard-coded ids and names')
@@ -56,10 +59,9 @@ def main():
     anls = AnalysisCollection(input_xlsx=args.input, name=args.name)
     log.info(f'Created {str(anls)}')
 
-    # Add all sheet names for analysis
-    sheets = anls.workbook.sheetnames
-    log.debug(f"Using all Excel sheets: {', '.join(sheets)}")
-    anls.set_sheetnames(sheets=sheets)
+    # Add all sheets for analysis ("info" is omitted by default)
+    anls.add_collections()
+    sys.exit()
 
     if args.dryvalidate:
         log.debug(f"Validating input Excel without database")
