@@ -53,16 +53,10 @@ class AnalysisCollection:
     Enables validating CondCollections separately
     and then analysing them.
 
-    Any input and output of an analysis is / must be located
-    in ``analysis`` directory of the project root.
-    The collection is based on an Excel file,
-    and each worksheet produces a CondCollection (unless valid).
-    The results (common xlsx file, and a pptx file for each CondCollection)
-    are saved into a new directory named after ``name``,
-    or after the Excel filename if no name given,
-    and they can be optionally zipped.
-
-    .. note: Existing files with same filepath will be overwritten.
+    Output files are saved in ``results/`` relative to current working directory.
+    PowerPoint reports follow pattern ``results/[name][_sheetname].pptx``,
+    and Excel files ``results/[name].xlsx``.
+    Existing output files with same filepath will be overwritten.
     """
     # TODO: Separate dry and db methods.
     def __init__(self, input_xlsx, name):
@@ -70,11 +64,9 @@ class AnalysisCollection:
         self.name = name
         self.workbook = xl.load_workbook(filename=input_xlsx, read_only=True)
 
-        # Results are saved as `results/[name][_sheetname].pptx`
-        # and `results/[name].xlsx`.
         os.makedirs('results', exist_ok=True)
         self.out_base_path = f'results/{self.name}'
-        
+
         self.collections = OrderedDict()
         self.errs = TsaErrCollection('ANALYSIS / EXCEL FILE')
         self.statids_in_db = set()
