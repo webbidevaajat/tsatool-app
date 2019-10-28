@@ -33,9 +33,11 @@ class CondCollection:
     see ``set_default_times(self)``.
 
     :param time_from: start time (inclusive) of the analysis period
-    :type time_from: Python ``datetime()`` object
+    :type time_from: datetime
     :param time_until: end time (exclusive) of the analysis period
-    :type time_until: Python ``datetime()`` object
+    :type time_until: datetime
+    :param title: name of the collection
+    :type title: str
     """
     def __init__(self, time_from, time_until, title=None):
         # Times must be datetime objects and in correct order
