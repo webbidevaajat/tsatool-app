@@ -77,32 +77,6 @@ class CondCollection:
         self.time_until = self.time_until.replace(
             hour=23, minute=59, second=59)
 
-    def setup_statobs_view(self, pg_conn, verbose=False):
-        """
-        In the database, create or replace a temporary view ``statobs_time``
-        containing the station observations within the ``time_range``.
-        """
-        # TODO: refactor
-        if pg_conn:
-            with pg_conn.cursor() as cur:
-                sql = ("CREATE OR REPLACE TEMP VIEW statobs_time AS "
-                       "SELECT id, tfrom, statid "
-                       "FROM statobs "
-                       "WHERE tfrom BETWEEN %s AND %s;")
-                if verbose:
-                    log.debug(cur.mogrify(sql, (self.time_from, self.time_until)))
-                try:
-                    cur.execute(sql, (self.time_from, self.time_until))
-                    pg_conn.commit()
-                except Exception as e:
-                    pg_conn.rollback()
-                    print(traceback.print_exc())
-                    self.add_error(e)
-        else:
-            errtext = 'WARNING: No db connection, cannot create view "statobs_time"'
-            self.add_error(errtext)
-            if verbose: print(errtext)
-
     def get_stations_in_view(self, pg_conn):
         """
         Get stations available in ``statobs_time`` view.
