@@ -89,6 +89,73 @@ class Condition:
 
         self.errors = TsaErrCollection(f'Condition {self.id_string}')
 
+    @staticmethod
+    def validate_order(tuples):
+        """
+        Validate order of the elements of a :py:class:``Block``.
+
+        :param tuples: list of tuples, each of which has
+            ``open_par`, ``close_par``, ``andor``, ``not`` or ``block``
+            in the first index and the string element itself in the second.
+        :type tuples: list or tuple
+        :return: no return if element order is valid, otherwise
+            raise an error upon first invalid element
+
+        Following element types may be in the first index:
+            ``open_par``, ``not``, ``block``
+
+        Following elements may be in the last index:
+            ``close_par``, ``block``
+
+        For elements other than the last one, see the table below
+        to see what element can follow each element.
+        Take the first element from left and the next element from top.
+
+        +-------------+------------+-------------+---------+-------+---------+
+        |             | `open_par` | `close_par` | `andor` | `not` | `block` |
+        +=============+============+=============+=========+=======+=========+
+        | `open_par`  | OK         | X           | X       | OK    | OK      |
+        +-------------+------------+-------------+---------+-------+---------+
+        | `close_par` | X          | OK          | OK      | X     | X       |
+        +-------------+------------+-------------+---------+-------+---------+
+        | `andor`     | OK         | X           | X       | OK    | OK      |
+        +-------------+------------+-------------+---------+-------+---------+
+        | `not`       | OK         | X           | X       | X     | OK      |
+        +-------------+------------+-------------+---------+-------+---------+
+        | `block`     | X          | OK          | OK      | X     | X       |
+        +-------------+------------+-------------+---------+-------+---------+
+        """
+        allowed_first = ('open_par', 'not', 'block')
+        allowed_pairs = (
+        ('open_par', 'open_par'), ('open_par', 'not'), ('open_par', 'block'),
+        ('close_par', 'close_par'), ('close_par', 'andor'),
+        ('andor', 'open_par'), ('andor', 'not'), ('andor', 'block'),
+        ('not', 'open_par'), ('not', 'block'),
+        ('block', 'close_par'), ('block', 'andor')
+        )
+        allowed_last = ('close_par', 'block')
+        last_i = len(tuples) - 1
+
+        for i, el in enumerate(tuples):
+            if i == 0:
+                if el[0] not in allowed_first:
+                    errtext = '{"{:s}" not allowed as first element: '.format(el[1])
+                    errtext = self.error_context(after=errtext)
+                    self.add_error(errtext)
+                    raise ValueError(errtext)
+            elif i == last_i:
+                if el[0] not in allowed_last:
+                    errtext = '"{:s}" not allowed as last element: '.format(el[1])
+                    errtext = self.error_context(after=errtext)
+                    self.add_error(errtext)
+                    raise ValueError(errtext)
+            if i < last_i:
+                if (el[0], tuples[i+1][0]) not in allowed_pairs:
+                    errtext = '"{:s}" not allowed right before "{:s}": '.format(el[1], tuples[i+1][1])
+                    errtext = self.error_context(after=errtext)
+                    self.add_error(errtext)
+                    raise ValueError(errtext)
+
     def make_blocks(self):
         """
         Extract a list of Block instances (that is, subconditions)
@@ -119,7 +186,8 @@ class Condition:
         # - not: starting the string and followed by space.
         # Then strip results from trailing and leading whitespaces
         # and remove empty elements.
-        sp = re.split('([()]|(?<=\s)and(?=\s)|(?<=\s)or(?=\s)|(?<=\s)not(?=\s)|^not(?=\s))', value)
+        sp = re.split(
+        '([()]|(?<=\s)and(?=\s)|(?<=\s)or(?=\s)|(?<=\s)not(?=\s)|^not(?=\s))', value)
         sp = [el.strip() for el in sp]
         sp = [el for el in sp if el]
 
@@ -176,72 +244,6 @@ class Condition:
                         i += 1
                 except Exception as e:
                     self.add_error(e)
-
-        def validate_order(tuples):
-            """
-            Validate order of the elements of a :py:class:``Block``.
-
-            :param tuples: list of tuples, each of which has
-                ``open_par`, ``close_par``, ``andor``, ``not`` or ``block``
-                in the first index and the string element itself in the second.
-            :type tuples: list or tuple
-            :return: no return if element order is valid, otherwise
-                raise an error upon first invalid element
-
-            Following element types may be in the first index:
-                ``open_par``, ``not``, ``block``
-
-            Following elements may be in the last index:
-                ``close_par``, ``block``
-
-            For elements other than the last one, see the table below
-            to see what element can follow each element.
-            Take the first element from left and the next element from top.
-
-            +-------------+------------+-------------+---------+-------+---------+
-            |             | `open_par` | `close_par` | `andor` | `not` | `block` |
-            +=============+============+=============+=========+=======+=========+
-            | `open_par`  | OK         | X           | X       | OK    | OK      |
-            +-------------+------------+-------------+---------+-------+---------+
-            | `close_par` | X          | OK          | OK      | X     | X       |
-            +-------------+------------+-------------+---------+-------+---------+
-            | `andor`     | OK         | X           | X       | OK    | OK      |
-            +-------------+------------+-------------+---------+-------+---------+
-            | `not`       | OK         | X           | X       | X     | OK      |
-            +-------------+------------+-------------+---------+-------+---------+
-            | `block`     | X          | OK          | OK      | X     | X       |
-            +-------------+------------+-------------+---------+-------+---------+
-            """
-            allowed_first = ('open_par', 'not', 'block')
-            allowed_pairs = (
-            ('open_par', 'open_par'), ('open_par', 'not'), ('open_par', 'block'),
-            ('close_par', 'close_par'), ('close_par', 'andor'),
-            ('andor', 'open_par'), ('andor', 'not'), ('andor', 'block'),
-            ('not', 'open_par'), ('not', 'block'),
-            ('block', 'close_par'), ('block', 'andor')
-            )
-            allowed_last = ('close_par', 'block')
-            last_i = len(tuples) - 1
-
-            for i, el in enumerate(tuples):
-                if i == 0:
-                    if el[0] not in allowed_first:
-                        errtext = '{"{:s}" not allowed as first element: '.format(el[1])
-                        errtext = self.error_context(after=errtext)
-                        self.add_error(errtext)
-                        raise ValueError(errtext)
-                elif i == last_i:
-                    if el[0] not in allowed_last:
-                        errtext = '"{:s}" not allowed as last element: '.format(el[1])
-                        errtext = self.error_context(after=errtext)
-                        self.add_error(errtext)
-                        raise ValueError(errtext)
-                if i < last_i:
-                    if (el[0], tuples[i+1][0]) not in allowed_pairs:
-                        errtext = '"{:s}" not allowed right before "{:s}": '.format(el[1], tuples[i+1][1])
-                        errtext = self.error_context(after=errtext)
-                        self.add_error(errtext)
-                        raise ValueError(errtext)
 
         # Check the correct order of the tuples.
         # This should raise and error and thus exit the method
