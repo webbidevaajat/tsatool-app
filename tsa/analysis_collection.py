@@ -101,9 +101,7 @@ class AnalysisCollection:
         for title in sheetnames:
             try:
                 self.collections[title] = CondCollection.from_xlsx_sheet(
-                    ws=self.workbook[title],
-                    station_ids=self.local_statids,
-                    sensor_pairs=self.local_sensor_pairs
+                    ws=self.workbook[title]
                 )
                 log.info(f'Successfully added CondCollection <{title}>')
             except:
