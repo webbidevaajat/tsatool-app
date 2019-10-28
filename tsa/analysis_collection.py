@@ -230,9 +230,5 @@ class AnalysisCollection:
         s = f'AnalysisCollection <{self.name}> based on <{self.input_xlsx}>: '
         s += f'created at {str(self.created_at)}, '
         s += f'{len(self.collections)} collections, '
-        if self.pg_conn is None:
-            s += 'not connected to DB, '
-        else:
-            s += 'connected to DB, '
         s += f'{len(self.errors)} errors'
         return s
