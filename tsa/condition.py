@@ -45,7 +45,7 @@ class Condition:
         self.master_alias = to_pg_identifier(master_alias)
         self.id_string = to_pg_identifier(f'{self.site}_{self.master_alias}')
 
-        self.condition = eliminate_umlauts(raw_condition).strip.lower()
+        self.condition = eliminate_umlauts(raw_condition).strip().lower()
 
         # Times must be datetime objects
         self.time_from = time_range[0]
@@ -57,6 +57,8 @@ class Condition:
 
         # Excel row for prompting, if made from Excel sheet
         self.excel_row = excel_row
+
+        self.errors = TsaErrCollection(f'Condition <{self.id_string}>')
 
         # Following attrs will be set by .make_blocks method
         self.blocks = list()
@@ -77,8 +79,6 @@ class Condition:
         self.percentage_valid = 0
         self.percentage_notvalid = 0
         self.percentage_nodata = 1
-
-        self.errors = TsaErrCollection(f'Condition <{self.id_string}>')
 
     @staticmethod
     def validate_order(tuples):
