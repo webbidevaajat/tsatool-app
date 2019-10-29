@@ -413,7 +413,7 @@ class Condition:
         """
         Calculate summary attribute values using the ``.main_df`` DataFrame.
         """
-        if self.main_df is None:
+        if self.main_df.empty:
             return
         df = self.main_df
 
