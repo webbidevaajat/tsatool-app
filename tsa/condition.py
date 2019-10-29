@@ -73,8 +73,8 @@ class Condition:
 
         # Following attrs will be set by .make_blocks method
         self.condition_elements = None
-        self.blocks = None
-        self.alias_condition = None
+        self.blocks = list()
+        self.alias_condition = ''
         self.secondary = None
         self.is_valid = False
         self.make_blocks()
@@ -82,8 +82,8 @@ class Condition:
         self.has_db_view = False
 
         # pandas DataFrames for results
-        self.main_df = None
-        self.durations_df = None
+        self.main_df = pandas.DataFrame()
+        self.durations_df = pandas.DataFrame()
 
         self.n_rows = 0
         # Total time will be set to represent
