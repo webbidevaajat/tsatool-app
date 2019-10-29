@@ -133,24 +133,23 @@ class CondCollection:
 
     def add_condition(self, site, master_alias, raw_condition, excel_row=None):
         """
-        Add new Condition instance, raise error if one exists already
+        Add new Condition instance, except if one exists already
         with same site-master_alias identifier.
         """
         try:
             candidate = Condition(site, master_alias, raw_condition, self.time_range, excel_row)
-            if candidate.id_string in self.id_strings:
-                errtext = f'Site-master_alias combo {candidate.id_string} is already reserved, cannot add it twice'
-                raise ValueError(errtext)
-            else:
-                self.conditions.append(candidate)
-                self.id_strings.add(candidate.id_string)
-                for stid in candidate.station_ids:
-                    self.add_station(stid)
-        except Exception as e:
-            e = str(e)
-            if excel_row is not None:
-                e += f' (row {excel_row} in Excel)'
-            self.add_error(e)
+        except:
+            self.errors.add(
+                msg=f'Could not build Condition from Excel row {excel_row}'
+            )
+            return
+        if candidate.id_string in self.conditions.keys():
+            self.errors.add(
+                msg=f'Condition identifier "{candidate.id_string}" is already reserved, skipping (Excel row {excel_row})',
+                log_add='warning'
+            )
+            return
+        self.conditions[candidate.id_string] = candidate
 
     def set_sensor_ids(self, pg_conn, pairs=None):
         """
