@@ -250,6 +250,9 @@ class Condition:
         # if there is an illegal combination of elements next to each other.
         is_valid = is_valid and Condition.validate_order(idfied)
 
+        # Also check if all Blocks are marked valid
+        is_valid = is_valid and all(el[1].is_valid for el in idfied if el[0] == 'block')
+
         # If validation was successful, attributes can be set
 
         # Pick up all unique blocks in the order they appear

@@ -4,6 +4,7 @@
 # Block class, called by Condition
 
 import logging
+from .error import TsaErrCollection
 from .utils import to_pg_identifier
 from .utils import with_errpointer
 
@@ -81,18 +82,13 @@ class Block:
         self.operator = None
         self.value_str = None
 
+        self.errors = TsaErrCollection(f'BLOCK <{self.alias}>')
+
         # Set values depending on raw logic given
         self.unpack_logic()
 
-    def error_context(self, before='', after=''):
-        """
-        Return context information on block,
-        to be used with error messages.
-        """
-        s = before
-        s += f'\nBlock {self.alias}:\n'
-        s += after
-        return s
+        # At this point, there should be no errors or warnings:
+        self.is_valid = (len(self.errors) == 0)
 
     def unpack_logic(self):
         """
@@ -114,9 +110,10 @@ class Block:
         # ERROR if too many hashtags or operators
         n_hashtags = self.raw_logic.count('#')
         if n_hashtags > 1:
-            errtext = 'Too many "#"s, only one or zero allowed:\n'
-            errtext = self.error_context(after=errtext)
-            raise ValueError(errtext)
+            self.errors.add(
+                msg='Too many "#" symbols, only one or zero allowed',
+                log_add='error'
+            )
         n_binops = 0
         binop_in_str = None
         for binop in binops:
@@ -124,9 +121,10 @@ class Block:
                 n_binops += self.raw_logic.count(binop)
                 binop_in_str = binop
         if n_binops > 1:
-            errtext = 'Too many binary operators, only one or zero allowed:\n'
-            errtext = self.error_context(after=errtext)
-            raise ValueError(errtext)
+            self.errors.add(
+                msg='Too many "=", "<>", ">", "<", ">=", "<=", "in" operators, only one or zero allowed',
+                log_add='error'
+            )
 
         # Case 1: contains no hashtag and no binary operator
         # -> secondary block, site is picked from parent_site.
@@ -136,9 +134,12 @@ class Block:
             self.site = self.parent_site
             try:
                 self.source_alias = to_pg_identifier(self.raw_logic)
-                self.source_view = f'{self.site}_{self.source_alias}'
-            except ValueError as e:
-                raise ValueError(self.error_context(after=e))
+                self.source_view = to_pg_identifier(f'{self.site}_{self.source_alias}')
+            except:
+                self.errors.add(
+                    msg='Cannot set source alias and view for secondary condition',
+                    log_add='exception'
+                )
 
         # Case 2: contains hashtag but no binary operator
         # -> secondary block
@@ -148,9 +149,12 @@ class Block:
             try:
                 self.site = to_pg_identifier(parts[0])
                 self.source_alias = to_pg_identifier(parts[1])
-                self.source_view = f'{self.site}_{self.source_alias}'
-            except ValueError as e:
-                raise ValueError(self.error_context(after=e))
+                self.source_view = to_pg_identifier(f'{self.site}_{self.source_alias}')
+            except:
+                self.errors.add(
+                    msg='Cannot set site, source alias and view for secondary condition',
+                    log_add='exception'
+                )
 
         # Case 3: contains hashtag and binary operator
         # -> primary block
@@ -165,26 +169,29 @@ class Block:
                 self.sensor = to_pg_identifier(parts[1])
                 self.operator = binop_in_str.lower().strip()
                 self.value_str = parts[2].lower().strip()
-            except ValueError as e:
-                raise ValueError(self.error_context(after=e))
+            except:
+                self.errors.add(
+                    msg='Cannot set attributes for primary condition',
+                    log_add='exception'
+                )
 
             # Special case with operator "in":
             # must be followed by tuple enclosed with parentheses.
             if self.operator == 'in':
                 val_sw = self.value_str.startswith('(')
                 val_ew = self.value_str.endswith(')')
-                if val_sw is False and val_ew is False:
-                    errtext = 'Binary operator "in" must be followed by\n'
-                    errtext += 'a tuple enclosed with parentheses "()":\n'
-                    errtext += self.raw_logic
-                    raise ValueError(self.error_context(after=errtext))
+                if not all ( (val_sw, val_ew) ):
+                    self.errors.add(
+                        msg='"in" must be followed by values enclosed by "()"',
+                        log_add='error'
+                    )
 
         # Case 4: ERROR if binary operator but no hashtag
         else:
-            errtext = 'No "#" given, should be of format\n'
-            errtext += '[station]#[sensor] [binary operator] [value]:\n'
-            errtext += self.raw_logic
-            raise ValueError(self.error_context(after=errtext))
+            self.errors.add(
+                msg='Primary condition requires a "#" between station and sensor',
+                log_add='error'
+            )
 
     def set_sensor_id(self, nameids):
         """
