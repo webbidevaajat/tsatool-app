@@ -83,7 +83,6 @@ class Condition:
 
         # pandas DataFrames for results
         self.main_df = pandas.DataFrame()
-        self.durations_df = pandas.DataFrame()
 
         # Total time will be set to represent
         # actual min and max timestamps of the data
@@ -430,15 +429,6 @@ class Condition:
         self.percentage_valid = self.tottime_valid.total_seconds() / tts
         self.percentage_notvalid = self.tottime_notvalid.total_seconds() / tts
         self.percentage_nodata = self.tottime_nodata.total_seconds() / tts
-
-    def calculate_durations_df(self):
-        """
-        Set a DataFrame of how long each condition is valid / not valid / null
-        at a time.
-        """
-        # TODO: implement this later
-        pass
-
 
     def fetch_results_from_db(self, pg_conn=None):
         """
