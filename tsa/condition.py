@@ -85,7 +85,6 @@ class Condition:
         self.main_df = pandas.DataFrame()
         self.durations_df = pandas.DataFrame()
 
-        self.n_rows = 0
         # Total time will be set to represent
         # actual min and max timestamps of the data
         self.tottime = self.time_until - self.time_from
@@ -424,7 +423,6 @@ class Condition:
             return
         df = self.main_df
 
-        self.n_rows = df.shape[0]
         self.tottime_valid = df[df['master']==True]['vdiff'].sum() or timedelta(0)
         self.tottime_notvalid = df[df['master']==False]['vdiff'].sum() or timedelta(0)
         self.tottime_nodata = self.tottime - self.tottime_valid - self.tottime_notvalid
