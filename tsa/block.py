@@ -215,9 +215,9 @@ class Block:
         Condition table creation.
         """
         if self.secondary is None:
-            errtext = 'Block type (primary/secondary) is not defined.'
-            errtext = self.error_context(after=errtext)
-            raise Exception(errtext)
+            log.error((f'Block type is not defined for "{self.alias}", '
+                       'cannot get SQL definition'))
+            return
 
         elif self.secondary:
             # Block is SECONDARY -> try to pick boolean values
