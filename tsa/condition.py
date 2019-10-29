@@ -65,8 +65,6 @@ class Condition:
         self.is_valid = False
         self.make_blocks()
 
-        self.has_db_view = False
-
         # pandas DataFrames for results
         self.main_df = pandas.DataFrame()
 
@@ -400,7 +398,6 @@ class Condition:
                     pg_conn.commit()
                     cur.execute(create_sql)
                     pg_conn.commit()
-                    self.has_view = True
                     log.debug(f'Temp table created for {str(self)}')
             except:
                 pg_conn.rollback()
@@ -425,19 +422,12 @@ class Condition:
         self.percentage_notvalid = self.tottime_notvalid.total_seconds() / tts
         self.percentage_nodata = self.tottime_nodata.total_seconds() / tts
 
-    def fetch_results_from_db(self, pg_conn=None):
+    def fetch_results_from_db(self, pg_conn):
         """
         Fetch result data from corresponding db view
         to pandas DataFrame, and set summary attribute values
         based on the DataFrame.
         """
-        if not pg_conn:
-            return
-        if not self.has_view:
-            print('Could not fetch results for')
-            print(f'{str(self)}:\n')
-            print('since it does not have a corresponding database view.')
-            return
         sql = f"SELECT * FROM {self.id_string};"
         self.main_df = pandas.read_sql(sql, con=pg_conn)
 
