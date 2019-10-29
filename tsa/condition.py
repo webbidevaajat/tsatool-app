@@ -406,13 +406,29 @@ class Condition:
                     log_add='exception'
                 )
 
-    def set_summary_attrs(self):
+    def fetch_results_from_db(self, pg_conn):
         """
-        Calculate summary attribute values using the ``.main_df`` DataFrame.
+        Fetch result data from corresponding db view
+        to pandas DataFrame, and set summary attribute values
+        based on the DataFrame.
         """
-        if self.main_df.empty:
+        if not self.is_valid:
+            return
+        sql = f"SELECT * FROM {self.id_string};"
+        try:
+            self.main_df = pandas.read_sql(sql, con=pg_conn)
+        except:
+            self.errors.add(
+                msg='Cannot not fetch results from db',
+                log_add='exception'
+            )
             return
         df = self.main_df
+
+        self.data_from = df['vfrom'].min()
+        self.data_until = df['vuntil'].max()
+        if not (self.data_from is None or self.data_until is None):
+            self.tottime = self.data_until - self.data_from
 
         self.tottime_valid = df[df['master']==True]['vdiff'].sum() or timedelta(0)
         self.tottime_notvalid = df[df['master']==False]['vdiff'].sum() or timedelta(0)
@@ -421,22 +437,6 @@ class Condition:
         self.percentage_valid = self.tottime_valid.total_seconds() / tts
         self.percentage_notvalid = self.tottime_notvalid.total_seconds() / tts
         self.percentage_nodata = self.tottime_nodata.total_seconds() / tts
-
-    def fetch_results_from_db(self, pg_conn):
-        """
-        Fetch result data from corresponding db view
-        to pandas DataFrame, and set summary attribute values
-        based on the DataFrame.
-        """
-        sql = f"SELECT * FROM {self.id_string};"
-        self.main_df = pandas.read_sql(sql, con=pg_conn)
-
-        self.data_from = self.main_df['vfrom'].min()
-        self.data_until = self.main_df['vuntil'].max()
-        if not (self.data_from is None or self.data_until is None):
-            self.tottime = self.data_until - self.data_from
-
-        self.set_summary_attrs()
 
     def get_timelineplot(self):
         """
