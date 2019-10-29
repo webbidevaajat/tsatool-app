@@ -118,19 +118,6 @@ class CondCollection:
                 self.errors.add(msg='Cannot create obs_main db view',
                                 log_add='exception')
 
-    def add_station(self, stid):
-        """
-        Add ``stid`` to ``self.station_ids`` if not already there.
-        If station ids in the db main view have been fetched,
-        check if the main view contains that station id.
-        """
-        if stid not in self.station_ids:
-            if self.statids_available:
-                if stid not in self.statids_available:
-                    errtext = f'WARNING: no observations for station {stid} in database view!'
-                    self.add_error(errtext)
-            self.station_ids.add(stid)
-
     def add_condition(self, site, master_alias, raw_condition, excel_row=None):
         """
         Add new Condition instance, except if one exists already
