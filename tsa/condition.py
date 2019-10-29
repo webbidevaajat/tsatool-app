@@ -250,7 +250,7 @@ class Condition:
         # Check the correct order of the tuples.
         # This should raise and error and thus exit the method
         # if there is an illegal combination of elements next to each other.
-        is_valid = is_valid and validate_order(idfied)
+        is_valid = is_valid and Condition.validate_order(idfied)
 
         # If validation was successful, attributes can be set
 
