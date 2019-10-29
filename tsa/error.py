@@ -19,13 +19,22 @@ class TsaError:
         if log_add == '':
             pass
         elif log_add == 'warning':
-            log.warning(msg)
+            log.warning(self.with_context())
         elif log_add == 'exception':
-            log.exception(msg)
+            log.exception(self.with_context())
         elif log_add == 'fatal':
-            log.fatal(msg)
+            log.fatal(self.with_context())
         else:
-            log.error(msg)
+            log.error(self.with_context())
+
+    def with_context(self):
+        """
+        Return message with context but no timestamp.
+        """
+        s = f'{self.context}: {self.msg}'
+        if self.n_more > 0:
+            s += f' ({self.n_more} more similar errors)'
+        return s
 
     def __str__(self):
         s = f'{self.timestamp}; {self.context}: {self.msg}'
