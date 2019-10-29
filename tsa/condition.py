@@ -72,7 +72,6 @@ class Condition:
         self.excel_row = excel_row
 
         # Following attrs will be set by .make_blocks method
-        self.condition_elements = None
         self.blocks = list()
         self.alias_condition = ''
         self.secondary = None
@@ -290,7 +289,6 @@ class Condition:
             elif el[0] == 'block':
                 alias_parts.append(el[1].alias)
         self.alias_condition = ''.join(alias_parts)
-        self.condition_elements = idfied
 
         # If any of the blocks is secondary,
         # then the whole condition is considered secondary.
