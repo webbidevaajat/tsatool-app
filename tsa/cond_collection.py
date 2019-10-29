@@ -46,10 +46,8 @@ class CondCollection:
         assert isinstance(time_from, datetime)
         assert isinstance(time_until, datetime)
         assert time_from <= time_until
-        self.time_from = time_from
-        self.time_until = time_until
-        self.set_default_times()
-        self.time_range = (self.time_from, self.time_until)
+        self.time_from = time_from.replace(hour=0, minute=0, second=0)
+        self.time_until = time_until.replace(hour=23, minute=59, second=59)
 
         self.title = title
         # Timestamp is based on instance creation time,
@@ -66,16 +64,6 @@ class CondCollection:
         self.station_ids_in_db_view = set()
 
         self.errors = TsaErrCollection(f'COLLECTION <{self.title}>')
-
-    def set_default_times(self):
-        """
-        Sets analysis start time to 00:00:00
-        and end time to 23:59:59 on selected dates, respectively.
-        """
-        self.time_from = self.time_from.replace(
-            hour=0, minute=0, second=0)
-        self.time_until = self.time_until.replace(
-            hour=23, minute=59, second=59)
 
     def set_station_ids_in_db_view(self, pg_conn):
         """
@@ -124,7 +112,13 @@ class CondCollection:
         with same site-master_alias identifier.
         """
         try:
-            candidate = Condition(site, master_alias, raw_condition, self.time_range, excel_row)
+            candidate = Condition(
+                site,
+                master_alias,
+                raw_condition,
+                (self.time_from, self.time_until),
+                excel_row
+                )
         except:
             self.errors.add(
                 msg=f'Could not build Condition from Excel row {excel_row}'
