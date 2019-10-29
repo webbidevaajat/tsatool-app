@@ -260,6 +260,12 @@ class Condition:
             if el[0] == 'block' and el[1] not in blocks:
                 blocks.append(el[1])
         self.blocks = sorted(blocks, key=lambda x: x.alias)
+        if len(self.blocks) == 0:
+            self.errors.add(
+                msg='No Blocks were created',
+                log_add='warning'
+            )
+            is_valid = False
 
         # Form the alias condition by constructing the parts back
         # from the "identified" parts, but for blocks, this time
@@ -307,17 +313,18 @@ class Condition:
                 stids.add(bl.station_id)
         return stids
 
-    def create_db_temptable(self, pg_conn=None, verbose=False, src_tables=[], execute=True):
+    def create_db_temptable(self, pg_conn=None, verbose=False):
         """
         Create temporary table corresponding to the condition.
-        Existence of secondary block source tables is checked against ``src_tables``.
-        Effective only if a database connection is present.
-        Views ``statobs_time`` and ``statobs_time`` must exist.
-        With execute=False, only returns the sql statements as string.
+        If ``pg_conn`` is ``None``, no database queries are executed;
+        if ``verbose`` is ``True``, whole SQL query is logged.
+        If condition is secondary and referenced relations do not exist
+        in database, running the SQL query will fail.
         """
+        if not self.is_valid:
+            return
+
         log.debug(f'Creating temp table {self.id_string}')
-        if len(self.blocks) == 0:
-            raise Exception(f'{self.id_string}: no Blocks to construct database query')
 
         drop_sql = f"DROP TABLE IF EXISTS {self.id_string};\n"
 
@@ -378,26 +385,29 @@ class Condition:
             create_sql += f"({self.alias_condition}) AS master \nFROM {block_join_sql});"
 
         if verbose:
-            log.info(drop_sql)
-            log.info(create_sql)
+            log.debug(drop_sql)
+            log.debug(create_sql)
 
-        if not pg_conn:
-            errtext = 'WARNING: no database connection'
-            self.add_error(errtext)
-
-        if execute and pg_conn:
-            with pg_conn.cursor() as cur:
-                try:
+        if pg_conn is None:
+            self.errors.add(
+                msg='No pg_conn: temp table creation SQL is not run',
+                log_add='warning'
+            )
+        else:
+            try:
+                with pg_conn.cursor() as cur:
                     cur.execute(drop_sql)
                     pg_conn.commit()
                     cur.execute(create_sql)
                     pg_conn.commit()
                     self.has_view = True
-                except psycopg2.DatabaseError as e:
-                    log.exception(e)
-                    pg_conn.rollback()
-                    errtext = self.error_context(after=e)
-                    self.add_error(errtext)
+                    log.debug(f'Temp table created for {str(self)}')
+            except:
+                pg_conn.rollback()
+                self.errors.add(
+                    msg='Failed to create temp table',
+                    log_add='exception'
+                )
 
     def set_summary_attrs(self):
         """

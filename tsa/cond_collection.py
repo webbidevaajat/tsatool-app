@@ -175,26 +175,6 @@ class CondCollection:
                 except Exception as e:
                     cnd.add_error(e)
 
-    def get_temporary_relations(self, pg_conn):
-        """
-        Set str list of temporary tables and views currently available in db.
-        """
-        # TODO: refactor
-        if not pg_conn:
-            self.add_error('WARNING: No db connection, cannot get temporary relations list')
-            return
-        with pg_conn.cursor() as cur:
-            try:
-                sql = ("SELECT table_name FROM information_schema.tables "
-                       "WHERE table_schema LIKE '%pg_temp%';")
-                cur.execute(sql)
-                res = cur.fetchall()
-            except Exception as e:
-                pg_conn.rollback()
-                self.add_error(e)
-                return
-        self.temptables = [el[0] for el in res]
-
     def create_condition_temptables(self, pg_conn, verbose=False):
         """
         For each Condition, create the corresponding temporary table in db.
@@ -202,18 +182,16 @@ class CondCollection:
         if there are secondary conditions depending further on each other,
         it is up to the user to give them in correct order!
         """
-
+        # TODO: refactor
         # First round for primary ones only
         for cnd in self.conditions:
             if cnd.secondary:
                 continue
             try:
                 cnd.create_db_temptable(pg_conn=pg_conn,
-                                        verbose=verbose,
-                                        src_tables=self.temptables)
+                                        verbose=verbose)
             except Exception as e:
                 log.exception(e)
-        self.get_temporary_relations()
 
         # Second round for secondary ones,
         # viewnames list is now updated every time
@@ -221,9 +199,7 @@ class CondCollection:
             if cnd.secondary:
                 try:
                     cnd.create_db_temptable(pg_conn=pg_conn,
-                                            verbose=verbose,
-                                            src_tables=self.temptables)
-                    self.get_temporary_relations()
+                                            verbose=verbose)
                 except Exception as e:
                     log.exception(e)
 
