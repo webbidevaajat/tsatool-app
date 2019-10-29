@@ -66,6 +66,14 @@ def to_pg_identifier(x):
     x = eliminate_umlauts(x)
     x = x.replace(' ', '_')
 
+    # Identifiers used in database and thus not allowed as condition identifiers
+    DISABLED_IDENTIFIERS = [
+        'stations', 'statobs', 'sensors', 'seobs', 'laskennallinen_anturi', 'tiesaa_asema'
+        ]
+    if x in DISABLED_IDENTIFIERS:
+        raise ValueError((f'"{x}" cannot be used as identifier '
+                          'since it is already reserved in database!'))
+
     if x[0].isdigit():
         errtext = 'String starts with digit:\n'
         errtext += with_errpointer(x, 0)

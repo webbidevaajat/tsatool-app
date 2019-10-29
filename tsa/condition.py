@@ -19,11 +19,6 @@ from datetime import timedelta
 
 log = logging.getLogger(__name__)
 
-# Identifiers used in database and thus not allowed as condition identifiers
-DISABLED_IDENTIFIERS = [
-    'stations', 'statobs', 'sensors', 'seobs', 'laskennallinen_anturi', 'tiesaa_asema'
-    ]
-
 # Set matplotlib parameters globally
 rcParams['font.family'] = 'sans-serif'
 rcParams['font.sans-serif'] = ['Arial', 'Tahoma']
@@ -48,10 +43,7 @@ class Condition:
         # Attrs for further use must be PostgreSQL compatible
         self.site = to_pg_identifier(site)
         self.master_alias = to_pg_identifier(master_alias)
-        self.id_string = f'{self.site}_{self.master_alias}'
-        if self.id_string in DISABLED_IDENTIFIERS:
-            raise Exception((f'"{self.id_string}" cannot be used as identifier '
-                             'since it is already reserved in database!'))
+        self.id_string = to_pg_identifier(f'{self.site}_{self.master_alias}')
 
         self.condition = eliminate_umlauts(raw_condition).strip.lower()
 
