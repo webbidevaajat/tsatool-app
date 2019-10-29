@@ -297,7 +297,7 @@ class Condition:
         else:
             log.debug(f'{str(self)} parsed successfully')
 
-    def get_station_ids(self):
+    def get_station_ids_in_blocks(self):
         """
         Return unique station ids contained by primary Blocks
         """
