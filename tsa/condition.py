@@ -45,11 +45,6 @@ class Condition:
     :type excel_row: integer
     """
     def __init__(self, site, master_alias, raw_condition, time_range, excel_row=None):
-        # Original formattings are kept for printing purposes
-        self.orig_site = site
-        self.orig_master_alias = master_alias
-        self.orig_condition = raw_condition
-
         # Attrs for further use must be PostgreSQL compatible
         self.site = to_pg_identifier(site)
         self.master_alias = to_pg_identifier(master_alias)
