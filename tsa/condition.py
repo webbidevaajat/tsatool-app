@@ -322,7 +322,7 @@ class Condition:
         If condition is secondary and referenced relations do not exist
         in database, running the SQL query will fail.
         """
-        if not self.is_valid:
+        if not self.all_valid():
             return
 
         log.debug(f'Creating temp table {self.id_string}')
@@ -545,6 +545,13 @@ class Condition:
         fig.savefig(fname=fobj,
                     format='png')
         plt.close(fig)
+
+    def all_valid(self):
+        """
+        Are the Condition itself as well as all its Blocks valid?
+        """
+        blocks_valid = all(bl.is_valid for bl in self.blocks)
+        return self.is_valid and blocks_valid
 
     def __getitem__(self, key):
         """
