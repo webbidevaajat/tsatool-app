@@ -444,8 +444,7 @@ class Condition:
         a `broken_barh` plot of the validity of the condition
         and its blocks on a timeline.
         """
-        if self.main_df is None:
-            self.add_error('Could not create a plot since there is no data to visualize.')
+        if self.main_df.empty:
             return
 
         def getfacecolor(val):
