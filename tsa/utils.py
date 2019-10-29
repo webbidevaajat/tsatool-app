@@ -71,22 +71,23 @@ def to_pg_identifier(x):
         'stations', 'statobs', 'sensors', 'seobs', 'laskennallinen_anturi', 'tiesaa_asema'
         ]
     if x in DISABLED_IDENTIFIERS:
-        raise ValueError((f'"{x}" cannot be used as identifier '
-                          'since it is already reserved in database!'))
+        errtext = f'"{x}" cannot be used as identifier '
+        errtext += 'since it is already reserved in database!'
+        raise ValueError(errtext)
 
     if x[0].isdigit():
         errtext = 'String starts with digit:\n'
         errtext += with_errpointer(x, 0)
         raise ValueError(errtext)
 
-    if len(x) > 40:
-        errtext = 'String too long, maximum is 40 characters:\n'
-        errtext += with_errpointer(x, 40-1)
+    if len(x) > 63:
+        errtext = f'"{x}" is too long, maximum is 40 characters:\n'
+        errtext += with_errpointer(x, 63-1)
         raise ValueError(errtext)
 
     for i, c in enumerate(x):
         if not (c.isalnum() or c == '_'):
-            errtext = 'String contains an invalid character:\n'
+            errtext = f'"{x}" contains an invalid character:\n'
             errtext += with_errpointer(x, i)
             raise ValueError(errtext)
 
