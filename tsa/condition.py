@@ -557,14 +557,10 @@ class Condition:
 
     def __str__(self):
         if self.secondary is None:
-            s = 'Unknown'
+            s = 'Unknown '
         elif self.secondary is True:
             s = 'Secondary '
         else:
             s = 'Primary '
-        if self.blocks is None:
-            blen = 0
-        else:
-            blen = len(self.blocks)
-        s += f'Condition <{self.id_string}> with {blen} Blocks'
+        s += f'Condition <{self.id_string}> with {len(self.blocks)} Blocks'
         return s
