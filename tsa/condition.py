@@ -211,11 +211,11 @@ class Condition:
         # Block() raises error if this does not succeed.
         idfied = []
         i = 0
-        # tokens = {'(': 'open_par',
-        #           ')': 'close_par',
-        #           'and': 'andor',
-        #           'or': 'andor',
-        #           'not': 'not'}
+        tokens = {'(': 'open_par',
+                  ')': 'close_par',
+                  'and': 'andor',
+                  'or': 'andor',
+                  'not': 'not'}
         for el in new_sp:
             if el in tokens.keys():
                 idfied.append( (tokens[el], el) )
