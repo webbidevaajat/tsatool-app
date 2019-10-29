@@ -113,11 +113,11 @@ class CondCollection:
         """
         try:
             candidate = Condition(
-                site,
-                master_alias,
-                raw_condition,
-                (self.time_from, self.time_until),
-                excel_row
+                site=site,
+                master_alias=master_alias,
+                raw_condition=raw_condition,
+                time_range=(self.time_from, self.time_until),
+                excel_row=excel_row
                 )
         except:
             self.errors.add(
