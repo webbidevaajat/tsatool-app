@@ -193,17 +193,20 @@ class Block:
                 log_add='error'
             )
 
-    def set_sensor_id(self, nameids):
+    def set_sensor_id(self, nameid_pairs):
         """
         Set sensor id based on name-id dict,
         presumably gotten from database.
         """
-        if self.secondary == False:
+        if not self.secondary:
             try:
-                self.sensor_id = nameids[self.sensor]
+                self.sensor_id = nameid_pairs[self.sensor]
             except KeyError:
-                errtext = f"Sensor '{self.sensor}' not available."
-                raise KeyError(self.error_context(after=errtext))
+                self.errors.add(
+                    msg=f'No sensor id found by sensor name "{self.sensor}"',
+                    log_add='error'
+                )
+                self.is_valid = False
 
     def get_sql_def(self):
         """
