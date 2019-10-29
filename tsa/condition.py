@@ -63,11 +63,12 @@ class Condition:
         # Excel row for prompting, if made from Excel sheet
         self.excel_row = excel_row
 
-        # make_blocks() sets .condition_elements, .blocks, .alias_condition and .secondary
+        # Following attrs will be set by .make_blocks method
         self.condition_elements = None
         self.blocks = None
         self.alias_condition = None
         self.secondary = None
+        self.is_valid = False
         self.make_blocks()
 
         self.has_db_view = False
@@ -87,7 +88,7 @@ class Condition:
         self.percentage_notvalid = 0
         self.percentage_nodata = 1
 
-        self.errors = TsaErrCollection(f'Condition {self.id_string}')
+        self.errors = TsaErrCollection(f'Condition <{self.id_string}>')
 
     @staticmethod
     def validate_order(tuples):
@@ -98,8 +99,7 @@ class Condition:
             ``open_par`, ``close_par``, ``andor``, ``not`` or ``block``
             in the first index and the string element itself in the second.
         :type tuples: list or tuple
-        :return: no return if element order is valid, otherwise
-            raise an error upon first invalid element
+        :return: ``False`` if there were erroneous elements, ``True`` otherwise
 
         Following element types may be in the first index:
             ``open_par``, ``not``, ``block``
@@ -125,6 +125,7 @@ class Condition:
         | `block`     | X          | OK          | OK      | X     | X       |
         +-------------+------------+-------------+---------+-------+---------+
         """
+        success = True
         allowed_first = ('open_par', 'not', 'block')
         allowed_pairs = (
         ('open_par', 'open_par'), ('open_par', 'not'), ('open_par', 'block'),
@@ -139,22 +140,27 @@ class Condition:
         for i, el in enumerate(tuples):
             if i == 0:
                 if el[0] not in allowed_first:
-                    errtext = '{"{:s}" not allowed as first element: '.format(el[1])
-                    errtext = self.error_context(after=errtext)
-                    self.add_error(errtext)
-                    raise ValueError(errtext)
+                    self.errors.add(
+                        msg=f'"{el[1]}" cannot be first element in condition',
+                        log_add='error'
+                    )
+                success = False
             elif i == last_i:
                 if el[0] not in allowed_last:
-                    errtext = '"{:s}" not allowed as last element: '.format(el[1])
-                    errtext = self.error_context(after=errtext)
-                    self.add_error(errtext)
-                    raise ValueError(errtext)
+                    self.errors.add(
+                        msg=f'"{el[1]}" cannot be last element in condition',
+                        log_add='error'
+                    )
+                success = False
             if i < last_i:
                 if (el[0], tuples[i+1][0]) not in allowed_pairs:
-                    errtext = '"{:s}" not allowed right before "{:s}": '.format(el[1], tuples[i+1][1])
-                    errtext = self.error_context(after=errtext)
-                    self.add_error(errtext)
-                    raise ValueError(errtext)
+                    self.errors.add(
+                        msg=f'Illegal combination in condition: "{el[1]}" before "{tuples[i+1][1]}" ',
+                        log_add='error'
+                    )
+                success = False
+
+        return success
 
     def make_blocks(self):
         """
@@ -164,17 +170,18 @@ class Condition:
         and detect condition type (``secondary == True`` if any of the blocks has
         ``secondary == True``, ``False`` otherwise).
         """
+        is_valid = True
         value = self.condition
 
         # Generally, opening and closing bracket counts must match
         n_open = value.count('(')
         n_close = value.count(')')
         if n_open != n_close:
-            errtext = self.error_context()
-            errtext += 'Unequal number of opening and closing parentheses: '
-            errtext += '{:d} opening and {:d} closing'.format(n_open, n_close)
-            self.add_error(errtext)
-            # raise ValueError(errtext)
+            self.errors.add(
+                msg=f'Unequal of "(" ({n_open}) and ")" ({n_close}) in condition',
+                log_add='error'
+            )
+            is_valid = False
 
         # Eliminate multiple whitespaces
         # and leading and trailing whitespaces
@@ -214,11 +221,11 @@ class Condition:
         # Block() raises error if this does not succeed.
         idfied = []
         i = 0
-        tokens = {'(': 'open_par',
-                  ')': 'close_par',
-                  'and': 'andor',
-                  'or': 'andor',
-                  'not': 'not'}
+        # tokens = {'(': 'open_par',
+        #           ')': 'close_par',
+        #           'and': 'andor',
+        #           'or': 'andor',
+        #           'not': 'not'}
         for el in new_sp:
             if el in tokens.keys():
                 idfied.append( (tokens[el], el) )
@@ -246,11 +253,12 @@ class Condition:
                         msg=f'Cannot create Block from "{el}"',
                         log_add='exception'
                     )
+                    is_valid = False
 
         # Check the correct order of the tuples.
         # This should raise and error and thus exit the method
         # if there is an illegal combination of elements next to each other.
-        validate_order(idfied)
+        is_valid = is_valid and validate_order(idfied)
 
         # If validation was successful, attributes can be set
 
@@ -285,6 +293,18 @@ class Condition:
             if bl.secondary:
                 self.secondary = True
                 break
+
+        # Finally, inform the object if the condition is valid
+        # and further analysis is thus possible
+        self.is_valid = is_valid
+        if not is_valid:
+            self.errors.add(
+                msg=('There were errors with this condition '
+                     'and it will not be analyzed'),
+                log_add='warning'
+            )
+        else:
+            log.debug(f'{str(self)} parsed successfully')
 
     def get_station_ids(self):
         """
