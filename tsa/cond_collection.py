@@ -145,26 +145,35 @@ class CondCollection:
         if there are secondary conditions depending further on each other,
         it is up to the user to give them in correct order!
         """
-        # TODO: refactor
         # First round for primary ones only
+        # so temp tables referenced by secondary conditions
+        # can be found in the database session
         for cnd in self.conditions:
-            if cnd.secondary:
+            if cnd.secondary or not cnd.is_valid:
                 continue
             try:
                 cnd.create_db_temptable(pg_conn=pg_conn,
                                         verbose=verbose)
-            except Exception as e:
-                log.exception(e)
+            except:
+                self.errors.add(
+                    msg=f'Failed to create db temp table for <{str(cnd)}>',
+                    log_add='exception'
+                )
 
         # Second round for secondary ones,
         # viewnames list is now updated every time
         for cnd in self.conditions:
+            if not cnd.is_valid:
+                continue
             if cnd.secondary:
                 try:
                     cnd.create_db_temptable(pg_conn=pg_conn,
                                             verbose=verbose)
-                except Exception as e:
-                    log.exception(e)
+                except:
+                    self.errors.add(
+                        msg=f'Failed to create db temp table for <{str(cnd)}>',
+                        log_add='exception'
+                    )
 
     def fetch_all_results(self, pg_conn):
         """
