@@ -138,29 +138,6 @@ class CondCollection:
             return
         self.conditions[candidate.id_string] = candidate
 
-    def set_sensor_ids(self, pg_conn, pairs=None):
-        """
-        Get sensor name - id pairs from the database,
-        and set sensor ids for all Blocks in all Conditions.
-        Optionally, the ``nameids`` can be fed from outside, in which case
-        querying the database is omitted.
-        """
-        # TODO: pg_conn
-        if pairs is None or len(pairs) == 0:
-            if not pg_conn:
-                self.add_error('WARNING: No db connection, cannot get sensor ids from database')
-                return
-            with pg_conn.cursor() as cur:
-                cur.execute("SELECT id, lower(name) AS name FROM sensors;")
-                tb = cur.fetchall()
-                pairs = {k:v for v, k in tb}
-        for cnd in self.conditions:
-            for bl in cnd.blocks:
-                try:
-                    bl.set_sensor_id(pairs)
-                except Exception as e:
-                    cnd.add_error(e)
-
     def create_condition_temptables(self, pg_conn, verbose=False):
         """
         For each Condition, create the corresponding temporary table in db.
