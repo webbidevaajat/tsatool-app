@@ -12,23 +12,23 @@ import sys
 import argparse
 import psycopg2
 import logging
-import logging.handlers
-import logging.config
-from tsa import AnalysisCollection
+from tsa.analysis_collection import AnalysisCollection
 from tsa.utils import list_local_statids
 from tsa.utils import list_local_sensors
 
 def main():
     # ---- LOGGING ----
     os.makedirs('logs', exist_ok=True)
-    log = logging.getLogger('tsa')
+    log = logging.getLogger()
     log.setLevel(logging.DEBUG)
-    fh = logging.handlers.TimedRotatingFileHandler(os.path.join('logs', 'tsabatchlog'))
-    fh.setLevel(logging.INFO)
+    fh = logging.FileHandler(os.path.join('logs', 'tsabatchlog'))
     ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    fh.setFormatter(logging.Formatter('%(asctime)s; %(name)s; %(levelname)s; %(message)s'))
-    ch.setFormatter(logging.Formatter('%(levelname)s; %(message)s'))
+    fh.setFormatter(
+        logging.Formatter(
+            '%(asctime)s; %(module)-20s; line %(lineno)-3d; %(levelname)-8s; %(message)s'
+            )
+        )
+    ch.setFormatter(logging.Formatter('%(module)-20s; line %(lineno)-3d; %(levelname)-8s; %(message)s'))
     log.addHandler(fh)
     log.addHandler(ch)
 
