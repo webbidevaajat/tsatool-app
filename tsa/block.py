@@ -248,19 +248,6 @@ class Block:
 
         return sql
 
-    def view_exists(self, viewnames):
-        """
-        Check if the source view for secondary block exists
-        in the list of view names (presumably fetched from database).
-        With primary view automatically returns ``True``.
-        """
-        if self.secondary is None:
-            errtext = 'Block type (primary/secondary) is not defined.'
-            errtext = self.error_context(after=errtext)
-            raise Exception(errtext)
-
-        return self.source_view in viewnames or self.secondary == False
-
     def __str__(self):
         if self.secondary:
             s = 'Secondary '
