@@ -64,7 +64,7 @@ class Condition:
         self.blocks = list()
         self.alias_condition = ''
         self.secondary = None
-        self.is_valid = False
+        self.blocks_made = False
         self.make_blocks()
 
         # pandas DataFrames for results
@@ -294,7 +294,7 @@ class Condition:
 
         # Finally, inform the object if the condition is valid
         # and further analysis is thus possible
-        self.is_valid = is_valid
+        self.blocks_made = is_valid
         if not is_valid:
             self.errors.add(
                 msg=('There were errors with this condition '
@@ -423,7 +423,7 @@ class Condition:
         to pandas DataFrame, and set summary attribute values
         based on the DataFrame.
         """
-        if not self.is_valid:
+        if not self.is_valid():
             return
         sql = f"SELECT * FROM {self.id_string};"
         try:
@@ -554,12 +554,13 @@ class Condition:
                     format='png')
         plt.close(fig)
 
-    def all_valid(self):
+    def is_valid(self):
         """
-        Are the Condition itself as well as all its Blocks valid?
+        Sanity check of properties needed for further steps.
         """
-        blocks_valid = all(bl.is_valid for bl in self.blocks)
-        return self.is_valid and blocks_valid
+        blocks_valid = all(bl.is_valid() for bl in self.blocks)
+        # Add more here if needed
+        return blocks_valid and self.blocks_made
 
     def __getitem__(self, key):
         """
