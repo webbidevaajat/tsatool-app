@@ -113,8 +113,6 @@ class AnalysisCollection:
         """
         for coll in self.collections.keys():
             for cnd in self[coll].conditions.keys():
-                # TODO: Change .blocks from list to OrderedDict,
-                #       and add condition __getitem__ method!
                 for bl in self[coll][cnd].blocks.keys():
                     self[coll][cnd][bl].set_sensor_id(pairs)
 

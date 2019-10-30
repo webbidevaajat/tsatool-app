@@ -61,7 +61,7 @@ class Condition:
         self.errors = TsaErrCollection(str(self))
 
         # Following attrs will be set by .make_blocks method
-        self.blocks = list()
+        self.blocks = OrderedDict()
         self.alias_condition = ''
         self.secondary = None
         self.blocks_made = False
@@ -255,11 +255,11 @@ class Condition:
         # If validation was successful, attributes can be set
 
         # Pick up all unique blocks in the order they appear
-        blocks = []
+        blocks = OrderedDict()
         for el in idfied:
-            if el[0] == 'block' and el[1] not in blocks:
-                blocks.append(el[1])
-        self.blocks = sorted(blocks, key=lambda x: x.alias)
+            if el[0] == 'block' and el[1].alias not in blocks.keys():
+                blocks[el[1].alias] = el[1]
+        self.blocks = blocks
         if len(self.blocks) == 0:
             self.errors.add(
                 msg='No Blocks were created',
@@ -286,7 +286,7 @@ class Condition:
         # If any of the blocks is secondary,
         # then the whole condition is considered secondary.
         self.secondary = False
-        for bl in self.blocks:
+        for bl in self.blocks.values():
             if bl.secondary:
                 self.secondary = True
                 break
@@ -308,7 +308,7 @@ class Condition:
         Return unique station ids contained by primary Blocks
         """
         stids = set()
-        for bl in self.blocks:
+        for bl in self.blocks.values():
             if not bl.secondary:
                 stids.add(bl.station_id)
         return stids
@@ -336,7 +336,7 @@ class Condition:
         block_defs = []
         # ALL blocks must qualify, otherwise analyzing the condition is rejected
         try:
-            for bl in self.blocks:
+            for bl in self.blocks.values():
                 s = f"CREATE TEMP TABLE {bl.alias} ON COMMIT DROP AS ({bl.get_sql_def()});"
                 block_defs.append(s)
         except:
@@ -360,12 +360,12 @@ class Condition:
                            "lower(valid_r) AS vfrom, \n"
                            "upper(valid_r) AS vuntil, \n"
                            "upper(valid_r)-lower(valid_r) AS vdiff, \n"
-                           f"{self.blocks[0].alias}, \n"
-                           f"{self.blocks[0].alias} AS master \n"
-                           f"FROM {self.blocks[0].alias});")
+                           f"{self.blocks.keys()[0]}, \n"
+                           f"{self.blocks.keys()[0]} AS master \n"
+                           f"FROM {self.blocks.keys()[0]});")
         else:
             master_seq_els = []
-            for bl in self.blocks:
+            for bl in self.blocks.values():
                 s = f"SELECT unnest( array [lower(valid_r), upper(valid_r)] ) AS vt FROM {bl.alias}"
                 master_seq_els.append(s)
             master_seq_sql = "\nUNION \n".join(master_seq_els)
@@ -381,7 +381,7 @@ class Condition:
                            "FROM master_ranges_wlastnull \n"
                            "WHERE vuntil IS NOT NULL) \n")
             block_join_els = ['master_ranges']
-            for bl in self.blocks:
+            for bl in self.blocks.values():
                 s = f"LEFT JOIN {bl.alias} ON master_ranges.valid_r && {bl.alias}.valid_r"
                 block_join_els.append(s)
             block_join_sql = " \n".join(block_join_els)
@@ -389,7 +389,7 @@ class Condition:
                            "lower(master_ranges.valid_r) AS vfrom, \n"
                            "upper(master_ranges.valid_r) AS vuntil, \n"
                            "upper(master_ranges.valid_r)-lower(master_ranges.valid_r) AS vdiff, \n")
-            create_sql +=  ", \n".join([f"{bl.alias}" for bl in self.blocks]) + ", \n"
+            create_sql +=  ", \n".join([f"{bl.alias}" for bl in self.blocks.values()]) + ", \n"
             create_sql += f"({self.alias_condition}) AS master \nFROM {block_join_sql});"
 
         if verbose:
@@ -487,7 +487,7 @@ class Condition:
         yticks = []
         ylabels = []
         i = 1
-        for bl in self.blocks:
+        for bl in self.blocks.values():
             logic_lbl = bl.raw_logic
             ax.broken_barh(xranges=xr, yrange=(i, hgtval),
                            facecolors=list(map(getfacecolor,
@@ -557,26 +557,15 @@ class Condition:
         """
         Sanity check of properties needed for further steps.
         """
-        blocks_valid = all(bl.is_valid() for bl in self.blocks)
+        blocks_valid = all(bl.is_valid() for bl in self.blocks.values())
         # Add more here if needed
         return blocks_valid and self.blocks_made
 
     def __getitem__(self, key):
         """
-        Returns the Block instance on the corresponding index.
-        ``key`` can be integer or ``Block.alias`` string.
+        Return Block from the OrderedDict referenced by ``key``.
         """
-        try:
-            idx = int(key)
-        except ValueError:
-            idx = None
-            for i, bl in enumerate(self.blocks):
-                if bl.alias == key:
-                    idx = i
-                    break
-            if idx is None:
-                raise KeyError(f"No Block with alias '{key}'")
-        return self.blocks[idx]
+        return self.blocks[key]
 
 
     def __str__(self):
