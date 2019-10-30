@@ -55,7 +55,7 @@ def main():
             'Y-%m-%d %H:%M:%S'
             )
         )
-    ch.setFormatter(logging.Formatter('%(levelname)-8s; %(module)-20s; line %(lineno)-3d; %(message)s'))
+    ch.setFormatter(logging.Formatter('%(levelname)-8s; %(message)s'))
     log.addHandler(fh)
     log.addHandler(ch)
 
