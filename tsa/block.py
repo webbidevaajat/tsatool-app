@@ -200,7 +200,7 @@ class Block:
         # Case 4: ERROR if binary operator but no hashtag
         else:
             self.errors.add(
-                msg='Primary condition requires a "#" between station and sensor',
+                msg='Primary Block requires a "#" between station and sensor',
                 log_add='error'
             )
 
