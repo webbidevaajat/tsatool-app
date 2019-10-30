@@ -87,9 +87,6 @@ class Block:
         # Set values depending on raw logic given
         self.unpack_logic()
 
-        # At this point, there should be no errors or warnings:
-        self.is_valid = (len(self.errors) == 0)
-
     def is_valid(self):
         """
         Sanity check of properties needed for various steps.
