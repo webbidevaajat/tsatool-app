@@ -89,7 +89,7 @@ class Block:
 
     def is_valid(self):
         """
-        Sanity check of properties needed for various steps.
+        Sanity check: is Block ready for analysis?
         """
         if self.secondary is None:
             self.errors.add(
