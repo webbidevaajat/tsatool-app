@@ -91,12 +91,18 @@ class Block:
         """
         Sanity check of properties needed for various steps.
         """
-        v = self.secondary is not None
-        if self.secondary is False:
-            v = v and self.sensor_id is not None
+        if self.secondary is None:
+            self.errors.add(
+                msg='Type of Block is None (should be .secondary == True or False)',
+                log_add='error'
+            )
+        if self.secondary is False and self.sensor_id is None:
+            self.errors.add(
+                msg='Block has no sensor id',
+                log_add='error'
+            )
         # Add more here if needed; .errors cover quite a bit, though
-        v = v and len(self.errors) == 0
-        return v
+        return len(self.errors) == 0
 
     def unpack_logic(self):
         """
