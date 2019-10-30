@@ -105,22 +105,18 @@ class AnalysisCollection:
                 self.errors.add(msg=f'Could not add CondCollection <{title}>: skipping',
                                 log_add='exception')
 
-    def save_sensor_pairs(self, pg_conn=None, pairs=None):
+    def set_sensor_ids(self, pairs):
         """
-        Get sensor name-id pairs from database or name:id ``pairs`` dict
-        and save them as dict.
-        ``pg_conn`` must be a valid, online connection instance to TSA db.
+        Set sensor name-id pairs for all ``Blocks``.
+
+        :param pairs: dict, key = sensor id, value = sensor name
         """
-        # TODO: Separate dry and db methods.
-        if pg_conn is not None:
-            with pg_conn.cursor() as cur:
-                cur.execute("SELECT id, lower(name) AS name FROM sensors;")
-                tb = cur.fetchall()
-                self.sensor_pairs =  {k:v for v, k in tb}
-        elif pairs is not None:
-            self.sensor_pairs = pairs
-        else:
-            raise Exception("No pg_conn or sensor name-id pairs provided")
+        for coll in self.collections.keys():
+            for cnd in self[coll].conditions.keys():
+                # TODO: Change .blocks from list to OrderedDict,
+                #       and add condition __getitem__ method!
+                for bl in self[coll][cnd].blocks.keys():
+                    self[coll][cnd][bl].set_sensor_id(pairs)
 
     def save_statids_in_statobs(self, pg_conn=None, ids=None):
         """
