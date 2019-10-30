@@ -250,7 +250,7 @@ class Condition:
         is_valid = is_valid and self.validate_order(idfied)
 
         # Also check if all Blocks are marked valid
-        is_valid = is_valid and all(el[1].is_valid() for el in idfied if el[0] == 'block')
+        is_valid = is_valid and all(el[1].secondary is not None for el in idfied if el[0] == 'block')
 
         # If validation was successful, attributes can be set
 
