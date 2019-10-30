@@ -247,7 +247,7 @@ class Condition:
         # Check the correct order of the tuples.
         # This should raise and error and thus exit the method
         # if there is an illegal combination of elements next to each other.
-        is_valid = is_valid and Condition.validate_order(idfied)
+        is_valid = is_valid and self.validate_order(idfied)
 
         # Also check if all Blocks are marked valid
         is_valid = is_valid and all(el[1].is_valid() for el in idfied if el[0] == 'block')
