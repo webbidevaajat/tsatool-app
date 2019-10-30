@@ -121,7 +121,8 @@ class CondCollection:
                 )
         except:
             self.errors.add(
-                msg=f'Could not build Condition from Excel row {excel_row}'
+                msg=f'Could not build Condition, skipping (Excel row {excel_row})',
+                log_add='exception'
             )
             return
         if candidate.id_string in self.conditions.keys():
