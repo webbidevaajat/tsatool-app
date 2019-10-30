@@ -80,8 +80,7 @@ class Condition:
         self.percentage_notvalid = 0
         self.percentage_nodata = 1
 
-    @staticmethod
-    def validate_order(tuples):
+    def validate_order(self, tuples):
         """
         Validate order of the elements of a :py:class:``Block``.
 
