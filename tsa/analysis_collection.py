@@ -220,6 +220,11 @@ class AnalysisCollection:
             log.info(f'Excel results saved to {wb_outpath}')
         log.info(f'END OF ANALYSES for analysis collection {self.name}')
 
+    def __getitem__(self, key):
+        """
+        Return the CondCollection from the OrderedDict referenced by ``key``.
+        """
+        return self.collections[key]
 
     def __str__(self):
         s = f'<AnalysisCollection {self.name}> from <{self.input_xlsx}> '
