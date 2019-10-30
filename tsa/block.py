@@ -266,14 +266,8 @@ class Block:
             s = 'Secondary '
         else:
             s = 'Primary '
-        s += 'Block {:s} at {:s}: {:s}'.format(
-            self.alias, self.parent_site, self.raw_logic)
+        s += f'Block <{self.alias}> at {self.parent_site}: "{self.raw_logic}"'
         return s
-
-    def __repr__(self):
-        # TODO: need to make representation more unambiguous
-        # compared to __str__? Current one might be a bad workaround.
-        return str(self)
 
     def __eq__(self, other):
         """
