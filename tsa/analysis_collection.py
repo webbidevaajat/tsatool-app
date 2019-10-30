@@ -116,30 +116,22 @@ class AnalysisCollection:
                 for bl in self[coll][cnd].blocks.keys():
                     self[coll][cnd][bl].set_sensor_id(pairs)
 
-    def check_statids(self):
+    def check_statids(self, station_ids):
         """
-        For each CondCollection, check if its station ids
-        are available in the ids from the database.
-        Returns number of errors occurred.
+        For all primary ``Blocks``, check if their station ids are valid,
+        i.e., they can be found in ``station_ids`` set.
+        ``station_ids`` can be possibly fetched from database.
         """
-        # TODO: Separate dry and db methods.
-        if not self.statids_in_db:
-            err = ('List of available station ids is empty. '
-                   'Were they correctly requested from database or set otherwise?')
-            raise Exception(err)
-        n_errs = 0
-        for coll in self.collections.values():
-            log.debug(f'Checking station ids for {coll.title} ...')
-            if coll.station_ids != self.statids_in_db.intersection(coll.station_ids):
-                n_errs += 1
-                missing_ids = list(coll.station_ids - self.statids_in_db).sort()
-                missing_ids = [str(el) for el in missing_ids]
-                err = (f'Following station ids appear in sheet {coll.title} '
-                       'but they are NOT available: '
-                       ', '.join(missing_ids))
-                log.warning(err)
-                coll.add_error(err)
-        return n_errs
+        # TODO: do this
+        pass
+
+    def check_db_statids(self, pg_conn):
+        # TODO: create CondCollection method
+        #       to fetch unique statids in the collection's db view
+        # TODO: call that method here for each collection,
+        #       using its return set as arg for check_statids()
+        # TODO: decent error messaging
+        pass
 
     def dry_validate(self):
         """
