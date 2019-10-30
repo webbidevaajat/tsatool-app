@@ -90,6 +90,17 @@ class Block:
         # At this point, there should be no errors or warnings:
         self.is_valid = (len(self.errors) == 0)
 
+    def is_valid(self):
+        """
+        Sanity check of properties needed for various steps.
+        """
+        v = self.secondary is not None
+        if self.secondary is False:
+            v = v and self.sensor_id is not None
+        # Add more here if needed; .errors cover quite a bit, though
+        v = v and len(self.errors) == 0
+        return v
+
     def unpack_logic(self):
         """
         Detects and sets block type and attributes from raw logic string
@@ -206,7 +217,6 @@ class Block:
                     msg=f'No sensor id found by sensor name "{self.sensor}"',
                     log_add='error'
                 )
-                self.is_valid = False
 
     def get_sql_def(self):
         """
@@ -214,11 +224,8 @@ class Block:
         to be used as part of the corresponding
         Condition table creation.
         """
-        if not self.is_valid:
+        if not self.is_valid():
             raise Exception(f'Block "{self.alias}" is not valid (see Block errors)')
-
-        if self.secondary is None:
-            raise Exception(f'Block type is not defined for "{self.alias}"')
 
         elif self.secondary:
             # Block is SECONDARY -> try to pick boolean values
@@ -230,9 +237,6 @@ class Block:
         else:
             # Block is PRIMARY -> make pack_ranges call
             # to form time ranges and boolean values
-            if not self.sensor_id:
-                raise Exception(f'Sensor id is not defined for "{self.alias}"')
-
             sql = (f"SELECT valid_r, istrue AS {self.alias} "
                    "FROM pack_ranges("
                    "p_obs_relation := 'obs_main', "

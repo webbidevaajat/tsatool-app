@@ -342,7 +342,7 @@ class Condition:
                 block_defs.append(s)
         except:
             self.errors.add(
-                msg='Could not build Block SQL definition, skipping temp table creation',
+                msg='Cannot build Block SQL definition, skipping temp table creation',
                 log_add='exception'
             )
             return
