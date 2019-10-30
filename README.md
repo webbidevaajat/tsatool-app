@@ -81,7 +81,9 @@ python tsabatch.py -i example_data/testset.xlsx -n test_analysis --dryvalidate
 
 **TODO**
 
-Log files are saved in `logs/`.
+Log files are saved to `results/[analysis name].log`.
+No file rotation is configured,
+and a second run using the same name will overwrite the log file (as well as other result files with the same name).
 
 ## Errors
 
