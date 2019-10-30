@@ -77,7 +77,21 @@ just to validate the syntax and formatting of the input data:
 python tsabatch.py -i example_data/testset.xlsx -n test_analysis --dryvalidate
 ```
 
-Log files are saved in `logs/` and they are rotated by date and hour.
+## Logging
+
+**TODO**
+
+Log files are saved in `logs/`.
+
+## Errors
+
+Possible examples of erroneous inputs can be found in `example_data/testset.xlsx`.
+Error messages are recorded to the log stream of the analysis,
+and they are saved into per-object error lists as well.
+**TODO: save contents of this list tree e.g. as JSON**
+
+Fatal errors, such as missing input file, interrupt the entire analysis script.
+Most errors will just render a sheet or condition row invalid, and that sheet / condition will not be analyzed further.
 
 ## Authors
 
