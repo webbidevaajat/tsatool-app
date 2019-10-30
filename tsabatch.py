@@ -17,22 +17,6 @@ from tsa.utils import list_local_statids
 from tsa.utils import list_local_sensors
 
 def main():
-    # ---- LOGGING ----
-    os.makedirs('logs', exist_ok=True)
-    log = logging.getLogger()
-    log.setLevel(logging.DEBUG)
-    fh = logging.FileHandler(os.path.join('logs', 'tsabatchlog'))
-    ch = logging.StreamHandler()
-    fh.setFormatter(
-        logging.Formatter(
-            '%(asctime)s; %(levelname)-8s; %(module)-20s; line %(lineno)-3d; %(message)s',
-            'Y-%m-%d %H:%M:%S'
-            )
-        )
-    ch.setFormatter(logging.Formatter('%(levelname)-8s; %(module)-20s; line %(lineno)-3d; %(message)s'))
-    log.addHandler(fh)
-    log.addHandler(ch)
-
     # ---- COMMAND LINE ARGUMENTS ----
     parser = argparse.ArgumentParser(description='Run TSA analyses as batch job.')
     parser.add_argument('-i', '--input',
@@ -52,8 +36,32 @@ def main():
     if args.name is None:
         # Use input excel name but replace file ending
         args.name = re.sub("\.[^.]*$", "_OUT", args.input)
+
+    # This directory, relative to the script dir,
+    # is used for both logs and result files:
+    os.makedirs('results', exist_ok=True)
+
+    # ---- LOGGING ----
+    log = logging.getLogger()
+    log.setLevel(logging.DEBUG)
+    # Note that old logs by same name are overwritten!
+    log_dest = os.path.join('results', f'{args.name}.log')
+    fh = logging.FileHandler(filename=log_dest,
+                             mode='w')
+    ch = logging.StreamHandler()
+    fh.setFormatter(
+        logging.Formatter(
+            '%(asctime)s; %(levelname)-8s; %(module)-20s; line %(lineno)-3d; %(message)s',
+            'Y-%m-%d %H:%M:%S'
+            )
+        )
+    ch.setFormatter(logging.Formatter('%(levelname)-8s; %(module)-20s; line %(lineno)-3d; %(message)s'))
+    log.addHandler(fh)
+    log.addHandler(ch)
+
     log.info((f'START OF TSABATCH with input={args.input} name={args.name} '
-              f'dryvalidate={args.dryvalidate}'))
+              f'dryvalidate={args.dryvalidate}, '
+              f'logs are saved to {log_dest}'))
 
     # ---- APP LOGIC ----
     anls = AnalysisCollection(input_xlsx=args.input, name=args.name)
