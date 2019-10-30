@@ -133,21 +133,21 @@ class Condition:
                         msg=f'"{el[1]}" cannot be first element in condition',
                         log_add='error'
                     )
-                success = False
+                    success = False
             elif i == last_i:
                 if el[0] not in allowed_last:
                     self.errors.add(
                         msg=f'"{el[1]}" cannot be last element in condition',
                         log_add='error'
                     )
-                success = False
+                    success = False
             if i < last_i:
                 if (el[0], tuples[i+1][0]) not in allowed_pairs:
                     self.errors.add(
                         msg=f'Illegal combination in condition: "{el[1]}" before "{tuples[i+1][1]}" ',
                         log_add='error'
                     )
-                success = False
+                    success = False
 
         return success
 
