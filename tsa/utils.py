@@ -275,3 +275,13 @@ def list_local_sensors():
     "jaan_maara3": 179,
     "aseman_status3": 180,
     "kitka3_luku": 181}
+
+def list_db_sensors(pg_conn):
+    """
+    Return sensor name-id pairs as dict
+    as they appear in the database.
+    """
+    with pg_conn.cursor() as cur:
+        cur.execute("SELECT id, lower(name) AS name FROM sensors;")
+        tb = cur.fetchall()
+    return {k:v for v, k in tb}
