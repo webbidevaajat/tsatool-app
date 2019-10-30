@@ -394,10 +394,8 @@ class CondCollection:
         return self.conditions[key]
 
     def __str__(self):
-        s = (f'CondCollection <{self.title}>: '
-             f'{self.time_from.strftime("%Y-%m-%d")}-'
-             f'{self.time_until.strftime("%Y-%m-%d")}, '
-             f'{len(self.conditions)} conditions')
+        s = (f'<CondCollection {self.title} '
+             f'with {len(self.conditions)} conditions>')
         return s
 
     @classmethod

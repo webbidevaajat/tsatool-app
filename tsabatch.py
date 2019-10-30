@@ -25,10 +25,11 @@ def main():
     ch = logging.StreamHandler()
     fh.setFormatter(
         logging.Formatter(
-            '%(asctime)s; %(module)-20s; line %(lineno)-3d; %(levelname)-8s; %(message)s'
+            '%(asctime)s; %(levelname)-8s; %(module)-20s; line %(lineno)-3d; %(message)s',
+            'Y-%m-%d %H:%M:%S'
             )
         )
-    ch.setFormatter(logging.Formatter('%(module)-20s; line %(lineno)-3d; %(levelname)-8s; %(message)s'))
+    ch.setFormatter(logging.Formatter('%(levelname)-8s; %(module)-20s; line %(lineno)-3d; %(message)s'))
     log.addHandler(fh)
     log.addHandler(ch)
 

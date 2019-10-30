@@ -58,7 +58,7 @@ class Condition:
         # Excel row for prompting, if made from Excel sheet
         self.excel_row = excel_row
 
-        self.errors = TsaErrCollection(f'Condition <{self.id_string}>')
+        self.errors = TsaErrCollection(str(self))
 
         # Following attrs will be set by .make_blocks method
         self.blocks = list()
@@ -580,11 +580,11 @@ class Condition:
 
 
     def __str__(self):
-        if self.secondary is None:
-            s = 'Unknown '
+        if not hasattr(self, 'secondary') or self.secondary is None:
+            s = '<? '
         elif self.secondary is True:
-            s = 'Secondary '
+            s = '<Secondary '
         else:
-            s = 'Primary '
-        s += f'Condition <{self.id_string}> with {len(self.blocks)} Blocks'
+            s = '<Primary '
+        s += f'Condition {self.id_string} at Excel row {self.excel_row}>'
         return s

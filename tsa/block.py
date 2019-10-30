@@ -252,11 +252,13 @@ class Block:
         return sql
 
     def __str__(self):
-        if self.secondary:
-            s = 'Secondary '
+        if self.secondary is None:
+            s = '<? '
+        elif self.secondary is True:
+            s = '<Secondary '
         else:
-            s = 'Primary '
-        s += f'Block <{self.alias}> at {self.parent_site}: "{self.raw_logic}"'
+            s = '<Primary '
+        s += f'Block {self.alias}> at {self.parent_site}: "{self.raw_logic}">'
         return s
 
     def __eq__(self, other):

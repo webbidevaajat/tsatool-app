@@ -222,8 +222,6 @@ class AnalysisCollection:
 
 
     def __str__(self):
-        s = f'AnalysisCollection <{self.name}> based on <{self.input_xlsx}>: '
-        s += f'created at {str(self.created_at)}, '
-        s += f'{len(self.collections)} collections, '
-        s += f'{len(self.errors)} errors'
+        s = f'<AnalysisCollection {self.name}> from <{self.input_xlsx}> '
+        s += f'with {len(self.collections)} collections>'
         return s
