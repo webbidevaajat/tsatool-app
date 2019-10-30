@@ -100,7 +100,7 @@ class AnalysisCollection:
                 self.collections[title] = CondCollection.from_xlsx_sheet(
                     ws=self.workbook[title]
                 )
-                log.info(f'Successfully added CondCollection <{title}>')
+                log.info(f'Added CondCollection <{title}>')
             except:
                 self.errors.add(msg=f'Could not add CondCollection <{title}>: skipping',
                                 log_add='exception')
