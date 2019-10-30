@@ -16,6 +16,9 @@ database/data/
 database/pgvolume/
 results/
 
+example_data/
+!example_data/testset.xlsx
+
 # Logs
 logs/
 *.log
