@@ -335,9 +335,17 @@ class Condition:
         # and keeps the identifier reasonably short. Moreover, Block-related
         # datasets are not needed between Conditions (-> db sessions) as such.
         block_defs = []
-        for bl in self.blocks:
-            s = f"CREATE TEMP TABLE {bl.alias} ON COMMIT DROP AS ({bl.get_sql_def()});"
-            block_defs.append(s)
+        # ALL blocks must qualify, otherwise analyzing the condition is rejected
+        try:
+            for bl in self.blocks:
+                s = f"CREATE TEMP TABLE {bl.alias} ON COMMIT DROP AS ({bl.get_sql_def()});"
+                block_defs.append(s)
+        except:
+            self.errors.add(
+                msg='Could not build Block SQL definition, skipping temp table creation',
+                log_add='exception'
+            )
+            return
 
         # Temp table representing the Condition persists along with the connection / session,
         # and it is constructed as follows:

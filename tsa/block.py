@@ -214,10 +214,11 @@ class Block:
         to be used as part of the corresponding
         Condition table creation.
         """
+        if not self.is_valid:
+            raise Exception(f'Block "{self.alias}" is not valid (see Block errors)')
+
         if self.secondary is None:
-            log.error((f'Block type is not defined for "{self.alias}", '
-                       'cannot get SQL definition'))
-            return
+            raise Exception(f'Block type is not defined for "{self.alias}"')
 
         elif self.secondary:
             # Block is SECONDARY -> try to pick boolean values
@@ -230,9 +231,7 @@ class Block:
             # Block is PRIMARY -> make pack_ranges call
             # to form time ranges and boolean values
             if not self.sensor_id:
-                errtext = 'No sensor_id set for primary condition'
-                errtext = self.error_context(after=errtext)
-                raise Exception(errtext)
+                raise Exception(f'Sensor id is not defined for "{self.alias}"')
 
             sql = (f"SELECT valid_r, istrue AS {self.alias} "
                    "FROM pack_ranges("
