@@ -57,6 +57,8 @@ def to_pg_identifier(x):
         max length of x here
         is 40 characters, which should be enough for site names too.
     """
+    assert type(x) is str
+
     x = x.strip()
 
     # Original string without leading/trailing whitespaces
