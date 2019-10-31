@@ -65,47 +65,6 @@ class CondCollection:
 
         self.errors = TsaErrCollection(f'COLLECTION <{self.title}>')
 
-    def set_station_ids_in_db_view(self, pg_conn):
-        """
-        Fetch unique station ids from main obs db view for validation.
-        """
-        sql = "SELECT DISTINCT statid FROM obs_main ORDER BY statid;"
-        with pg_conn.cursor() as cur:
-            try:
-                cur.execute(sql)
-                statids = cur.fetchall()
-                statids = [el[0] for el in statids]
-                self.station_ids_in_db_view = set(statids)
-            except:
-                self.errors.add(msg='Cannot fetch station ids from db view obs_main',
-                                log_add='exception')
-
-    def setup_obs_view(self, pg_conn, verbose=False):
-        """
-        Create temporary view ``obs_main``
-        that works as the main source for Block queries.
-
-        :param pg_conn: valid psycopg2 connection object
-        :param verbose: boolean; log SQL query sent to db?
-        """
-        sql = ("CREATE OR REPLACE TEMP VIEW obs_main AS "
-               "SELECT tfrom, statid, seid, seval "
-               "FROM statobs "
-               "INNER JOIN seobs "
-               "ON statobs_time.id = seobs.obsid;"
-               "WHERE tfrom BETWEEN %s AND %s;")
-        if verbose:
-            log.debug(cur.mogrify(sql, (self.time_from, self.time_until)))
-        with pg_conn.cursor() as cur:
-            try:
-                cur.execute(sql, (self.time_from, self.time_until))
-                pg_conn.commit()
-                self.has_main_db_view = True
-            except:
-                pg_conn.rollback()
-                self.errors.add(msg='Cannot create obs_main db view',
-                                log_add='exception')
-
     def add_condition(self, site, master_alias, raw_condition, excel_row=None):
         """
         Add new Condition instance, except if one exists already
@@ -132,6 +91,47 @@ class CondCollection:
             )
             return
         self.conditions[candidate.id_string] = candidate
+        
+    def setup_obs_view(self, pg_conn, verbose=False):
+        """
+        Create temporary view ``obs_main``
+        that works as the main source for Block queries.
+
+        :param pg_conn: valid psycopg2 connection object
+        :param verbose: boolean; log SQL query sent to db?
+        """
+        sql = ("CREATE OR REPLACE TEMP VIEW obs_main AS "
+               "SELECT tfrom, statid, seid, seval "
+               "FROM statobs "
+               "INNER JOIN seobs "
+               "ON statobs_time.id = seobs.obsid;"
+               "WHERE tfrom BETWEEN %s AND %s;")
+        if verbose:
+            log.debug(cur.mogrify(sql, (self.time_from, self.time_until)))
+        with pg_conn.cursor() as cur:
+            try:
+                cur.execute(sql, (self.time_from, self.time_until))
+                pg_conn.commit()
+                self.has_main_db_view = True
+            except:
+                pg_conn.rollback()
+                self.errors.add(msg='Cannot create obs_main db view',
+                                log_add='exception')
+
+    def set_station_ids_in_db_view(self, pg_conn):
+        """
+        Fetch unique station ids from main obs db view for validation.
+        """
+        sql = "SELECT DISTINCT statid FROM obs_main ORDER BY statid;"
+        with pg_conn.cursor() as cur:
+            try:
+                cur.execute(sql)
+                statids = cur.fetchall()
+                statids = [el[0] for el in statids]
+                self.station_ids_in_db_view = set(statids)
+            except:
+                self.errors.add(msg='Cannot fetch station ids from db view obs_main',
+                                log_add='exception')
 
     def create_condition_temptables(self, pg_conn, verbose=False):
         """
