@@ -116,14 +116,34 @@ class AnalysisCollection:
                 for bl in self[coll][cnd].blocks.keys():
                     self[coll][cnd][bl].set_sensor_id(pairs)
 
-    def check_statids(self, station_ids):
+    def validate_statids_with_set(self, station_ids):
         """
         For all primary ``Blocks``, check if their station ids are valid,
         i.e., they can be found in ``station_ids`` set.
-        ``station_ids`` can be possibly fetched from database.
         """
-        # TODO: do this
-        pass
+        station_ids = set(station_ids)
+        for d in self.collections.keys():
+            for c in self.collections[d].conditions.keys():
+                for b in self.collections[d].conditions[c].blocks.keys():
+                    log.debug(('Static stationid validation for '
+                               f'{str(self.collections[d].conditions[c].blocks[b])} of '
+                               f'{str(self.collections[d].conditions[c].blocks[c])} of ' f'{str(self)} ...'))
+                    isprimary = self.conditions[c].blocks[b].secondary is False
+                    hasid = self.conditions[c].blocks[b].station_id is not None
+                    validstatid = self.conditions[c].blocks[b].station_id in station_ids
+                    if not isprimary:
+                        continue
+                    if not hasid:
+                        self.conditions[c].blocks[b].errors.add(
+                            msg='stationid is None (tried to compare it to static ids)',
+                            log_add='error'
+                        )
+                        continue
+                    if not validstatid:
+                        self.conditions[c].blocks[b].errors.add(
+                            msg='stationid was not found in static ids',
+                            log_add='error'
+                        )
 
     def dry_validate(self):
         """
