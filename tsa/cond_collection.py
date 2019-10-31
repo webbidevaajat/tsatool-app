@@ -136,6 +136,7 @@ class CondCollection:
         sql = "SELECT DISTINCT statid FROM obs_main ORDER BY statid;"
         with pg_conn.cursor() as cur:
             try:
+                log.debug('Fetching unique station ids from db view `obs_main` ...')
                 cur.execute(sql)
                 statids_from_db = cur.fetchall()
                 statids_from_db = set(el[0] for el in statids_from_db)
