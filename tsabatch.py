@@ -9,6 +9,7 @@ wait / confirmation steps!
 import os
 import re
 import sys
+import json
 import argparse
 import psycopg2
 import logging
@@ -71,19 +72,25 @@ def main():
     # Adding collections includes syntax validation.
     anls.add_collections()
 
-    #if args.dryvalidate:
-    if True:
+    if args.dryvalidate:
         log.debug('Starting dry validation without database')
-        # TODO: set sensor ids using utils sensor pairs
-        # TODO: validate station ids using utils ids
-        # TODO: pick haserrs, errors
-        # TODO: if haserrs, save as JSON and raise exception that quits the script;
-        #       if not haserrs, record success message and exit
-
-
-    # REMOVE THESE
-    print('EXITING HERE')
-    sys.exit()
+        anls.set_sensor_ids(pairs=list_local_sensors())
+        anls.validate_statids_with_set(station_ids=list_local_statids())
+        haserrs, errors = anls.collect_errors()
+        if haserrs:
+            errs_dest = os.path.join('results', f'{args.name}_ERRORS.json')
+            with open(errs_dest, 'w') as fobj:
+                fobj.write(
+                    json.dumps(errors, indent=4)
+                )
+            log.error('Dry validation exited with errors')
+            raise Exception(
+                ('Dry validation exited with errors. '
+                 f'See {log_dest} and {errs_dest}.')
+            )
+        else:
+            log.info('Dry validation was SUCCESSFUL')
+            sys.exit()
 
     # Prepare and validate collections
     try:
