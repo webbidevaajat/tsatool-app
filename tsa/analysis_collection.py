@@ -145,6 +145,46 @@ class AnalysisCollection:
                             log_add='error'
                         )
 
+    def collect_errors(self):
+        """
+        Collect error messages from all levels
+        into an OrderedDict tree.
+
+        :return: tuple ``(True if any errors, OrderedDict of errors)``
+        """
+        log.debug('Building error message tree ...')
+        haserrs = False
+        master = OrderedDict(
+            errors = [str(e) for e in self.errors.errors],
+            collections = OrderedDict()
+        )
+        if master['errors']:
+            haserrs = True
+        for coll in self.collections.values():
+            colldict = OrderedDict(
+                errors = [str(e) for e in coll.errors.errors],
+                conditions = OrderedDict()
+            )
+            if colldict['errors']:
+                haserrs = True
+            for cond in coll.conditions.values():
+                conddict = OrderedDict(
+                    errors = [str(e) for e in cond.errors.errors],
+                    blocks = OrderedDict()
+                )
+                if conddict['errors']:
+                    haserrs = True
+                for block in cond.blocks.values():
+                    blockdict = OrderedDict(
+                        errors = [str(e) for e in block.errors.errors]
+                    )
+                    if blockdict['errors']:
+                        haserrs = True
+                    conddict['blocks'][str(block)] = blockdict
+                colldict['conditions'][str(cond)] = conddict
+            master['collections'][str(coll)] = colldict
+        return haserrs, master
+
     def dry_validate(self):
         """
         Validate input syntax, ids and sensor names without database,
