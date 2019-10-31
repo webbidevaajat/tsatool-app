@@ -125,14 +125,6 @@ class AnalysisCollection:
         # TODO: do this
         pass
 
-    def check_db_statids(self, pg_conn):
-        # TODO: create CondCollection method
-        #       to fetch unique statids in the collection's db view
-        # TODO: call that method here for each collection,
-        #       using its return set as arg for check_statids()
-        # TODO: decent error messaging
-        pass
-
     def dry_validate(self):
         """
         Validate input syntax, ids and sensor names without database,
