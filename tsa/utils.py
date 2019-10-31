@@ -4,10 +4,6 @@
 # Utility functions for tsa package
 
 import logging
-import os
-import yaml
-import psycopg2
-from getpass import getpass
 
 log = logging.getLogger(__name__)
 

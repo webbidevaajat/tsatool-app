@@ -6,7 +6,6 @@
 import logging
 import os
 import psycopg2
-import string
 import openpyxl as xl
 from .cond_collection import CondCollection
 from .error import TsaErrCollection
@@ -188,6 +187,7 @@ class AnalysisCollection:
         and save results according to the selected formats and path names.
         Analyses are run against collection-specific db connections.
         """
+        # TODO: refactor this
         log.info(f'START OF ANALYSES for analysis collection {self.name}')
         wb = None
         ws = None

@@ -9,7 +9,6 @@
 # given always from outside as an argument.
 
 import logging
-import traceback
 import pptx
 import openpyxl as xl
 from .condition import Condition
