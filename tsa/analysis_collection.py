@@ -125,22 +125,19 @@ class AnalysisCollection:
         for d in self.collections.keys():
             for c in self.collections[d].conditions.keys():
                 for b in self.collections[d].conditions[c].blocks.keys():
-                    log.debug(('Static stationid validation for '
-                               f'{str(self.collections[d].conditions[c].blocks[b])} of '
-                               f'{str(self.collections[d].conditions[c].blocks[c])} of ' f'{str(self)} ...'))
-                    isprimary = self.conditions[c].blocks[b].secondary is False
-                    hasid = self.conditions[c].blocks[b].station_id is not None
-                    validstatid = self.conditions[c].blocks[b].station_id in station_ids
+                    isprimary = self.collections[d].conditions[c].blocks[b].secondary is False
+                    hasid = self.collections[d].conditions[c].blocks[b].station_id is not None
+                    validstatid = self.collections[d].conditions[c].blocks[b].station_id in station_ids
                     if not isprimary:
                         continue
                     if not hasid:
-                        self.conditions[c].blocks[b].errors.add(
+                        self.collections[d].conditions[c].blocks[b].errors.add(
                             msg='stationid is None (tried to compare it to static ids)',
                             log_add='error'
                         )
                         continue
                     if not validstatid:
-                        self.conditions[c].blocks[b].errors.add(
+                        self.collections[d].conditions[c].blocks[b].errors.add(
                             msg='stationid was not found in static ids',
                             log_add='error'
                         )
