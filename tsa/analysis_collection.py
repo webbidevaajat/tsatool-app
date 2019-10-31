@@ -185,16 +185,6 @@ class AnalysisCollection:
             master['collections'][str(coll)] = colldict
         return haserrs, master
 
-    def dry_validate(self):
-        """
-        Validate input syntax, ids and sensor names without database,
-        using hard-coded station ids and sensor name-id pairs.
-        On complete success, return empty string;
-        on any error, return error log string.
-        """
-        # TODO: do this
-        pass
-
     def run_analyses(self):
         """
         Run analyses for CondCollections that were made from the selected Excel sheets,
