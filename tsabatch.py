@@ -67,30 +67,23 @@ def main():
     anls = AnalysisCollection(input_xlsx=args.input, name=args.name)
     log.info(f'Created {str(anls)}')
 
-    # Add all sheets for analysis ("info" is omitted by default)
+    # Add all sheets for analysis ("info" is omitted by default).
+    # Adding collections includes syntax validation.
     anls.add_collections()
-    sys.exit()
 
-    if args.dryvalidate:
-        log.debug(f"Validating input Excel without database")
-        anls.statids_in_db = set(list_local_statids())
-        anls.sensor_pairs = list_local_sensors()
-        for s in anls.sheetnames:
-            anls.add_collection(title=s)
-        errs = anls.list_errors()
-        if errs:
-            fname = os.path.join("logs", "excel_validation_report.txt")
-            log.warning(f'There were errors in input Excel: see {fname}')
-            with open(fname, "w") as fobj:
-                fobj.write('\n'.join(errs))
-            # Error raised -> things outside the Python process
-            # can determine further actions
-            raise Exception("Errors in input Excel file")
-        else:
-            log.info('No errors in input Excel')
-        # With dryvalidate, the script is exited anyway
-        # without proceeding to DB communication and analysis
-        sys.exit()
+    #if args.dryvalidate:
+    if True:
+        log.debug('Starting dry validation without database')
+        # TODO: set sensor ids using utils sensor pairs
+        # TODO: validate station ids using utils ids
+        # TODO: pick haserrs, errors
+        # TODO: if haserrs, save as JSON and raise exception that quits the script;
+        #       if not haserrs, record success message and exit
+
+
+    # REMOVE THESE
+    print('EXITING HERE')
+    sys.exit()
 
     # Prepare and validate collections
     try:
