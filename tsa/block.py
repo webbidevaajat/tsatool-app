@@ -27,35 +27,6 @@ class Block:
     a site identifier, hashtag and alias identifier. Note that these should
     refer to an existing Condition instance.
 
-    :example::
-
-        # Making a primary block:
-        >>> Block('d2', 'ylojarvi_etelaan_2', 3, 's1122#kitka3_luku >= 0.30')
-        {'raw_logic': 's1122#kitka3_luku >= 0.30',
-        'master_alias': 'd2',
-        'parent_site': 'ylojarvi_etelaan_2',
-        'alias': 'd2_3',
-        'secondary': False,
-        'site': 'ylojarvi_etelaan_2',
-        'station': 's1122',
-        'source_alias': None,
-        'sensor': 'kitka3_luku',
-        'operator': '>=',
-        'value_str': '0.30'}
-        # Making a secondary block:
-        >>> Block('d2', 4, 'ylojarvi_pohjoiseen_1#c3')
-        {'ylojarvi_pohjoiseen_1#c3',
-        'master_alias': 'd2',
-        'parent_site': 'ylojarvi_etelaan_2',
-        'alias': 'd2_4',
-        'secondary': True,
-        'site': 'ylojarvi_pohjoiseen_1',
-        'station': None,
-        'source_alias': 'c3',
-        'sensor': None,
-        'operator': None,
-        'value_str': None}
-
     :param master_alias: master alias identifier of the parent condition
     :type master_alias: string
     :param parent_site: site identifier of the parent condition
