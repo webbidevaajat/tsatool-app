@@ -16,6 +16,7 @@ from .utils import eliminate_umlauts
 from .utils import trunc_str
 from matplotlib import rcParams
 from datetime import timedelta
+from collections import OrderedDict
 
 log = logging.getLogger(__name__)
 
