@@ -91,7 +91,7 @@ class CondCollection:
             )
             return
         self.conditions[candidate.id_string] = candidate
-        
+
     def setup_obs_view(self, pg_conn, verbose=False):
         """
         Create temporary view ``obs_main``
@@ -118,20 +118,53 @@ class CondCollection:
                 self.errors.add(msg='Cannot create obs_main db view',
                                 log_add='exception')
 
-    def set_station_ids_in_db_view(self, pg_conn):
+    def validate_statids_with_db(self, pg_conn):
         """
-        Fetch unique station ids from main obs db view for validation.
+        Fetch unique station ids from main obs db view,
+        and check for each primary Block if its station id
+        exists in the view.
+        If not, record an error to the block.
+
+        .. note: Unlike statid validation with non-db set,
+            this db validation is done at CondCollection level,
+            not at AnalysisCollection level.
+            In AnalysisCollection, the validation stationid set is always
+            the same. When querying unique stationids from database,
+            the result can differ between CondCollections if they apply
+            different time range limits for the ``main_obs`` view.
         """
         sql = "SELECT DISTINCT statid FROM obs_main ORDER BY statid;"
         with pg_conn.cursor() as cur:
             try:
                 cur.execute(sql)
-                statids = cur.fetchall()
-                statids = [el[0] for el in statids]
-                self.station_ids_in_db_view = set(statids)
+                statids_from_db = cur.fetchall()
+                statids_from_db = set(el[0] for el in statids_from_db)
             except:
-                self.errors.add(msg='Cannot fetch station ids from db view obs_main',
+                self.errors.add(msg=('Cannot fetch station ids for Block validation '
+                                     'from db view obs_main'),
                                 log_add='exception')
+                return
+        for c in self.conditions.keys():
+            for b in self.conditions[c].blocks.keys():
+                log.debug(('Db stationid validation for '
+                           f'{str(self.conditions[c].blocks[b])} of '
+                           f'{str(self.conditions[c])} of {str(self)} ...'))
+                isprimary = self.conditions[c].blocks[b].secondary is False
+                hasid = self.conditions[c].blocks[b].station_id is not None
+                validstatid = self.conditions[c].blocks[b].station_id in statids_from_db
+                if not isprimary:
+                    continue
+                if not hasid:
+                    self.conditions[c].blocks[b].errors.add(
+                        msg='stationid is None (tried to compare it to ids from db view)',
+                        log_add='error'
+                    )
+                    continue
+                if not validstatid:
+                    self.conditions[c].blocks[b].errors.add(
+                        msg='stationid was not found in ids from db view',
+                        log_add='error'
+                    )
 
     def create_condition_temptables(self, pg_conn, verbose=False):
         """
