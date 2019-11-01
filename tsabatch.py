@@ -16,6 +16,7 @@ import logging
 from tsa.analysis_collection import AnalysisCollection
 from tsa.utils import list_local_statids
 from tsa.utils import list_local_sensors
+from tsa.utils import list_db_sensors
 
 def main():
     # ---- COMMAND LINE ARGUMENTS ----
@@ -91,6 +92,11 @@ def main():
         else:
             log.info('Dry validation was SUCCESSFUL')
             sys.exit()
+
+    # DB interaction begins here
+    with psycopg2.connect(**anls.db_params, connect_timeout=5) as pg_conn:
+        db_sensors = list_db_sensors(pg_conn)
+    anls.set_sensor_ids(pairs=db_sensors)
 
     # Prepare and validate collections
     try:
