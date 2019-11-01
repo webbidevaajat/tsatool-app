@@ -278,6 +278,6 @@ def list_db_sensors(pg_conn):
     as they appear in the database.
     """
     with pg_conn.cursor() as cur:
-        cur.execute("SELECT id, lower(name) AS name FROM sensors;")
+        cur.execute("SELECT lower(name) AS name, id FROM sensors;")
         tb = cur.fetchall()
-    return {k:v for v, k in tb}
+    return {k:v for k, v in tb}
