@@ -28,9 +28,10 @@ months=(
 )
 for m in "${months[@]}"; do
   echo "Processing month $m ..."
+  # FIXME: Current implementation asks the password interactively every time.
+  #        Consider using ~/.pgpass file to avoid this, for example.
   psql -h "$dbhost" -p "$dbport" -d "$dbname" -U "$dbuser" \
-    -c  "\timing on; \
-         BEGIN; \
+    -c  "BEGIN; \
          COPY tiesaa_mittatieto FROM '/rawdata/tiesaa_mittatieto-2018_$m.csv' CSV HEADER DELIMITER '|'; \
          CALL populate_statobs(); \
          TRUNCATE TABLE tiesaa_mittatieto; \
