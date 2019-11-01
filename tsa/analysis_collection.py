@@ -34,6 +34,9 @@ class DBParams:
         self.host = os.getenv('PG_HOST', DEFAULT_PG_HOST)
         self.port = os.getenv('PG_PORT', DEFAULT_PG_PORT)
 
+    def keys(self):
+        return ['dbname', 'user', 'password', 'host', 'port']
+
     def __getitem__(self, key):
         return self.__dict__[key]
 
