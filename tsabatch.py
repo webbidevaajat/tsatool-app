@@ -93,50 +93,38 @@ def main():
             log.info('Dry validation was SUCCESSFUL')
             sys.exit()
 
-    # DB interaction begins here
-    with psycopg2.connect(**anls.db_params, connect_timeout=5) as pg_conn:
-        db_sensors = list_db_sensors(pg_conn)
-    anls.set_sensor_ids(pairs=db_sensors)
+    # ---- DB interaction begins here ----
 
-    # Prepare and validate collections
+    # Sensor ids; global for all collections
     try:
-        log.debug('Connecting to database ...')
-        with psycopg2.connect(**anls.db_params, connect_timeout=5) as conn:
-            log.debug('Fetching available station ids ...')
-            anls.save_statids_in_statobs(conn)
-            log.debug('Fetching sensor name-id pairs ...')
-            anls.save_sensor_pairs(conn)
-        log.info(f'Fetched {len(anls.statids_in_db)} station ids and {len(anls.sensor_pairs)} sensor name-id pairs')
+        with psycopg2.connect(**anls.db_params, connect_timeout=5) as pg_conn:
+            db_sensors = list_db_sensors(pg_conn)
+        anls.set_sensor_ids(pairs=db_sensors)
+        log.info('Sensor ids from database set successfully')
     except:
-        log.exception('Error with DB when fetching station and sensor ids: quitting')
-        sys.exit()
+        log.exception('Could not set sensor ids from database for Blocks, quitting')
+        raise
 
-    for s in anls.sheetnames:
-        try:
-            log.debug(f'Adding sheet {s} ...')
-            anls.add_collection(s)
-        except Exception as e:
-            log.error(f'Failed to add sheet {s} contents to analysis collection',
-                      exc_info=True)
-            anls.add_error(e)
-    log.info(f'{len(anls.collections)} collections added from {len(anls.sheetnames)} sheets')
-    if anls.statids_in_db:
-        log.debug('Validating collection station ids')
-        n_errs = anls.check_statids()
-        if n_errs:
-            log.warning(f'There were {n_errs} errors.')
-    else:
-        log.error('Could not check if station ids exist in database')
-        anls.add_error(err)
-    errs = anls.list_errors()
-    if errs:
-        log.error(f'{len(errs)} errors with analysis collection {anls.name}')
-        log.debug('Listing errors:')
-        for e in errs:
-            log.debug(f'    {e}')
+    # Collection specific stuff:
+    # requesting station ids is bound to the same database connection
+    # in which the time-limited observation view is created
+    # and analyses are run.
+    # Thus we proceed by analyzing one collection at a time.
+    # IDEA: If the database instance can use enough resources,
+    #       this step could be parallelized, using multiple db connections,
+    #       since CondCollections depend on their own db sessions
+    #       and do not affect each other.
+    # Prepare and validate collections
+    for collname in anls.collections.keys():
+        log.info(f'Analyzing {str(anls.collections[collname])} ...')
+        with psycopg2.connect(**anls.db_params, connect_timeout=5) as pg_conn:
+            # TODO: fetch and validate station ids
+            # TODO: validate conditions
+            # TODO: run analyses, skipping invalid conditions
+            # TODO: ensure results are saved
+            pass
 
-    # Analyze and save
-    anls.run_analyses()
+    # TODO: save error tree as JSON
 
     log.info('END OF TSABATCH')
 
