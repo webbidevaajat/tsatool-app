@@ -1,25 +1,10 @@
 # tsatool-app
 
-*Under construction!*
-
-**TODO:**
-
-- Using `POSTGRES_PASSWORD` env variable
-- `tsabatch.py ... --dryvalidate` info
-- Info on following environment variables in Python env:
-  - `PG_HOST`
-  - `PG_PORT`
-  - `PG_DBNAME`
-  - `PG_USER`
-  - `PG_PASSWORD`
-
 Tool for analyzing Finnish road weather station (TieSääAsema) data. Data will is located and handled in a PostgreSQL & [TimescaleDB](https://www.timescale.com/) database, and analyses are run through a Python API. See the [Wiki page](https://github.com/webbidevaajat/tsatool-app/wiki) for more details and examples.
 
 To get familiar with road weather station data models and properties, see the documentation for the [real time API](https://www.digitraffic.fi/tieliikenne/).
 
 You can get some kind of a clue about what this is about by reading our first [Wiki page](https://github.com/webbidevaajat/tsatool-app/wiki/Ehtosetin-muotoilu) about formatting the input data (in Finnish).
-
-**TODO:** database model (briefly)
 
 ## Installation
 
@@ -57,25 +42,58 @@ Note the three-valued logic: if the sensor's numeric value in a time period is n
 
 See [database](database/).
 
+To successfully run the `tsabatch.py` analysis script,
+you should have the following environment variables prepared,
+unless you have configured the database instance according to the default values:
+
+| Variable name 	| Default value in `tsa/analysis_collection.py` 	|
+|---------------	|-----------------------------------------------	|
+| `PG_HOST`     	| `localhost`                                   	|
+| `PG_PORT`     	| `5432`                                        	|
+| `PG_DBNAME`   	| `tsa`                                         	|
+| `PG_USER`     	| `postgres`                                    	|
+| `PG_PASSWORD` 	| `postgres`                                    	|
+
 ## Running an analysis
 
 Run `python tsabatch.py --help` to see the parameters and their usage.
 
-Example:
+### "Dry" validation
 
-```
-python tsabatch.py -i example_data/testset.xlsx -n test_analysis
-```
-
-All paths here are relative to the project directory.
-The above command would save resulting Excel and PowerPoint files as `results/test_analysis_[...]`.
-
-It is also possible to make a "dry run" without any database interaction,
-just to validate the syntax and formatting of the input data:
+With the `--dryvalidate` flag,
+the analysis script prepares the conditions,
+checks their syntax,
+checks the existence of sensor names, ids and station ids against hard-coded sets
+(see [`utils.py`](tsa/utils.py)),
+and records possible errors.
+No database interaction is needed,
+so you can use the result of dry validation to determine whether to spin up a database instance for actual analysis, for example.
 
 ```
 python tsabatch.py -i example_data/testset.xlsx -n test_analysis --dryvalidate
 ```
+
+Now, if there were *any* errors in the above run,
+the script will raise an error (which you can catch in a shell script, for example),
+and corresponding logs and error message JSON tree are saved in `results/`.
+If the run was clean, the script exits normally.
+
+### Full analysis
+
+Full analysis is done without `--dryvalidate` flag,
+given that the database is available.
+You could combine dry validation and full analysis e.g. as follows:
+
+```
+python tsabatch.py -i example_data/testset.xlsx -n test_analysis --dryvalidate \
+  # The && requires that the dry validation did not cause an error:
+  && some_script_that_spins_up_the_database.sh
+  # Now without --dryvalidate:
+  && python tsabatch.py -i example_data/testset.xlsx -n test_analysis
+```
+
+All file paths here are relative to the project directory.
+The above command would save resulting Excel and PowerPoint files as `results/test_analysis_[...]`.
 
 ## Logging
 
@@ -85,10 +103,10 @@ and a second run using the same name will overwrite the log file (as well as oth
 
 ## Errors
 
-Possible examples of erroneous inputs can be found in `example_data/testset.xlsx`.
+Examples of erroneous inputs can be found in `example_data/testset.xlsx`.
 Error messages are recorded to the log stream of the analysis,
 and they are saved into per-object error lists as well.
-**TODO: save contents of this list tree e.g. as JSON**
+These lists are collected into a tree structure and saved as JSON in `results/`.
 
 Fatal errors, such as missing input file, interrupt the entire analysis script.
 Most errors will just render a sheet or condition row invalid, and that sheet / condition will not be analyzed further.
