@@ -105,26 +105,36 @@ def main():
         log.exception('Could not set sensor ids from database for Blocks, quitting')
         raise
 
+    # Analysis will need the pptx template for results;
+    # quit here if it does not exist.
+    if not os.path.exists('report_template.pptx'):
+        log.exception('report_template.pptx is not available, quitting')
+        raise
+
+    # ---- Analysis phase ----
+    
     # Collection specific stuff:
     # requesting station ids is bound to the same database connection
     # in which the time-limited observation view is created
     # and analyses are run.
     # Thus we proceed by analyzing one collection at a time.
+    # See .run_analyses() in analysis_collection.py.
     # IDEA: If the database instance can use enough resources,
     #       this step could be parallelized, using multiple db connections,
     #       since CondCollections depend on their own db sessions
     #       and do not affect each other.
-    # Prepare and validate collections
-    for collname in anls.collections.keys():
-        log.info(f'Analyzing {str(anls.collections[collname])} ...')
-        with psycopg2.connect(**anls.db_params, connect_timeout=5) as pg_conn:
-            # TODO: fetch and validate station ids
-            # TODO: validate conditions
-            # TODO: run analyses, skipping invalid conditions
-            # TODO: ensure results are saved
-            pass
 
-    # TODO: save error tree as JSON
+    anls.run_analyses()
+
+    haserrs, errors = anls.collect_errors()
+    if haserrs:
+        errs_dest = os.path.join('results', f'{args.name}_ERRORS.json')
+        with open(errs_dest, 'w') as fobj:
+            fobj.write(
+                json.dumps(errors, indent=4)
+            )
+        log.error(('There were errors in the analysis collection, '
+                   f'see {log_dest} and {errs_dest}.'))
 
     log.info('END OF TSABATCH')
 

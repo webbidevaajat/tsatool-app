@@ -21,6 +21,8 @@ DEFAULT_PG_DBNAME = 'tsa'
 DEFAULT_PG_USER = 'postgres'
 DEFAULT_PG_PASSWORD = 'postgres'
 
+PPTX_TEMPLATE_PATH = 'report_template.pptx'
+
 log = logging.getLogger(__name__)
 
 class DBParams:
@@ -190,28 +192,20 @@ class AnalysisCollection:
         and save results according to the selected formats and path names.
         Analyses are run against collection-specific db connections.
         """
-        # TODO: refactor this
-        log.info(f'START OF ANALYSES for analysis collection {self.name}')
-        wb = None
-        ws = None
-        pptx_template_path = os.path.join(self.base_dir, 'data', 'report_template.pptx')
-        if 'xlsx' in self.out_formats:
-            wb_outpath = os.path.join(self.get_outdir(), f'{self.name}_report.xlsx')
-            wb = xl.Workbook()
-            ws = wb.active
-            ws.title = 'INFO'
-            ws['A1'].value = f"Analysis started {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            log.info(f'Will save EXCEL results to {wb_outpath}')
-        if 'pptx' in self.out_formats:
-            if os.path.exists(pptx_template_path):
-                log.info(f'Will save POWERPOINT results for each sheet')
-            else:
-                log.warning((f'Could not find pptx report template file at {pptx_template_path}, '
-                            'skipping Powerpoint reports!'))
-                pptx_template_path = None
-        if 'xlsx' not in self.out_formats and 'pptx' not in self.out_formats:
-            log.warning('NO results will be saved')
+        log.debug(f'Initializing Excel workbook for {str(self)}')
+        wb = xl.Workbook()
+        ws = wb.active
+        ws.title = 'INFO'
+        ws['A1'].value = datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        ws['B1'].value = 'analysis started'
+        wb_path = f'{self.out_base_path}_report.xlsx'
+        log.debug(f'Excel workbook will be saved as {wb_path}')
+
         for k, coll in self.collections.items():
+            # TODO: fetch and validate station ids
+            # TODO: validate conditions
+            # TODO: run analyses, skipping invalid conditions
+            # TODO: ensure results are saved
             try:
                 pptx_path = None
                 if pptx_template_path is not None:
@@ -224,11 +218,11 @@ class AnalysisCollection:
             except:
                 log.critical(f'Skipping collection {coll.title} due to error', exc_info=True)
 
-        if wb is not None:
-            ws['A2'].value = f"Analysis ended {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            wb.save(wb_outpath)
-            log.info(f'Excel results saved to {wb_outpath}')
-        log.info(f'END OF ANALYSES for analysis collection {self.name}')
+        ws['A2'].value = datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        ws['B2'].value = 'analysis ended'
+        wb.save(wb_outpath)
+        log.debug(f'Excel workbook saved as {wb_path}')
+        log.info(f'{str(self)} analyzed')
 
     def __getitem__(self, key):
         """
