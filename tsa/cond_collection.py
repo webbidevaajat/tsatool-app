@@ -239,7 +239,7 @@ class CondCollection:
         # Global values
         ws['A2'] = self.time_from
         ws['B2'] = self.time_until
-        ws['D2'] = self.created_timestamp
+        ws['D2'] = self.created_at
 
         # Condition rows
         r = 4
@@ -300,7 +300,7 @@ class CondCollection:
             txt = 'TSA report: '
             if self.title is not None:
                 txt += self.title
-            txt += ' ' + self.created_timestamp.strftime('%d.%m.%Y')
+            txt += ' ' + self.created_at.strftime('%d.%m.%Y')
             s.placeholders[phi['HEADER_IDX']].text = txt
 
             # Slide footer
@@ -360,7 +360,7 @@ class CondCollection:
                 row.height = Cm(0.64)
 
             # Condition errors and warnings
-            txt = '; '.join(c.errmsgs) or ' '
+            txt = c.errors.short_str()
             s.placeholders[phi['ERRORS_IDX']].text = txt
 
             # Condition main timeline plot; ignored if no data to viz
@@ -370,9 +370,12 @@ class CondCollection:
             wh_factor = s.placeholders[phi['MAINPLOT_IDX']].height \
                         / s.placeholders[phi['MAINPLOT_IDX']].width
             w, h = MAINPLOT_H_PX, wh_factor*MAINPLOT_H_PX
-            with BytesIO() as fobj:
-                c.save_timelineplot(fobj, w, h)
-                s.placeholders[phi['MAINPLOT_IDX']].insert_picture(fobj)
+            # with BytesIO() as fobj:
+            #     c.save_timelineplot(fobj, w, h)
+            #     s.placeholders[phi['MAINPLOT_IDX']].insert_picture(fobj)
+            fobj = 'temp.png'
+            c.save_timelineplot(fobj, w, h)
+            s.placeholders[phi['MAINPLOT_IDX']].insert_picture(fobj)
 
         return pres
 
