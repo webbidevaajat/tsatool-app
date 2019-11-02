@@ -99,17 +99,19 @@ class CondCollection:
         :param pg_conn: valid psycopg2 connection object
         :param verbose: boolean; log SQL query sent to db?
         """
+        from_str = self.time_from.strftime('%Y-%m-%d %H:%M:%S')
+        until_str = self.time_until.strftime('%Y-%m-%d %H:%M:%S')
         sql = ("CREATE OR REPLACE TEMP VIEW obs_main AS "
                "SELECT tfrom, statid, seid, seval "
                "FROM statobs "
                "INNER JOIN seobs "
                "ON statobs.id = seobs.obsid "
-               "WHERE tfrom BETWEEN %s AND %s;")
+               f"WHERE tfrom BETWEEN '{from_str}'::timestamptz AND '{until_str}'::timestamptz;")
         with pg_conn.cursor() as cur:
             try:
                 if verbose:
-                    log.debug(cur.mogrify(sql, (self.time_from, self.time_until)))
-                cur.execute(sql, (self.time_from, self.time_until))
+                    log.debug(sql)
+                cur.execute(sql)
                 pg_conn.commit()
                 self.has_main_db_view = True
             except:
