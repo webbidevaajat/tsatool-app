@@ -204,12 +204,15 @@ class CondCollection:
         for all Conditions that have a corresponding view in the database.
         """
         cnd_len = len(self.conditions)
-        for i, cnd in enumerate(self.conditions):
-            log.info(f'Fetching {i+1}/{cnd_len} {cnd.id_string} ...')
+        for i, cnd in enumerate(self.conditions.keys()):
+            log.debug(f'Fetching {i+1}/{cnd_len}: {str(self.conditions[cnd])} ...')
             try:
-                cnd.fetch_results_from_db(pg_conn=pg_conn)
-            except Exception as e:
-                log.exception(f'Could not fetch results for {cnd.id_string}')
+                self.conditions[cnd].fetch_results_from_db(pg_conn=pg_conn)
+            except:
+                self.conditions[cnd].errors.add(
+                    msg='Exception while fetching results, skipping',
+                    log_add='exception'
+                )
 
     def to_worksheet(self, wb):
         """
