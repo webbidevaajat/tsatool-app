@@ -178,20 +178,20 @@ class CondCollection:
         # First round for primary ones only
         # so temp tables referenced by secondary conditions
         # can be found in the database session
-        for cnd in self.conditions:
-            if cnd.secondary or not cnd.is_valid():
+        for cnd in self.conditions.keys():
+            if self.conditions[cnd].secondary or not self.conditions[cnd].is_valid():
                 continue
-            cnd.create_db_temptable(pg_conn=pg_conn,
-                                    verbose=verbose)
+            self.conditions[cnd].create_db_temptable(pg_conn=pg_conn,
+                                                     verbose=verbose)
 
         # Second round for secondary ones,
         # viewnames list is now updated every time
-        for cnd in self.conditions:
-            if not cnd.is_valid:
+        for cnd in self.conditions.keys():
+            if not self.conditions[cnd].is_valid():
                 continue
-            if cnd.secondary:
-                cnd.create_db_temptable(pg_conn=pg_conn,
-                                        verbose=verbose)
+            if self.conditions[cnd].secondary:
+                self.conditions[cnd].create_db_temptable(pg_conn=pg_conn,
+                                                         verbose=verbose)
 
     def fetch_all_results(self, pg_conn):
         """
@@ -396,8 +396,8 @@ class CondCollection:
         log.debug(f'Starting analysis of {str(self)}')
         self.setup_obs_view(pg_conn=pg_conn)
         log.debug('obs_main db view created')
-        self.validate_statids_with_db(pg_conn=pg_conn)
-        log.debug('Station ids validated')
+        # self.validate_statids_with_db(pg_conn=pg_conn)
+        # log.debug('Station ids validated')
         self.create_condition_temptables(pg_conn=pg_conn)
         log.debug('Temp tables created for conditions')
 
