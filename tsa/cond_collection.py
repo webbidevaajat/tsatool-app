@@ -396,12 +396,12 @@ class CondCollection:
         log.debug('obs_main db view created')
         self.validate_statids_with_db(pg_conn=pg_conn)
         log.debug('Station ids validated')
-        self.create_condition_temptables()
+        self.create_condition_temptables(pg_conn=pg_conn)
         log.debug('Temp tables created for conditions')
 
         log.debug('Starting to fetch results from database ...')
         starttime = datetime.now()
-        self.fetch_all_results()
+        self.fetch_all_results(pg_conn=pg_conn)
         log.debug(f'Results fetched in {str(datetime.now() - starttime)}')
 
         if wb is not None:
