@@ -179,9 +179,8 @@ class CondCollection:
         for cnd in self.conditions:
             if cnd.secondary or not cnd.is_valid():
                 continue
-            try:
-                cnd.create_db_temptable(pg_conn=pg_conn,
-                                        verbose=verbose)
+            cnd.create_db_temptable(pg_conn=pg_conn,
+                                    verbose=verbose)
 
         # Second round for secondary ones,
         # viewnames list is now updated every time
@@ -189,14 +188,8 @@ class CondCollection:
             if not cnd.is_valid:
                 continue
             if cnd.secondary:
-                try:
-                    cnd.create_db_temptable(pg_conn=pg_conn,
-                                            verbose=verbose)
-                except:
-                    self.errors.add(
-                        msg=f'Failed to create db temp table for <{str(cnd)}>',
-                        log_add='exception'
-                    )
+                cnd.create_db_temptable(pg_conn=pg_conn,
+                                        verbose=verbose)
 
     def fetch_all_results(self, pg_conn):
         """
