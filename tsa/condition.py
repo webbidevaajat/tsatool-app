@@ -322,9 +322,6 @@ class Condition:
         If condition is secondary and referenced relations do not exist
         in database, running the SQL query will fail.
         """
-        if not self.all_valid():
-            return
-
         log.debug(f'Creating temp table {self.id_string}')
 
         drop_sql = f"DROP TABLE IF EXISTS {self.id_string};\n"
