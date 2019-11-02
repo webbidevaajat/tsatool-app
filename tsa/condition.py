@@ -542,7 +542,7 @@ class Condition:
         except:
             self.errors.add(
                 msg='Cannot save timeline plot',
-                log_add='warning'
+                log_add='exception'
             )
             return
         fig.dpi = DPI
