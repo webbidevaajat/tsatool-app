@@ -14,6 +14,7 @@ import argparse
 import psycopg2
 import logging
 from tsa.analysis_collection import AnalysisCollection
+from tsa.analysis_collection import PPTX_TEMPLATE_PATH
 from tsa.utils import list_local_statids
 from tsa.utils import list_local_sensors
 from tsa.utils import list_db_sensors
@@ -107,12 +108,12 @@ def main():
 
     # Analysis will need the pptx template for results;
     # quit here if it does not exist.
-    if not os.path.exists('report_template.pptx'):
-        log.exception('report_template.pptx is not available, quitting')
+    if not os.path.exists(PPTX_TEMPLATE_PATH):
+        log.exception(f'{PPTX_TEMPLATE_PATH} is not available, quitting')
         raise
 
     # ---- Analysis phase ----
-    
+
     # Collection specific stuff:
     # requesting station ids is bound to the same database connection
     # in which the time-limited observation view is created
