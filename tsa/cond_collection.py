@@ -103,12 +103,12 @@ class CondCollection:
                "SELECT tfrom, statid, seid, seval "
                "FROM statobs "
                "INNER JOIN seobs "
-               "ON statobs_time.id = seobs.obsid;"
+               "ON statobs.id = seobs.obsid "
                "WHERE tfrom BETWEEN %s AND %s;")
-        if verbose:
-            log.debug(cur.mogrify(sql, (self.time_from, self.time_until)))
         with pg_conn.cursor() as cur:
             try:
+                if verbose:
+                    log.debug(cur.mogrify(sql, (self.time_from, self.time_until)))
                 cur.execute(sql, (self.time_from, self.time_until))
                 pg_conn.commit()
                 self.has_main_db_view = True

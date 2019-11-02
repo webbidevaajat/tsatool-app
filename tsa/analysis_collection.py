@@ -203,7 +203,7 @@ class AnalysisCollection:
 
         for cl in self.collections.keys():
             try:
-                with psycopg2.connect(**anls.db_params) as pg_conn:
+                with psycopg2.connect(**self.db_params) as pg_conn:
                     coll_pptx_path = f'{self.out_base_path}_{cl}.pptx'
                     self.collections[cl].run_analysis(pg_conn=pg_conn,
                                                       wb=wb,
@@ -219,7 +219,7 @@ class AnalysisCollection:
 
         wb['INFO']['A2'].value = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         wb['INFO']['B2'].value = 'analysis ended'
-        wb.save(wb_outpath)
+        wb.save(wb_path)
         log.debug(f'Excel workbook saved as {wb_path}')
         log.info(f'{str(self)} analyzed')
 
