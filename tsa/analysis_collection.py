@@ -204,11 +204,7 @@ class AnalysisCollection:
         for cl in self.collections.keys():
             try:
                 with psycopg2.connect(**anls.db_params) as pg_conn:
-                    log.debug(f'Validating station ids for {str(self.collections[cl])} ...')
-                    self.collections[cl].validate_statids_with_db(pg_conn=pg_conn)
-                    log.debug(f'Running analysis for {str(self.collections[cl])} ...')
                     coll_pptx_path = f'{self.out_base_path}_{cl}.pptx'
-                    log.debug(f'Pptx result file will be saved as {coll_pptx_path}')
                     self.collections[cl].run_analysis(pg_conn=pg_conn,
                                                       wb=wb,
                                                       wb_path=wb_path,

@@ -177,16 +177,11 @@ class CondCollection:
         # so temp tables referenced by secondary conditions
         # can be found in the database session
         for cnd in self.conditions:
-            if cnd.secondary or not cnd.is_valid:
+            if cnd.secondary or not cnd.is_valid():
                 continue
             try:
                 cnd.create_db_temptable(pg_conn=pg_conn,
                                         verbose=verbose)
-            except:
-                self.errors.add(
-                    msg=f'Failed to create db temp table for <{str(cnd)}>',
-                    log_add='exception'
-                )
 
         # Second round for secondary ones,
         # viewnames list is now updated every time
@@ -390,35 +385,44 @@ class CondCollection:
         pptx_obj = self.to_pptx(pptx_template=pptx_template)
         pptx_obj.save(out_path)
 
-    def run_analysis(self, pg_conn, wb=None, pptx_path=None, pptx_template=None):
+    def run_analysis(self, pg_conn, wb=None, wb_path=None, pptx_path=None, pptx_template=None):
         """
         Call necessary methods to run the condition analysis
         and save results to the specified
         ``openpyxl.Workbook`` instance ``wb`` as new worksheet
         and the ``pptx_path`` as ``.pptx`` file.
+        If ``wb_path`` is provided, save the workbook in the end
+        (will overwrite existing files).
         If an output is ``None``, it is not created.
         """
-        log.info(f'Started analysis for collection {self.title}')
-        log.info('Setting up DB views')
-        self.setup_views()
-        log.info('Creating condition views')
+        log.debug(f'Starting analysis of {str(self)}')
+        self.setup_obs_view(pg_conn=pg_conn)
+        log.debug('obs_main db view created')
+        self.validate_statids_with_db(pg_conn=pg_conn)
+        log.debug('Station ids validated')
         self.create_condition_temptables()
+        log.debug('Temp tables created for conditions')
+        
+        log.debug('Starting to fetch results from database ...')
+        starttime = datetime.now()
         self.fetch_all_results()
+        log.debug(f'Results fetched in {str(datetime.now() - starttime)}')
 
         if wb is not None:
-            try:
-                log.info(f'Adding {self.title} to Excel workbook')
-                self.to_worksheet(wb)
-            except:
-                log.exception('Could not make Excel report sheet')
+            log.debug('Creating Excel sheet ...')
+            self.to_worksheet(wb)
+            if wb_path is not None:
+                wb.save(wb_path)
+                log.debug(f'Excel sheet saved to {wb_path}')
+        else:
+            log.warning(f'No Excel sheet saved from {str(self)}')
 
         if pptx_path is not None and pptx_template is not None:
-            try:
-                log.info(f'Saving pptx report to {pptx_path}')
-                self.save_pptx(pptx_template=pptx_template, out_path=pptx_path)
-            except:
-                log.exception('Could not make pptx report')
-        log.info(f'END OF ANALYSIS for collection {self.title}')
+            log.debug(f'Saving Powerpoint report as {pptx_path} ...')
+            self.save_pptx(pptx_template=pptx_template, out_path=pptx_path)
+            log.debug(f'{pptx_path} saved')
+        else:
+            log.warning(f'No Powerpoint report saved from {str(self)}')
 
     def __getitem__(self, key):
         """
