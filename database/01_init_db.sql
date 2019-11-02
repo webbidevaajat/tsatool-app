@@ -126,7 +126,7 @@ pack_ranges(p_obs_relation text,
 			p_seid integer,
 			p_operator text,
 			p_seval text)
-RETURNS TABLE (valid_r tsrange,
+RETURNS TABLE (valid_r tstzrange,
 			   istrue boolean) AS
 $func$
 BEGIN
@@ -145,7 +145,7 @@ EXECUTE format(
 		ORDER BY tfrom),
 	truncated AS (
 		SELECT
-			tsrange(tfrom,
+			tstzrange(tfrom,
 			(CASE WHEN (tuntil-tfrom) > make_interval(mins := $3) THEN
 				tfrom + make_interval(mins := $3)
 			 ELSE
@@ -179,10 +179,10 @@ total_range_tb AS
 	CASE WHEN (isfirst AND islast) THEN
 	 	valid_r
 	 WHEN (isfirst AND not islast) THEN
-	 	tsrange(lower(valid_r),
+	 	tstzrange(lower(valid_r),
 				  upper(LEAD(valid_r, 1) OVER (ORDER BY valid_r)))
 	 WHEN (not isfirst AND islast) THEN
-	 	tsrange(lower(LAG(valid_r, 1) OVER (ORDER BY valid_r)),
+	 	tstzrange(lower(LAG(valid_r, 1) OVER (ORDER BY valid_r)),
 				  upper(valid_r))
 	 END
 	 AS total_range
