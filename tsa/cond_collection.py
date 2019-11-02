@@ -245,7 +245,7 @@ class CondCollection:
 
         # Condition rows
         r = 4
-        for cnd in self.conditions:
+        for cnd in self.conditions.values():
             ws[f'A{r}'] = cnd.site
             ws[f'B{r}'] = cnd.master_alias
             ws[f'C{r}'] = cnd.condition
@@ -295,7 +295,7 @@ class CondCollection:
                 raise Exception(f'{k} {v} not in default layout placeholders')
 
         # Add slides and fill in contents for each condition.
-        for c in self.conditions:
+        for c in self.conditions.values():
             s = pres.slides.add_slide(layout)
 
             # Slide header
@@ -402,7 +402,7 @@ class CondCollection:
         log.debug('Station ids validated')
         self.create_condition_temptables()
         log.debug('Temp tables created for conditions')
-        
+
         log.debug('Starting to fetch results from database ...')
         starttime = datetime.now()
         self.fetch_all_results()
