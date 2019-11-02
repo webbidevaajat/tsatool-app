@@ -196,30 +196,33 @@ class AnalysisCollection:
         wb = xl.Workbook()
         ws = wb.active
         ws.title = 'INFO'
-        ws['A1'].value = datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        ws['A1'].value = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         ws['B1'].value = 'analysis started'
         wb_path = f'{self.out_base_path}_report.xlsx'
         log.debug(f'Excel workbook will be saved as {wb_path}')
 
-        for k, coll in self.collections.items():
-            # TODO: fetch and validate station ids
-            # TODO: validate conditions
-            # TODO: run analyses, skipping invalid conditions
-            # TODO: ensure results are saved
+        for cl in self.collections.keys():
             try:
-                pptx_path = None
-                if pptx_template_path is not None:
-                    pptx_out_path = os.path.join(self.get_outdir(), f'{coll.title}_report.pptx')
-                with psycopg2.connect(**self.db_params) as con:
-                    coll.run_analysis(pg_conn=con,
-                                      wb=wb,
-                                      pptx_path=pptx_out_path,
-                                      pptx_template=pptx_template_path)
+                with psycopg2.connect(**anls.db_params) as pg_conn:
+                    log.debug(f'Validating station ids for {str(self.collections[cl])} ...')
+                    self.collections[cl].validate_statids_with_db(pg_conn=pg_conn)
+                    log.debug(f'Running analysis for {str(self.collections[cl])} ...')
+                    coll_pptx_path = f'{self.out_base_path}_{cl}.pptx'
+                    log.debug(f'Pptx result file will be saved as {coll_pptx_path}')
+                    self.collections[cl].run_analysis(pg_conn=pg_conn,
+                                                      wb=wb,
+                                                      wb_path=wb_path,
+                                                      pptx_path=coll_pptx_path,
+                                                      pptx_template=PPTX_TEMPLATE_PATH)
+                    log.debug(f'{str(self.collections[cl])} is analyzed')
             except:
-                log.critical(f'Skipping collection {coll.title} due to error', exc_info=True)
+                self.errors.add(
+                    msg=f'Skipping {str(self.collections[cl])} due to fatal error',
+                    log_add='exception'
+                )
 
-        ws['A2'].value = datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-        ws['B2'].value = 'analysis ended'
+        wb['INFO']['A2'].value = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        wb['INFO']['B2'].value = 'analysis ended'
         wb.save(wb_outpath)
         log.debug(f'Excel workbook saved as {wb_path}')
         log.info(f'{str(self)} analyzed')
