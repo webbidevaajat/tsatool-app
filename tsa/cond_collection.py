@@ -128,6 +128,7 @@ class CondCollection:
             the result can differ between CondCollections if they apply
             different time range limits for the ``main_obs`` view.
         """
+        # FIXME: This query takes too much time at the moment
         sql = "SELECT DISTINCT statid FROM obs_main ORDER BY statid;"
         with pg_conn.cursor() as cur:
             try:
