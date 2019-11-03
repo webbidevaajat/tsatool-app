@@ -3,11 +3,6 @@
 
 # Collection of Conditions for analysis
 
-# TODO: handling Postgres connection instances
-# is very ambiguous at the moment. Either the connection
-# should be treated robustly as an attribute or
-# given always from outside as an argument.
-
 import logging
 import pptx
 import os
