@@ -35,6 +35,13 @@ def main():
     parser.add_argument('--dryvalidate',
                         action='store_true',
                         help='Only validate input Excel with hard-coded ids and names')
+    parser.add_argument('--log',
+                        default='info',
+                        const='info',
+                        nargs='?',
+                        choices=['error', 'warning', 'info', 'debug'],
+                        help=('Logging level (default: `info`). '
+                              '`debug` will log e.g. SQL CREATE statements.'))
     args = parser.parse_args()
     if args.name is None:
         # Use input excel name but replace file ending
@@ -46,7 +53,11 @@ def main():
 
     # ---- LOGGING ----
     log = logging.getLogger()
-    log.setLevel(logging.DEBUG)
+    loglevels = {'error': logging.ERROR,
+                 'warning': logging.WARNING,
+                 'info': logging.INFO,
+                 'debug', logging.DEBUG}
+    log.setLevel(loglevels[args.log])
     # Note that old logs by same name are overwritten!
     log_dest = os.path.join('results', f'{args.name}.log')
     fh = logging.FileHandler(filename=log_dest,
@@ -64,6 +75,7 @@ def main():
 
     log.info((f'START OF TSABATCH with input={args.input} name={args.name} '
               f'dryvalidate={args.dryvalidate}, '
+              f'log={args.log}, '
               f'logs are saved to {log_dest}'))
 
     # ---- APP LOGIC ----
