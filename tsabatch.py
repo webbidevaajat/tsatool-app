@@ -136,6 +136,8 @@ def main():
             )
         log.error(('There were errors in the analysis collection, '
                    f'see {log_dest} and {errs_dest}.'))
+    else:
+        log.info('No errors detected.')
 
     log.info('END OF TSABATCH')
 
