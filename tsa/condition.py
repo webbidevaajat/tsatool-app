@@ -533,6 +533,8 @@ class Condition:
         """
         Save main timeline plot as png picture into given file object
         with given pixel dimensions.
+
+        :return: ``True`` if saved successfully, ``False`` otherwise
         """
         DPI = 300
         w = w / DPI
@@ -544,12 +546,13 @@ class Condition:
             fig.savefig(fname=fobj,
                         format='png')
             plt.close(fig)
+            return True
         except:
             self.errors.add(
                 msg='Cannot save timeline plot',
                 log_add='exception'
             )
-            return
+            return False
 
     def is_valid(self):
         """
