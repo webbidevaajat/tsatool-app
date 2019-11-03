@@ -539,17 +539,17 @@ class Condition:
         h = h / DPI
         try:
             fig = self.get_timelineplot().get_figure()
+            fig.dpi = DPI
+            fig.set_size_inches(w, h)
+            fig.savefig(fname=fobj,
+                        format='png')
+            plt.close(fig)
         except:
             self.errors.add(
                 msg='Cannot save timeline plot',
                 log_add='exception'
             )
             return
-        fig.dpi = DPI
-        fig.set_size_inches(w, h)
-        fig.savefig(fname=fobj,
-                    format='png')
-        plt.close(fig)
 
     def is_valid(self):
         """
