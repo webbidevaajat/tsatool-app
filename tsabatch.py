@@ -87,7 +87,7 @@ def main():
     anls.add_collections()
 
     if args.dryvalidate:
-        log.debug('Starting dry validation without database')
+        log.info('Starting dry validation without database')
         anls.set_sensor_ids(pairs=list_local_sensors())
         anls.validate_statids_with_set(station_ids=list_local_statids())
         haserrs, errors = anls.collect_errors()

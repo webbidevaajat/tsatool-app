@@ -153,7 +153,7 @@ class AnalysisCollection:
 
         :return: tuple ``(True if any errors, OrderedDict of errors)``
         """
-        log.debug('Building error message tree ...')
+        log.info('Building error message tree ...')
         haserrs = False
         master = OrderedDict(
             errors = [str(e) for e in self.errors.errors],
@@ -192,21 +192,21 @@ class AnalysisCollection:
         and save results according to the selected formats and path names.
         Analyses are run against collection-specific db connections.
         """
-        log.debug(f'Initializing Excel workbook for {str(self)}')
+        log.info(f'Initializing Excel workbook for {str(self)}')
         wb = xl.Workbook()
         ws = wb.active
         ws.title = 'INFO'
         ws['A1'].value = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         ws['B1'].value = 'analysis started'
         wb_path = f'{self.out_base_path}_report.xlsx'
-        log.debug(f'Excel workbook will be saved as {wb_path}')
+        log.info(f'Excel workbook will be saved as {wb_path}')
 
         # Prepare directory for png images for pptx;
         # keep the pngs if png_dir is passed to
         # passed to CondCollection.to_pptx().
         png_dir = f'{self.out_base_path}_images'
         os.makedirs(png_dir, exist_ok=True)
-        log.debug(f'Png images will be saved to {png_dir}')
+        log.info(f'Png images will be saved to {png_dir}')
 
         for cl in self.collections.keys():
             try:
@@ -228,7 +228,7 @@ class AnalysisCollection:
         wb['INFO']['A2'].value = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         wb['INFO']['B2'].value = 'analysis ended'
         wb.save(wb_path)
-        log.debug(f'Excel workbook saved as {wb_path}')
+        log.info(f'Excel workbook saved as {wb_path}')
         log.info(f'{str(self)} analyzed')
 
     def __getitem__(self, key):

@@ -87,13 +87,12 @@ class CondCollection:
             return
         self.conditions[candidate.id_string] = candidate
 
-    def setup_obs_view(self, pg_conn, verbose=False):
+    def setup_obs_view(self, pg_conn):
         """
         Create temporary view ``obs_main``
         that works as the main source for Block queries.
 
         :param pg_conn: valid psycopg2 connection object
-        :param verbose: boolean; log SQL query sent to db?
         """
         from_str = self.time_from.strftime('%Y-%m-%d %H:%M:%S')
         until_str = self.time_until.strftime('%Y-%m-%d %H:%M:%S')
@@ -105,8 +104,7 @@ class CondCollection:
                f"WHERE tfrom BETWEEN '{from_str}'::timestamptz AND '{until_str}'::timestamptz;")
         with pg_conn.cursor() as cur:
             try:
-                if verbose:
-                    log.debug(sql)
+                log.debug(sql)
                 cur.execute(sql)
                 pg_conn.commit()
                 self.has_main_db_view = True
@@ -133,7 +131,7 @@ class CondCollection:
         sql = "SELECT DISTINCT statid FROM obs_main ORDER BY statid;"
         with pg_conn.cursor() as cur:
             try:
-                log.debug('Fetching unique station ids from db view `obs_main` ...')
+                log.info('Fetching unique station ids from db view `obs_main` ...')
                 cur.execute(sql)
                 statids_from_db = cur.fetchall()
                 statids_from_db = set(el[0] for el in statids_from_db)
@@ -144,7 +142,7 @@ class CondCollection:
                 return
         for c in self.conditions.keys():
             for b in self.conditions[c].blocks.keys():
-                log.debug(('Db stationid validation for '
+                log.info(('Db stationid validation for '
                            f'{str(self.conditions[c].blocks[b])} of '
                            f'{str(self.conditions[c])} of {str(self)} ...'))
                 isprimary = self.conditions[c].blocks[b].secondary is False
