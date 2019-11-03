@@ -393,10 +393,11 @@ class CondCollection:
                 else:
                     fobj = os.path.join(png_dir, f'{self.title}_{c.id_string}.png')
                     rm_png = False
-            c.save_timelineplot(fobj, w, h)
-            s.placeholders[phi['MAINPLOT_IDX']].insert_picture(fobj)
-            if rm_png:
-                os.remove(fobj)
+            saved = c.save_timelineplot(fobj, w, h)
+            if saved:
+                s.placeholders[phi['MAINPLOT_IDX']].insert_picture(fobj)
+                if rm_png:
+                    os.remove(fobj)
 
         return pres
 
