@@ -1,17 +1,17 @@
-start|end||
-1.2.2018|31.3.2018||
-site|master_alias|condition|Sarakkeita D → ei lueta, joten niihin voi vapaasti laittaa esim. kommentteja. Ne eivät kuitenkaan tule mukaan tulos-Exceliin.
-Sipoo itään ja tämä on niin pitkä nimi sijainnille ettei se kelpaa sillä 40 merkin raja ylittyy|A1|s1120#keli_1 = 8 AND s1120#tie_1 < -3|Liian pitkä site-nimi
-Sipoo itään ja tämä on niin pitkä nimi sijainnille ettei se kelpaa sillä 40 merkin raja ylittyy|liian_pitkä_master_alias_ei_kelpaa_jos_merkkimääräraja_ylittyy_vaikkapa_tähän_tapaan|s1120#keli_1 = 8 AND s1120#tie_1 < -3|Liian pitkä master_alias
-Ääkköslandia 1|D1|(s1115#KELI_1 in (1,2,3,4,5) AND s1120#KELI_1 in (1,2,3,4,5) AND s1122#TIENPINNAN_TILA3 in (1,2,3,4,5)) OR ((s1115#KELI_1 = 8 AND s1115#TIE_1 >= 2) OR (s1120#KELI_1 = 8 AND s1120#TIE_1 >= 2)) AND (s1122#KITKA3_LUKU >= 0.4 OR s1115#TIE_1 >= 2) AND (s1115#SADE in (0,1) OR (s1115#SADE = 2 AND s1115#KELI_1 in (1,2))) AND (s1115#NAKYVYYS_METRIA >= 600) AND (s1115#KESKITUULI < 12 OR s1115#MAKSIMITUULI < 17)|Tämä on OK…
-Ääkköslandia 1|D1|(s1115#KELI_1 in (1,2,3,4,5) AND s1120#KELI_1 in (1,2,3,4,5) AND s1122#TIENPINNAN_TILA3 in (1,2,3,4,5)) OR ((s1115#KELI_1 = 8 AND s1115#TIE_1 >= 2) OR (s1120#KELI_1 = 8 AND s1120#TIE_1 >= 2)) AND (s1122#KITKA3_LUKU >= 0.4 OR s1115#TIE_1 >= 2) AND (s1115#SADE in (0,1) OR (s1115#SADE = 2 AND s1115#KELI_1 in (1,2))) AND (s1115#NAKYVYYS_METRIA >= 600) AND (s1115#KESKITUULI < 12 OR s1115#MAKSIMITUULI < 17)|… mutta tämä ehto on edellisen duplikaatti
-Sipoo itään|A3|keli_1 = 8 AND s1120#tie_1 < -3|Asemailmaisu puuttuu sensorin edestä
-Sipoo itään|A4|1120#keli_1 = 8 AND s1120#tie_1 < -3|Asemailmaisusta puuttuu etu-”s”
-Sipoo itään|A5|s1120#keli_1 = 8 NOT s1120#tie_1 < -3|Väärin käytetty NOT (välissä pitäisi olla mukana AND tai OR)
-Sipoo itään|A6|s1120#keli_1 = 8 JA s1120#tie_1 < -3|JA englanninkielisen ANDin sijasta
-Sipoo itään|A7|s1120#keli_10 = 8 AND s1120#tie_1 < -3|Puuttuva sensori: keli_10:ä ei ole olemassa
-Sipoo itään|A8|s111220#keli_10 = 8 AND s1120#tie_1 < -3|Puuttuva asema: asemaa 111220 ei ole olemassa
-Sipoo länteen|A1|s1120#keli_1 == 8 AND s1120#tie_1 =< -3|Virheellisiä operaattoreita “==” ja “=<”
-Sipoo länteen|A2|(s1120#keli_1 = 8 AND s1120#tie_1 < -3))|Eri määrä auki- ja kiinni-sulkuja
-Ääkköslandia 1|D2|E2|Toissijainen ehto, jonka viittausta E1 ei ole määritelty edellä ehtona
-Ääkköslandia 1|D3|A3 OR A4|Toissijainen ehto, jonka viittaukset löytyvät mutta sijainnit niille eivät; Ääkköslandia 1:lle ei ole määritelty A3:sta tai A4:sta. Sen sijaan pitäisi lukea “sipoo_itaan#A3” jne.
+"start","end",,
+"1.2.2018","31.3.2018",,
+"site","master_alias","condition","Sarakkeita D → ei lueta, joten niihin voi vapaasti laittaa esim. kommentteja. Ne eivät kuitenkaan tule mukaan tulos-Exceliin."
+"Sipoo itään ja tämä on niin pitkä nimi sijainnille ettei se kelpaa sillä 40 merkin raja ylittyy","A1","s1120#keli_1 = 8 AND s1120#tie_1 < -3","Liian pitkä site-nimi"
+"Sipoo itään ja tämä on niin pitkä nimi sijainnille ettei se kelpaa sillä 40 merkin raja ylittyy","liian_pitkä_master_alias_ei_kelpaa_jos_merkkimääräraja_ylittyy_vaikkapa_tähän_tapaan","s1120#keli_1 = 8 AND s1120#tie_1 < -3","Liian pitkä master_alias"
+"Ääkköslandia 1","D1","(s1115#KELI_1 in (1,2,3,4,5) AND s1120#KELI_1 in (1,2,3,4,5) AND s1122#TIENPINNAN_TILA3 in (1,2,3,4,5)) OR ((s1115#KELI_1 = 8 AND s1115#TIE_1 >= 2) OR (s1120#KELI_1 = 8 AND s1120#TIE_1 >= 2)) AND (s1122#KITKA3_LUKU >= 0.4 OR s1115#TIE_1 >= 2) AND (s1115#SADE in (0,1) OR (s1115#SADE = 2 AND s1115#KELI_1 in (1,2))) AND (s1115#NAKYVYYS_METRIA >= 600) AND (s1115#KESKITUULI < 12 OR s1115#MAKSIMITUULI < 17)","Tämä on OK…"
+"Ääkköslandia 1","D1","(s1115#KELI_1 in (1,2,3,4,5) AND s1120#KELI_1 in (1,2,3,4,5) AND s1122#TIENPINNAN_TILA3 in (1,2,3,4,5)) OR ((s1115#KELI_1 = 8 AND s1115#TIE_1 >= 2) OR (s1120#KELI_1 = 8 AND s1120#TIE_1 >= 2)) AND (s1122#KITKA3_LUKU >= 0.4 OR s1115#TIE_1 >= 2) AND (s1115#SADE in (0,1) OR (s1115#SADE = 2 AND s1115#KELI_1 in (1,2))) AND (s1115#NAKYVYYS_METRIA >= 600) AND (s1115#KESKITUULI < 12 OR s1115#MAKSIMITUULI < 17)","… mutta tämä ehto on edellisen duplikaatti"
+"Sipoo itään","A3","keli_1 = 8 AND s1120#tie_1 < -3","Asemailmaisu puuttuu sensorin edestä"
+"Sipoo itään","A4","1120#keli_1 = 8 AND s1120#tie_1 < -3","Asemailmaisusta puuttuu etu-”s”"
+"Sipoo itään","A5","s1120#keli_1 = 8 NOT s1120#tie_1 < -3","Väärin käytetty NOT (välissä pitäisi olla mukana AND tai OR)"
+"Sipoo itään","A6","s1120#keli_1 = 8 JA s1120#tie_1 < -3","JA englanninkielisen ANDin sijasta"
+"Sipoo itään","A7","s1120#keli_10 = 8 AND s1120#tie_1 < -3","Puuttuva sensori: keli_10:ä ei ole olemassa"
+"Sipoo itään","A8","s111220#keli_10 = 8 AND s1120#tie_1 < -3","Puuttuva asema: asemaa 111220 ei ole olemassa"
+"Sipoo länteen","A1","s1120#keli_1 == 8 AND s1120#tie_1 =< -3","Virheellisiä operaattoreita “==” ja “=<”"
+"Sipoo länteen","A2","(s1120#keli_1 = 8 AND s1120#tie_1 < -3))","Eri määrä auki- ja kiinni-sulkuja"
+"Ääkköslandia 1","D2","E2","Toissijainen ehto, jonka viittausta E1 ei ole määritelty edellä ehtona"
+"Ääkköslandia 1","D3","A3 OR A4","Toissijainen ehto, jonka viittaukset löytyvät mutta sijainnit niille eivät; Ääkköslandia 1:lle ei ole määritelty A3:sta tai A4:sta. Sen sijaan pitäisi lukea “sipoo_itaan#A3” jne."
