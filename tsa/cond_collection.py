@@ -163,7 +163,7 @@ class CondCollection:
                         log_add='error'
                     )
 
-    def create_condition_temptables(self, pg_conn, verbose=False):
+    def create_condition_temptables(self, pg_conn):
         """
         For each Condition, create the corresponding temporary table in db.
         Primary conditions are handled first, only then secondary ones;
@@ -176,8 +176,7 @@ class CondCollection:
         for cnd in self.conditions.keys():
             if self.conditions[cnd].secondary or not self.conditions[cnd].is_valid():
                 continue
-            self.conditions[cnd].create_db_temptable(pg_conn=pg_conn,
-                                                     verbose=verbose)
+            self.conditions[cnd].create_db_temptable(pg_conn=pg_conn)
 
         # Second round for secondary ones,
         # viewnames list is now updated every time
@@ -185,8 +184,7 @@ class CondCollection:
             if not self.conditions[cnd].is_valid():
                 continue
             if self.conditions[cnd].secondary:
-                self.conditions[cnd].create_db_temptable(pg_conn=pg_conn,
-                                                         verbose=verbose)
+                self.conditions[cnd].create_db_temptable(pg_conn=pg_conn)
 
     def fetch_all_results(self, pg_conn):
         """
@@ -195,7 +193,7 @@ class CondCollection:
         """
         cnd_len = len(self.conditions)
         for i, cnd in enumerate(self.conditions.keys()):
-            log.debug(f'Fetching {i+1}/{cnd_len}: {str(self.conditions[cnd])} ...')
+            log.info(f'Fetching {i+1}/{cnd_len}: {str(self.conditions[cnd])} ...')
             try:
                 self.conditions[cnd].fetch_results_from_db(pg_conn=pg_conn)
             except:
@@ -418,34 +416,34 @@ class CondCollection:
         (will overwrite existing files).
         If an output is ``None``, it is not created.
         """
-        log.debug(f'Starting analysis of {str(self)}')
+        log.info(f'Starting analysis of {str(self)}')
         self.setup_obs_view(pg_conn=pg_conn)
-        log.debug('obs_main db view created')
+        log.info('obs_main db view created')
         # self.validate_statids_with_db(pg_conn=pg_conn)
         # log.debug('Station ids validated')
         self.create_condition_temptables(pg_conn=pg_conn)
-        log.debug('Temp tables created for conditions')
+        log.info('Temp tables created for conditions')
 
-        log.debug('Starting to fetch results from database ...')
+        log.info('Starting to fetch results from database ...')
         starttime = datetime.now()
         self.fetch_all_results(pg_conn=pg_conn)
-        log.debug(f'Results fetched in {str(datetime.now() - starttime)}')
+        log.info(f'Results fetched in {str(datetime.now() - starttime)}')
 
         if wb is not None:
-            log.debug('Creating Excel sheet ...')
+            log.info('Creating Excel sheet ...')
             self.to_worksheet(wb)
             if wb_path is not None:
                 wb.save(wb_path)
-                log.debug(f'Excel sheet saved to {wb_path}')
+                log.info(f'Excel sheet saved to {wb_path}')
         else:
             log.warning(f'No Excel sheet saved from {str(self)}')
 
         if pptx_path is not None and pptx_template is not None:
-            log.debug(f'Saving Powerpoint report as {pptx_path} ...')
+            log.info(f'Saving Powerpoint report as {pptx_path} ...')
             self.save_pptx(pptx_template=pptx_template,
                            out_path=pptx_path,
                            png_dir=png_dir)
-            log.debug(f'{pptx_path} saved')
+            log.info(f'{pptx_path} saved')
         else:
             log.warning(f'No Powerpoint report saved from {str(self)}')
 

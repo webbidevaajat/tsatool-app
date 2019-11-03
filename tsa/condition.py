@@ -314,7 +314,7 @@ class Condition:
                 stids.add(bl.station_id)
         return stids
 
-    def create_db_temptable(self, pg_conn=None, verbose=False):
+    def create_db_temptable(self, pg_conn=None):
         """
         Create temporary table corresponding to the condition.
         If ``pg_conn`` is ``None``, no database queries are executed;
@@ -322,8 +322,7 @@ class Condition:
         If condition is secondary and referenced relations do not exist
         in database, running the SQL query will fail.
         """
-        verbose = True
-        log.debug(f'Creating temp table {self.id_string}')
+        log.info(f'Creating temp table {self.id_string}')
 
         drop_sql = f"DROP TABLE IF EXISTS {self.id_string};\n"
 
@@ -391,9 +390,8 @@ class Condition:
             create_sql +=  ", \n".join([f"{bl.alias}" for bl in self.blocks.values()]) + ", \n"
             create_sql += f"({self.alias_condition}) AS master \nFROM {block_join_sql});"
 
-        if verbose:
-            log.debug(drop_sql)
-            log.debug(create_sql)
+        log.debug('\n' + drop_sql)
+        log.debug('\n' + create_sql)
 
         if pg_conn is None:
             self.errors.add(
@@ -407,7 +405,7 @@ class Condition:
                     pg_conn.commit()
                     cur.execute(create_sql)
                     pg_conn.commit()
-                    log.debug(f'Temp table created for {str(self)}')
+                    log.info(f'Temp table created for {str(self)}')
             except:
                 pg_conn.rollback()
                 self.errors.add(
