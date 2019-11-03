@@ -1,0 +1,7 @@
+start|end||
+1.2.2018|31.3.2018||
+site|master_alias|condition|Sarakkeita D → ei lueta, joten niihin voi vapaasti laittaa esim. kommentteja. Ne eivät kuitenkaan tule mukaan tulos-Exceliin.
+Sipoo itään|A1|s1120#keli_1 = 8 AND s1120#tie_1 < -3|Normaali ehto
+Ääkköslandia 1|D1|(s1115#KELI_1 in (1,2,3,4,5) AND s1120#KELI_1 in (1,2,3,4,5) AND s1122#TIENPINNAN_TILA3 in (1,2,3,4,5)) OR ((s1115#KELI_1 = 8 AND s1115#TIE_1 >= 2) OR (s1120#KELI_1 = 8 AND s1120#TIE_1 >= 2)) AND (s1122#KITKA3_LUKU >= 0.4 OR s1115#TIE_1 >= 2) AND (s1115#SADE in (0,1) OR (s1115#SADE = 2 AND s1115#KELI_1 in (1,2))) AND (s1115#NAKYVYYS_METRIA >= 600) AND (s1115#KESKITUULI < 12 OR s1115#MAKSIMITUULI < 17)|Pitkä ehto
+Ääkköslandia 1|D2|s1115#NAKYVYYS_METRIA >= 300 AND s1115#NAKYVYYS_METRIA < 600 AND D1|Sekaehto, jossa ensisijainen osa ja lopussa toissijainen osa eli viittaus D1-ehtoon
+Yhdistelmä|C1|sipoo_itaan#A1 AND (aakkoslandia_1#D1 OR aakkoslandia_1#D2)|Toissijainen ehto. Huomaa, että koska A1, D1 ja D2 eivät ole sijainnissa “Yhdistelmä”, niiden sijainnit täytyy erikseen merkitä, ja tässä vielä ilman välilyöntejä ja ääkkösiä, jotta työkalu lukee ehdon oikein.

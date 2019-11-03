@@ -1,0 +1,7 @@
+start|end||Tämä taulukko on virheellisesti muotoiltu.
+|31.3.2018||Start-päivämäärä puuttuu
+site|master_alias|condition|
+Sipoo itään|A1|s1120#keli_1 = 8 AND s1120#tie_1 < -3|(Toimiva ehto)
+Sipoo länteen||s1120#keli_1 = 8 AND s1120#tie_1 < -3|master_alias puuttuu
+|||Tyhjän rivin välissä pitäisi aiheuttaa virhe
+Ääkköslandia 1|D2|s1115#NAKYVYYS_METRIA >= 300 AND s1115#NAKYVYYS_METRIA < 600 AND D1|(Toimiva ehto)
