@@ -55,7 +55,7 @@ def main():
     fh.setFormatter(
         logging.Formatter(
             '%(asctime)s; %(levelname)-8s; %(module)-20s; line %(lineno)-3d; %(message)s',
-            'Y-%m-%d %H:%M:%S'
+            '%Y-%m-%d %H:%M:%S'
             )
         )
     ch.setFormatter(logging.Formatter('%(levelname)-8s; %(message)s'))
