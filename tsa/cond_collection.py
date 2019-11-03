@@ -10,6 +10,7 @@
 
 import logging
 import pptx
+import os
 import openpyxl as xl
 from .condition import Condition
 from .error import TsaErrCollection
@@ -261,7 +262,7 @@ class CondCollection:
 
             r += 1
 
-    def to_pptx(self, pptx_template):
+    def to_pptx(self, pptx_template, png_dir=None):
         """
         Return a ``pptx`` presentation object,
         making a slide of each condition.
@@ -370,23 +371,49 @@ class CondCollection:
             wh_factor = s.placeholders[phi['MAINPLOT_IDX']].height \
                         / s.placeholders[phi['MAINPLOT_IDX']].width
             w, h = MAINPLOT_H_PX, wh_factor*MAINPLOT_H_PX
+
+            # NOTE: Saving png as in-memory object does not work
+            #       for some reason.
+            #       Saving it to file instead and keeping the file
+            #       if png_dir is provided.
             # with BytesIO() as fobj:
             #     c.save_timelineplot(fobj, w, h)
             #     s.placeholders[phi['MAINPLOT_IDX']].insert_picture(fobj)
-            fobj = 'temp.png'
+            if png_dir is None:
+                fobj = 'temp.png'
+                rm_png = True
+            else:
+                if not os.path.exists(png_dir):
+                    self.errors.add(
+                        msg=f'Directory "{png_dir}" for images does not exist, not saving png files',
+                        log_add='warning'
+                    )
+                    fobj = 'temp.png'
+                    rm_png = True
+                else:
+                    fobj = os.path.join(png_dir, f'{self.title}_{c.id_string}.png')
+                    rm_png = False
             c.save_timelineplot(fobj, w, h)
             s.placeholders[phi['MAINPLOT_IDX']].insert_picture(fobj)
+            if rm_png:
+                os.remove(fobj)
 
         return pres
 
-    def save_pptx(self, pptx_template, out_path):
+    def save_pptx(self, pptx_template, out_path, png_dir=None):
         """
         Call ``.to_pptx`` and save result to file.
         """
-        pptx_obj = self.to_pptx(pptx_template=pptx_template)
+        pptx_obj = self.to_pptx(pptx_template=pptx_template, png_dir=png_dir)
         pptx_obj.save(out_path)
 
-    def run_analysis(self, pg_conn, wb=None, wb_path=None, pptx_path=None, pptx_template=None):
+    def run_analysis(self,
+                     pg_conn,
+                     wb=None,
+                     wb_path=None,
+                     pptx_path=None,
+                     pptx_template=None,
+                     png_dir=None):
         """
         Call necessary methods to run the condition analysis
         and save results to the specified
@@ -420,7 +447,9 @@ class CondCollection:
 
         if pptx_path is not None and pptx_template is not None:
             log.debug(f'Saving Powerpoint report as {pptx_path} ...')
-            self.save_pptx(pptx_template=pptx_template, out_path=pptx_path)
+            self.save_pptx(pptx_template=pptx_template,
+                           out_path=pptx_path,
+                           png_dir=png_dir)
             log.debug(f'{pptx_path} saved')
         else:
             log.warning(f'No Powerpoint report saved from {str(self)}')

@@ -201,6 +201,13 @@ class AnalysisCollection:
         wb_path = f'{self.out_base_path}_report.xlsx'
         log.debug(f'Excel workbook will be saved as {wb_path}')
 
+        # Prepare directory for png images for pptx;
+        # keep the pngs if png_dir is passed to
+        # passed to CondCollection.to_pptx().
+        png_dir = f'{self.out_base_path}_images'
+        os.makedirs(png_dir, exist_ok=True)
+        log.debug(f'Png images will be saved to {png_dir}')
+
         for cl in self.collections.keys():
             try:
                 with psycopg2.connect(**self.db_params) as pg_conn:
@@ -209,7 +216,8 @@ class AnalysisCollection:
                                                       wb=wb,
                                                       wb_path=wb_path,
                                                       pptx_path=coll_pptx_path,
-                                                      pptx_template=PPTX_TEMPLATE_PATH)
+                                                      pptx_template=PPTX_TEMPLATE_PATH,
+                                                      png_dir=png_dir)
                     log.debug(f'{str(self.collections[cl])} is analyzed')
             except:
                 self.errors.add(
