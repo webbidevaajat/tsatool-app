@@ -56,7 +56,7 @@ def main():
     loglevels = {'error': logging.ERROR,
                  'warning': logging.WARNING,
                  'info': logging.INFO,
-                 'debug', logging.DEBUG}
+                 'debug': logging.DEBUG}
     log.setLevel(loglevels[args.log])
     # Note that old logs by same name are overwritten!
     log_dest = os.path.join('results', f'{args.name}.log')
