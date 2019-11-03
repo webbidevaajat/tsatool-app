@@ -56,7 +56,7 @@ unless you have configured the database instance according to the default values
 
 ## Running an analysis
 
-Run `python tsabatch.py --help` to see the parameters and their usage.
+Run `python tsabatch.py --help` to see available command line arguments and their usage.
 
 ### "Dry" validation
 
@@ -85,17 +85,26 @@ given that the database is available.
 You could combine dry validation and full analysis e.g. as follows:
 
 ```
-python tsabatch.py -i example_data/testset.xlsx -n test_analysis --dryvalidate \
+python tsabatch.py -i example_data/toimiva.xlsx -n test_analysis --dryvalidate \
   # The && requires that the dry validation did not cause an error:
   && some_script_that_spins_up_the_database.sh
   # Now without --dryvalidate:
-  && python tsabatch.py -i example_data/testset.xlsx -n test_analysis
+  && python tsabatch.py -i example_data/toimiva.xlsx -n test_analysis
 ```
 
 All file paths here are relative to the project directory.
 The above command would save resulting Excel and PowerPoint files as `results/test_analysis_[...]`.
 
 ## Logging
+
+Default logging level is `info`, at which most of the essential analysis steps are saved to the log stream.
+You can specify a logging level with the `--log` argument and one of the following values: `error, warning, info, debug`. `debug` will print out all the SQL `CREATE` statements, for example.
+
+Example:
+
+```
+python tsabatch.py -i example_data/toimiva.xlsx -n test_analysis --log debug
+```
 
 Log files are saved to `results/[analysis name].log`.
 No file rotation is configured,
