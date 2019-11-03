@@ -453,7 +453,7 @@ class Condition:
         and its blocks on a timeline.
         """
         if self.main_df.empty:
-            return
+            raise Exception('main_df is empty, cannot make timeline plot')
 
         def getfacecolor(val):
             """
