@@ -419,6 +419,12 @@ class CondCollection:
         log.info(f'Starting analysis of {str(self)}')
         self.setup_obs_view(pg_conn=pg_conn)
         log.info('obs_main db view created')
+        # FIXME: Station id validation agains unique values in db view
+        #        is not done, because the SELECT DISTINCT query is very
+        #        slow for some reason.
+        #        This step is not mandatory, though.
+        #        If a station id is missing, the result should be just
+        #        an empty table and / or a database error for that condition.
         # self.validate_statids_with_db(pg_conn=pg_conn)
         # log.debug('Station ids validated')
         self.create_condition_temptables(pg_conn=pg_conn)
